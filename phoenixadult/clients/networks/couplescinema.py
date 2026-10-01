@@ -17,6 +17,7 @@ _YEAR_RE = re.compile(r'^\d{4}$')
 
 
 class CouplesCinemaClient(Client):
+    packed_scene_tail = True
     summary_xpath = '(//span[contains(@class,"description")])[1]'
 
     default_headers: ClassVar[dict[str, str]] = {'Cookie': 'WarningModal=true'}
@@ -89,14 +90,11 @@ class CouplesCinemaClient(Client):
 
     @staticmethod
     def _date_part(scene: LoadedScene) -> str | None:
-        return scene.scene_date.split('|')[0].strip() if scene.scene_date else None
+        return scene.scene_date
 
     @staticmethod
     def _cover_part(scene: LoadedScene) -> str:
-        if scene.scene_date and '|' in scene.scene_date:
-            return scene.scene_date.split('|', 1)[1]
-
-        return ''
+        return scene.extra_or(str, '')
 
     def _tagline(self, scene: LoadedScene) -> str | None:
         details_page_elements = scene.require_sel()

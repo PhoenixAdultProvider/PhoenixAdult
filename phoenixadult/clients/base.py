@@ -140,6 +140,7 @@ class ImageCollector:
 class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks, none are mandatory
     scraper_type: ClassVar[str] = ''
     default_headers: ClassVar[dict[str, str]] = {}
+    packed_scene_tail: ClassVar[bool] = False
 
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         self._extra_headers = {**self.default_headers, **(extra_headers or {})}
@@ -556,6 +557,10 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else None
+        packed: str | None = None
+        if self.packed_scene_tail and fallback_date:
+            date_part, _, packed = fallback_date.partition('|')
+            fallback_date = date_part.strip()
         capture = ctx.capture if ctx else None
         details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'GET {url}')
         if not details_page_elements:
@@ -566,6 +571,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             site=site,
             scene_date=fallback_date or None,
             capture=capture,
+            extra=packed,
             sel=details_page_elements['sel'],
             html=details_page_elements['html'],
             subsite=ctx.subsite if ctx else None,

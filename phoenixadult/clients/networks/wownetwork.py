@@ -14,6 +14,7 @@ _SEARCH_PAGES = 5
 
 
 class WowNetworkClient(Client):
+    packed_scene_tail = True
     title_xpath = '(//h1[contains(@class,"entry-title")])[last()]'
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
@@ -66,9 +67,7 @@ class WowNetworkClient(Client):
             metadata.release_date = iso_date(meta.split('T')[0])
             return
 
-        packed_date = scene.scene_date.split('|')[0].strip() if scene.scene_date else ''
-
-        metadata.release_date = iso_date(packed_date) if packed_date else None
+        metadata.release_date = iso_date(scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -93,13 +92,11 @@ class WowNetworkClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector()
-        if scene.scene_date and '|' in scene.scene_date:
-            b64 = scene.scene_date.split('|', 1)[1]
-            if b64:
-                try:
-                    images.push(self.decode(b64))
-                except (ValueError, TypeError):
-                    pass
+        if b64 := scene.extra_or(str, ''):
+            try:
+                images.push(self.decode(b64))
+            except (ValueError, TypeError):
+                pass
 
         images.push(first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
 

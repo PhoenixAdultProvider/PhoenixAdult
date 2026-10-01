@@ -24,6 +24,7 @@ def _resolve_tagline(link_text: str) -> str:
 
 
 class IntersecClient(Client):
+    packed_scene_tail = True
     title_xpath = '(//div[contains(@class,"has-text-weight-bold")])[1]'
     summary_xpath = '(//div[contains(@class,"has-text-white-ter")])[3]'
 
@@ -125,16 +126,14 @@ class IntersecClient(Client):
 
         images = self.image_collector()
 
-        if scene.scene_date and '|' in scene.scene_date:
-            cover_b64 = scene.scene_date.split('|', 1)[1]
-            if cover_b64:
-                try:
-                    cover = self.decode(cover_b64)
-                except Exception:  # noqa: BLE001 - decode failures are non-fatal
-                    cover = ''
+        if cover_b64 := scene.extra_or(str, ''):
+            try:
+                cover = self.decode(cover_b64)
+            except Exception:  # noqa: BLE001 - decode failures are non-fatal
+                cover = ''
 
-                if cover:
-                    images.push(cover)
+            if cover:
+                images.push(cover)
 
         xpaths = ('//video-js/@poster', '//figure//img/@src')
         for xpath in xpaths:
