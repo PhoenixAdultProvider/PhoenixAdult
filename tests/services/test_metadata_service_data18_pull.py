@@ -36,13 +36,17 @@ async def _async_false(*args: object, **kwargs: object) -> bool:
 async def test_pull_adopts_fresh_when_data18_found(_svc: MetadataService, monkeypatch: pytest.MonkeyPatch) -> None:
     writes: list[str] = []
 
+    stored = [_resp('Cached Scene', data18_id=None)]
+
     async def _fake_write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> bool:
         writes.append(response.MediaContainer.Metadata[0].title or '')
+        stored.append(response)
         return True
 
     async def _fake_scrape(*args: object, **kwargs: object) -> PlexMetadataResponse:
         return _resp('Fresh Scene', data18_id='555')
 
+    monkeypatch.setattr(metadata_cache, 'read', lambda site_name, cur_id: stored[-1].model_dump(by_alias=True, exclude_none=True))
     monkeypatch.setattr(metadata_cache, 'write', _fake_write)
     monkeypatch.setattr(_svc, '_scrape', _fake_scrape)
 

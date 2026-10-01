@@ -4,10 +4,17 @@ from typing import Any
 
 import pytest
 
+from phoenixadult.models.metadata import PlexMetadataResponse
+from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.registry import find_site
+from phoenixadult.services import snapshot_backfill
+from phoenixadult.services.metadata_service import MetadataService, _Update, refresh_cached_snapshot
 from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import locks as cache_locks
-from phoenixadult.utils.cache import scene_store, text_rules
+from phoenixadult.utils.cache import metadata as metadata_cache
+from phoenixadult.utils.cache import people_backfill, scene_store, text_rules
 
+PROVIDER = ProviderInfo(id='p', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 SITE = 'Lock Studio'
 CUR = 'lock-cur-1'
 
@@ -113,3 +120,46 @@ def test_reapply_text_rules_skips_locked_fields(monkeypatch: pytest.MonkeyPatch)
     text_rules.reapply_text_rules(response2, None, locked=set())
     assert response2.MediaContainer.Metadata[0].title != 'all lower needs recasing', 'unlocked titles still recase'
     assert changed in (True, False)
+
+
+async def test_a_fresh_scrape_serves_the_stored_copy_that_honours_locks(monkeypatch: pytest.MonkeyPatch) -> None:
+    fresh = PlexMetadataResponse.model_validate(_payload(title='Scraped Title'))
+    stored = _payload(title='Locked Title')
+
+    async def _write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> bool:
+        return True
+
+    monkeypatch.setattr(metadata_cache, 'write', _write)
+    monkeypatch.setattr(metadata_cache, 'read', lambda site_name, cur_id: stored)
+    update = _Update('rk', PROVIDER, find_site('Brazzers'), CUR, 'https://x/1', None, None, None, False)  # type: ignore[arg-type]
+    served = await MetadataService()._store(fresh, update)
+    assert served.MediaContainer.Metadata[0].title == 'Locked Title'
+
+
+async def test_a_disabled_cache_serves_the_scrape_itself(monkeypatch: pytest.MonkeyPatch) -> None:
+    fresh = PlexMetadataResponse.model_validate(_payload(title='Scraped Title'))
+
+    async def _write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> bool:
+        return False
+
+    monkeypatch.setattr(metadata_cache, 'write', _write)
+    update = _Update('rk', PROVIDER, find_site('Brazzers'), CUR, 'https://x/1', None, None, None, False)  # type: ignore[arg-type]
+    assert await MetadataService()._store(fresh, update) is fresh
+
+
+async def test_a_locked_studio_is_not_restudioed(monkeypatch: pytest.MonkeyPatch) -> None:
+    scene_hash = _seed()
+    scene_store.set_locks(scene_hash, ['studio'], False)
+    called: list[str] = []
+    monkeypatch.setattr(snapshot_backfill, 'backfill_studio', lambda response, site: called.append('studio') or True)
+    monkeypatch.setattr(people_backfill, 'backfill_people_images', _async_false)
+    response = PlexMetadataResponse.model_validate(_payload())
+    site = find_site('Brazzers')
+    assert site is not None
+    monkeypatch.setattr(cache_layout, 'scene_hash_for', lambda site_name, cur_id: scene_hash)
+    await refresh_cached_snapshot(response, site, CUR, skip_data18=True)
+    assert called == []
+
+
+async def _async_false(*args: object, **kwargs: object) -> bool:
+    return False

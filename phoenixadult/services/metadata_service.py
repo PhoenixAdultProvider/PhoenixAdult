@@ -84,9 +84,10 @@ async def refresh_cached_snapshot(
     fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
     skip_data18: bool = False,
 ) -> bool:
-    changed = snapshot_backfill.backfill_studio(response, site)
     locks = await run_in('store', scene_store.locks, cache_layout.scene_hash_for(site.name, cur_id))
-    if text_rules.reapply_text_rules(response, site.scraper_config.type, locked=set(locks['fields'])):
+    locked = set(locks['fields'])
+    changed = 'studio' not in locked and snapshot_backfill.backfill_studio(response, site)
+    if text_rules.reapply_text_rules(response, site.scraper_config.type, locked=locked):
         changed = True
     if await run_in('store', metadata_cache.drop_stale_people_thumbs, response, site.name, cur_id):
         changed = True
@@ -234,9 +235,9 @@ class MetadataService:
             fresh = None
             logger.info(u.provider.id, f'Enrichment pull deferred by pacing for ratingKey={u.rating_key} — serving cached snapshot')
         if fresh is not None and fresh.MediaContainer.Metadata[0].data18 is not None:
-            await metadata_cache.write(u.site.name, u.cur_id, fresh)
+            stored = await self._store(fresh, u)
             logger.info(u.provider.id, f'data18 enrichment pulled for ratingKey={u.rating_key}')
-            return fresh
+            return stored
         logger.info(u.provider.id, f'No data18 match on pull for ratingKey={u.rating_key} — serving cached snapshot')
         return None
 
@@ -269,8 +270,13 @@ class MetadataService:
             if not u.allow_slow and transport_failures() and not await internet_reachable():
                 raise ProviderUnavailableError('no network connectivity')
             return None
-        await metadata_cache.write(u.site.name, u.cur_id, fresh)
-        return self._finalize(fresh, u.provider, u.rating_key, cached=False)
+        return self._finalize(await self._store(fresh, u), u.provider, u.rating_key, cached=False)
+
+    async def _store(self, fresh: PlexMetadataResponse, u: _Update) -> PlexMetadataResponse:
+        if not await metadata_cache.write(u.site.name, u.cur_id, fresh):
+            return fresh
+        stored = await run_in('store', metadata_cache.read, u.site.name, u.cur_id)
+        return PlexMetadataResponse.model_validate(stored) if stored is not None else fresh
 
     async def _fetch_metadata(
         self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False, allow_slow: bool = False
