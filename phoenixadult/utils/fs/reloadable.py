@@ -7,6 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from phoenixadult.utils.logging.logger import logger
+
 
 class MtimeCachedJson[T]:
     def __init__(self, path: Path, build: Callable[[Any], T], *, stat_interval: float = 5.0) -> None:
@@ -29,5 +31,14 @@ class MtimeCachedJson[T]:
         if self._cache is None or self._cache[0] != mtime:
             with self._lock:
                 if self._cache is None or self._cache[0] != mtime:
-                    self._cache = (mtime, self._build(json.loads(self._path.read_text(encoding='utf-8'))))
+                    self._cache = (mtime, self._reload(mtime))
         return self._cache[1]
+
+    def _reload(self, mtime: float) -> T:
+        try:
+            return self._build(json.loads(self._path.read_text(encoding='utf-8')))
+        except (OSError, ValueError, KeyError, TypeError) as err:
+            if self._cache is None:
+                raise
+            logger.error('data', f'{self._path.name} did not reload ({err!r}); keeping the last good copy until it is fixed')
+            return self._cache[1]
