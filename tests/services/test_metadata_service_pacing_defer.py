@@ -5,7 +5,7 @@ import pytest
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.services import scrape_queue
-from phoenixadult.services.metadata_service import MetadataService
+from phoenixadult.services.metadata_service import MetadataService, _Update
 from phoenixadult.services.provider_errors import ProviderUnavailableError
 from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
@@ -24,8 +24,8 @@ async def test_deferred_scrape_fails_fast_and_queues(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(metadata_cache, 'read', lambda site_name, cur_id: None)
     monkeypatch.setattr(svc._scraper, 'decode', lambda cur_id: 'https://nubilefilms.com/video/watch/1')
 
-    async def _deferring_scrape(*args: object, **kwargs: object) -> PlexMetadataResponse:
-        if kwargs.get('allow_slow'):
+    async def _deferring_scrape(update: _Update) -> PlexMetadataResponse:
+        if update.allow_slow:
             return _resp('Background Scene')
         raise PacingDeferredError(180.0)
 

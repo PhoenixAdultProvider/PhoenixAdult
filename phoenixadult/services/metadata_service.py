@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 from cachetools import TTLCache
 
@@ -108,6 +109,19 @@ _MEMO_MAX_ENTRIES = 512
 _REFRESH_WINDOW_SECONDS = 60.0
 
 
+@dataclass(frozen=True)
+class _Update:
+    rating_key: str
+    provider: ProviderInfo
+    site: ResolvedSiteInfo
+    cur_id: str
+    scene_url: str
+    subsite: str | None
+    release_date: str | None
+    language: str | None
+    allow_slow: bool
+
+
 class MetadataService:
     def __init__(self) -> None:
         self._scraper = ScraperRouter()
@@ -156,31 +170,21 @@ class MetadataService:
             task.add_done_callback(_log_abandoned)
             raise ProviderUnavailableError('scrape exceeded the Plex request budget — retry later') from None
 
-    async def _scrape(
-        self,
-        rating_key: str,
-        provider: ProviderInfo,
-        site: ResolvedSiteInfo,
-        scene_url: str,
-        subsite: str | None,
-        release_date: str | None,
-        language: str | None,
-        allow_slow: bool = False,
-    ) -> PlexMetadataResponse | None:
+    async def _scrape(self, u: _Update) -> PlexMetadataResponse | None:
         try:
-            await ensure_fetchable_url(scene_url)
+            await ensure_fetchable_url(u.scene_url)
         except ValueError as err:
-            logger.warn(provider.id, f'Refusing blocked sceneURL from ratingKey: {err}')
+            logger.warn(u.provider.id, f'Refusing blocked sceneURL from ratingKey: {err}')
             return None
 
-        logger.info(provider.id, f'Fetching detail for site="{site.name}" id="{scene_url}"')
-        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite, allow_slow=allow_slow))
+        logger.info(u.provider.id, f'Fetching detail for site="{u.site.name}" id="{u.scene_url}"')
+        detail = await self._scraper.fetch_scene_detail(u.scene_url, u.site, SceneContext(language=u.language, subsite=u.subsite, allow_slow=u.allow_slow))
         if not detail:
-            logger.warn(provider.id, f'No scene detail returned for site="{site.name}" id="{scene_url}"')
+            logger.warn(u.provider.id, f'No scene detail returned for site="{u.site.name}" id="{u.scene_url}"')
             return None
 
-        metadata = await self._mapper.to_metadata(detail, rating_key, provider.plex_identifier, release_date, site, filename_site=subsite)
-        return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
+        metadata = await self._mapper.to_metadata(detail, u.rating_key, u.provider.plex_identifier, u.release_date, u.site, filename_site=u.subsite)
+        return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': u.provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
 
     def _finalize(self, response: PlexMetadataResponse, provider: ProviderInfo, rating_key: str, *, cached: bool) -> PlexMetadataResponse:
         if removed := filter_male_actors(response):
@@ -224,84 +228,51 @@ class MetadataService:
         state = 'queued background scrape' if queued else 'background scrape already queued'
         logger.info(provider.id, f'Pacing defers ratingKey={rating_key} (~{wait_seconds:.0f}s wait) — {state}; a later refresh serves it from the snapshot')
 
-    async def _pull_data18_enrichment(
-        self,
-        rating_key: str,
-        provider: ProviderInfo,
-        site: ResolvedSiteInfo,
-        cur_id: str,
-        scene_url: str,
-        subsite: str | None,
-        release_date: str | None,
-        language: str | None,
-        allow_slow: bool,
-    ) -> PlexMetadataResponse | None:
-        logger.info(provider.id, f'No data18 ref for ratingKey={rating_key} — attempting enrichment pull')
+    async def _pull_data18_enrichment(self, u: _Update) -> PlexMetadataResponse | None:
+        logger.info(u.provider.id, f'No data18 ref for ratingKey={u.rating_key} — attempting enrichment pull')
         try:
-            fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
+            fresh = await self._scrape(u)
         except PacingDeferredError:
             fresh = None
-            logger.info(provider.id, f'Enrichment pull deferred by pacing for ratingKey={rating_key} — serving cached snapshot')
+            logger.info(u.provider.id, f'Enrichment pull deferred by pacing for ratingKey={u.rating_key} — serving cached snapshot')
         if fresh is not None and fresh.MediaContainer.Metadata[0].data18 is not None:
-            await metadata_cache.write(site.name, cur_id, fresh)
-            logger.info(provider.id, f'data18 enrichment pulled for ratingKey={rating_key}')
+            await metadata_cache.write(u.site.name, u.cur_id, fresh)
+            logger.info(u.provider.id, f'data18 enrichment pulled for ratingKey={u.rating_key}')
             return fresh
-        logger.info(provider.id, f'No data18 match on pull for ratingKey={rating_key} — serving cached snapshot')
+        logger.info(u.provider.id, f'No data18 match on pull for ratingKey={u.rating_key} — serving cached snapshot')
         return None
 
-    async def _serve_cached(
-        self,
-        response: PlexMetadataResponse,
-        rating_key: str,
-        provider: ProviderInfo,
-        site: ResolvedSiteInfo,
-        cur_id: str,
-        scene_url: str,
-        subsite: str | None,
-        language: str | None,
-        skip_data18: bool,
-    ) -> PlexMetadataResponse:
+    async def _serve_cached(self, response: PlexMetadataResponse, u: _Update, skip_data18: bool) -> PlexMetadataResponse:
 
         async def _fetch_detail() -> SceneDetail | None:
-            if not scene_url:
+            if not u.scene_url:
                 return None
             try:
-                await ensure_fetchable_url(scene_url)
+                await ensure_fetchable_url(u.scene_url)
             except ValueError as err:
-                logger.warn(provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
+                logger.warn(u.provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
                 return None
-            return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
+            return await self._scraper.fetch_scene_detail(u.scene_url, u.site, SceneContext(language=u.language, subsite=u.subsite))
 
-        if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail, skip_data18=skip_data18):
-            logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
-        logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
-        return self._finalize(response, provider, rating_key, cached=True)
+        if await refresh_cached_snapshot(response, u.site, u.cur_id, fetch_detail=_fetch_detail, skip_data18=skip_data18):
+            logger.info(u.provider.id, f'Updated cached metadata for ratingKey={u.rating_key}')
+        logger.info(u.provider.id, f'Serving snapshot for ratingKey={u.rating_key}')
+        return self._finalize(response, u.provider, u.rating_key, cached=True)
 
-    async def _scrape_and_store(
-        self,
-        rating_key: str,
-        provider: ProviderInfo,
-        site: ResolvedSiteInfo,
-        cur_id: str,
-        scene_url: str,
-        subsite: str | None,
-        release_date: str | None,
-        language: str | None,
-        allow_slow: bool,
-    ) -> PlexMetadataResponse | None:
+    async def _scrape_and_store(self, u: _Update) -> PlexMetadataResponse | None:
         try:
-            fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
+            fresh = await self._scrape(u)
         except PacingDeferredError as err:
-            self._queue_background(rating_key, provider, language, err.wait_seconds)
-            if allow_slow:
+            self._queue_background(u.rating_key, u.provider, u.language, err.wait_seconds)
+            if u.allow_slow:
                 return None
             raise ProviderUnavailableError('scrape deferred by pacing — a later refresh serves it from the snapshot') from None
         if fresh is None:
-            if not allow_slow and transport_failures() and not await internet_reachable():
+            if not u.allow_slow and transport_failures() and not await internet_reachable():
                 raise ProviderUnavailableError('no network connectivity')
             return None
-        await metadata_cache.write(site.name, cur_id, fresh)
-        return self._finalize(fresh, provider, rating_key, cached=False)
+        await metadata_cache.write(u.site.name, u.cur_id, fresh)
+        return self._finalize(fresh, u.provider, u.rating_key, cached=False)
 
     async def _fetch_metadata(
         self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False, allow_slow: bool = False
@@ -325,6 +296,7 @@ class MetadataService:
             raise MalformedRequestError(f'no registry site for siteName "{site_name}"')
 
         scene_url, subsite = split_subsite(self._scraper.decode(cur_id))
+        update = _Update(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
 
         cached = None if force else await run_in('store', metadata_cache.read, site.name, cur_id)
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
@@ -335,15 +307,15 @@ class MetadataService:
         pull_attempted = False
         if response is not None and scene_url and metadata_cache.data18_backfill_needed(response, site.name):
             pull_attempted = True
-            enriched = await self._pull_data18_enrichment(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
+            enriched = await self._pull_data18_enrichment(update)
             if enriched is not None:
                 return self._finalize(enriched, provider, rating_key, cached=False)
 
         if response is not None:
-            return await self._serve_cached(response, rating_key, provider, site, cur_id, scene_url, subsite, language, skip_data18=pull_attempted)
+            return await self._serve_cached(response, update, skip_data18=pull_attempted)
 
         if not scene_url:
             logger.warn(provider.id, f'Could not decode curID from ratingKey={rating_key}')
             raise MalformedRequestError(f'undecodable curID in ratingKey={rating_key}')
 
-        return await self._scrape_and_store(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
+        return await self._scrape_and_store(update)
