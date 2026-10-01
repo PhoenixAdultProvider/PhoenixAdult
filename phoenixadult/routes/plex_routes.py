@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -78,7 +79,7 @@ async def create_connection(request: Request) -> JSONResponse:
         return JSONResponse({'error': 'A connection name is required'}, status_code=400)
     try:
         connection_id = await run_in('store', plex_connections.create, user.id, name)
-    except Exception:  # noqa: BLE001 - unique (user, name) collision
+    except sqlite3.IntegrityError:
         return JSONResponse({'error': 'You already have a connection with that name'}, status_code=409)
     logger.info('plex-connections', f'created connection "{name}" for {user.username}')
     return JSONResponse({'id': connection_id})

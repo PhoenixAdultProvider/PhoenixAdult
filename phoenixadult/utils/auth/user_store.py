@@ -41,10 +41,6 @@ def user_count() -> int:
     return int(db.connect().execute('SELECT COUNT(*) FROM users').fetchone()[0])
 
 
-def admin_count() -> int:
-    return int(db.connect().execute('SELECT COUNT(*) FROM users WHERE is_admin = 1').fetchone()[0])
-
-
 def create_user(username: str, password: str, is_admin: bool) -> int:
     now = time.time()
     conn = db.connect()
@@ -106,6 +102,23 @@ def delete_user(user_id: int) -> None:
     conn = db.connect()
     with conn:
         conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+
+
+_OTHER_ADMIN_REMAINS = '(is_admin = 0 OR (SELECT COUNT(*) FROM users WHERE is_admin = 1) > 1)'
+
+
+def delete_user_keeping_an_admin(user_id: int) -> bool:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute(f'DELETE FROM users WHERE id = ? AND {_OTHER_ADMIN_REMAINS}', (user_id,))  # noqa: S608 - fixed clause
+    return bool(cur.rowcount)
+
+
+def demote_keeping_an_admin(user_id: int) -> bool:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute(f'UPDATE users SET is_admin = 0 WHERE id = ? AND {_OTHER_ADMIN_REMAINS}', (user_id,))  # noqa: S608 - fixed clause
+    return bool(cur.rowcount)
 
 
 def regenerate_api_key(user_id: int) -> str:

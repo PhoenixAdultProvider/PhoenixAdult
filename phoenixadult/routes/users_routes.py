@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
+from typing import Any
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
@@ -9,6 +12,14 @@ from phoenixadult.utils.auth.passwords import password_error
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
+
+
+def _user_id(body: dict[str, Any]) -> int | None:
+    try:
+        return int(body.get('id') or 0)
+    except (TypeError, ValueError):
+        return None
+
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(admin_auth_guard), Depends(csrf_guard)])
 
@@ -29,7 +40,7 @@ async def create_user(request: Request) -> JSONResponse:
         return JSONResponse({'error': problem}, status_code=400)
     try:
         user_id = await run_in('store', user_store.create_user, username, password, bool(body.get('isAdmin')))
-    except Exception:  # noqa: BLE001 - unique username collision
+    except sqlite3.IntegrityError:
         return JSONResponse({'error': 'That username is taken.'}, status_code=409)
     logger.info('users', f'created user {username}')
     return JSONResponse({'id': user_id})
@@ -37,14 +48,14 @@ async def create_user(request: Request) -> JSONResponse:
 
 @router.post('/api/delete')
 async def delete_user(request: Request) -> JSONResponse:
-    body = await read_json_body(request)
-    user_id = int(body.get('id') or 0)
+    user_id = _user_id(await read_json_body(request))
+    if user_id is None:
+        return JSONResponse({'error': 'id must be an integer'}, status_code=400)
     target = await run_in('store', user_store.get_by_id, user_id)
     if target is None:
         return JSONResponse({'error': 'No such user'}, status_code=404)
-    if target.is_admin and await run_in('store', user_store.admin_count) <= 1:
+    if not await run_in('store', user_store.delete_user_keeping_an_admin, user_id):
         return JSONResponse({'error': 'The last admin cannot be deleted.'}, status_code=409)
-    await run_in('store', user_store.delete_user, user_id)
     logger.info('users', f'deleted user {target.username}')
     return JSONResponse({'ok': True})
 
@@ -52,7 +63,9 @@ async def delete_user(request: Request) -> JSONResponse:
 @router.post('/api/password')
 async def reset_password(request: Request) -> JSONResponse:
     body = await read_json_body(request)
-    user_id = int(body.get('id') or 0)
+    user_id = _user_id(body)
+    if user_id is None:
+        return JSONResponse({'error': 'id must be an integer'}, status_code=400)
     password = str(body.get('password') or '')
     if (problem := password_error(password)) is not None:
         return JSONResponse({'error': problem}, status_code=400)
@@ -67,15 +80,18 @@ async def reset_password(request: Request) -> JSONResponse:
 @router.post('/api/admin')
 async def set_admin(request: Request) -> JSONResponse:
     body = await read_json_body(request)
-    user_id = int(body.get('id') or 0)
+    user_id = _user_id(body)
+    if user_id is None:
+        return JSONResponse({'error': 'id must be an integer'}, status_code=400)
     is_admin = bool(body.get('isAdmin'))
     target = await run_in('store', user_store.get_by_id, user_id)
     if target is None:
         return JSONResponse({'error': 'No such user'}, status_code=404)
-    if not is_admin and target.is_admin and await run_in('store', user_store.admin_count) <= 1:
-        return JSONResponse({'error': 'The last admin cannot be demoted.'}, status_code=409)
     caller = await resolve_user(request)
     assert caller is not None
-    await run_in('store', user_store.set_admin, user_id, is_admin)
+    if is_admin:
+        await run_in('store', user_store.set_admin, user_id, True)
+    elif not await run_in('store', user_store.demote_keeping_an_admin, user_id):
+        return JSONResponse({'error': 'The last admin cannot be demoted.'}, status_code=409)
     logger.info('users', f'{caller.username} set admin={is_admin} on {target.username}')
     return JSONResponse({'ok': True})

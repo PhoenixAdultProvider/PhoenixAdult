@@ -20,6 +20,12 @@ def test_client_hits_are_recorded_only_on_the_provider_mount() -> None:
     assert [h['clientId'] for h in client_hits.list_hits()] == ['real-pms']
 
 
+def test_a_non_numeric_user_id_is_a_bad_request() -> None:
+    client = authed_client()
+    for path in ('/users/api/delete', '/users/api/password', '/users/api/admin'):
+        assert client.post(path, json={'id': 'abc', 'password': 'Password12!'}).status_code == 400
+
+
 def test_a_client_id_owned_by_another_user_cannot_be_claimed() -> None:
     admin = authed_client()
     theirs = plex_connections.create(user_store.create_user('owner', 'pw-owner', is_admin=False), 'Theirs')
