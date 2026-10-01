@@ -6,6 +6,7 @@ from typing import Any
 
 from phoenixadult.utils import db
 
+_MAX_CLIENTS = 200
 _KEEP_HEADERS = ('accept', 'accept-encoding', 'content-length', 'content-type', 'host', 'user-agent')
 
 
@@ -19,6 +20,10 @@ def record(client_id: str, headers: Any, path: str) -> None:
             'ON CONFLICT(client_id) DO UPDATE SET headers = excluded.headers, count = client_hits.count + 1, '
             'last_seen = excluded.last_seen, last_path = excluded.last_path',
             (client_id, json.dumps(kept, sort_keys=True), now, now, path),
+        )
+        conn.execute(
+            'DELETE FROM client_hits WHERE client_id NOT IN (SELECT client_id FROM client_hits ORDER BY last_seen DESC LIMIT ?)',
+            (_MAX_CLIENTS,),
         )
 
 

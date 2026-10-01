@@ -488,7 +488,8 @@ configured token for background work.
 
 ## Client Hits and Daily Request Quotas
 
-`client_hits` keeps one row per `X-Plex-Client-Identifier` the server has ever seen —
+`client_hits` keeps one row per `X-Plex-Client-Identifier` seen on the provider mount
+(the 200 most recent) —
 its retained headers (JSON), hit count, first/last seen, and last path — feeding the
 admin Clients tab and surviving restarts. `daily_requests` holds the provider-mount
 quota counters keyed `(scope, key, day)`, where scope is `client` (a Plex client id) or

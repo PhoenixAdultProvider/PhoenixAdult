@@ -152,10 +152,12 @@ def _install_middleware(app: FastAPI) -> None:
 
     # ── Plex Client Tracking (records hits; resolves the owner's enrichment token) ─
 
+    mounts = tuple(provider_mount_path(p) for p in get_all_providers())
+
     @app.middleware('http')
     async def plex_client_middleware(request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
         client_id = request.headers.get('x-plex-client-identifier')
-        if client_id:
+        if client_id and request.url.path.startswith(mounts):
             await asyncio.to_thread(client_hits.record, client_id, request.headers, request.url.path)
             owner = await asyncio.to_thread(plex_connections.owner_for_client, client_id)
             if owner is not None:

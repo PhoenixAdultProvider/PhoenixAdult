@@ -225,7 +225,7 @@ async def api_metadataapi(request: Request) -> JSONResponse:
 
 @router.get('/api/clients', dependencies=_admin)
 async def api_clients() -> JSONResponse:
-    return JSONResponse({'clients': client_hits.list_hits()})
+    return JSONResponse({'clients': await run_in('store', client_hits.list_hits)})
 
 
 def _render_ui(state: dict[str, Any], username: str) -> str:

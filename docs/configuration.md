@@ -102,10 +102,11 @@ the only way in, including from loopback.
   store: every cached search with all its results, filterable by site, with per-search
   purge and re-search, per-site and full purges, and an expired-row sweep. Non-admins
   get 403 and never see the nav link.
-- **Clients** (admin tab) records every request that carried an
+- **Clients** (admin tab) records every provider-mount request that carried an
   `X-Plex-Client-Identifier` — one card per client with its X-Plex headers, hit
   count, and last path — the quickest way to grab an identifier for a connection's
-  allowlist. Stored in SQLite, so counts survive a restart.
+  allowlist. Stored in SQLite, so counts survive a restart; only the 200 most recently
+  seen clients are kept.
 - **Lost every password?** Run `python scripts/reset_password.py <username>` on the
   server (add `--create-admin` when no usable admin remains).
 
