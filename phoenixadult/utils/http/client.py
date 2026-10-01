@@ -82,6 +82,12 @@ def shared_http(tag: str, **overrides: Any) -> httpx2.AsyncClient:
     return client
 
 
+async def close_shared() -> None:
+    by_tag = _shared_clients.pop(asyncio.get_running_loop(), {})
+    for client in by_tag.values():
+        await client.aclose()
+
+
 async def read_capped(response: httpx2.Response, limit: int, *, truncate: bool = False) -> bytes:
     chunks: list[bytes] = []
     total = 0

@@ -154,6 +154,13 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             self._http = make_http(self._extra_headers)
         return self._http
 
+    async def aclose(self) -> None:
+        if isinstance(self._data18_enricher, Client):
+            await self._data18_enricher.aclose()
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
+
     def encode(self, s: str) -> str:
         return b64url_encode(s)
 

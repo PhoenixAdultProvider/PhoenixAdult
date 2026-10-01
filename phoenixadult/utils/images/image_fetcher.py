@@ -58,6 +58,14 @@ def _probe_client() -> httpx2.AsyncClient:
     return client
 
 
+async def close_shared() -> None:
+    loop = asyncio.get_running_loop()
+    for clients in (_shared_image_clients, _shared_probe_clients):
+        client = clients.pop(loop, None)
+        if client is not None:
+            await client.aclose()
+
+
 @dataclass
 class ImageEntry:
     data: bytes

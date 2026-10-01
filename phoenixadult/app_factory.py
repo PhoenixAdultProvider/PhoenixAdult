@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 
 from phoenixadult import __version__
+from phoenixadult.clients import CLIENT_REGISTRY
 from phoenixadult.config import base_url_config_warning, config
 from phoenixadult.config.env import env
 from phoenixadult.registry import get_all_providers
@@ -31,7 +32,7 @@ from phoenixadult.routes import (
     users_routes,
 )
 from phoenixadult.routes.provider_router import create_provider_router, restore_queue
-from phoenixadult.services import plex_connections
+from phoenixadult.services import plex_connections, snapshot_backfill
 from phoenixadult.services.scrape_queue import lane_workers
 from phoenixadult.utils.auth import user_store, user_tokens
 from phoenixadult.utils.auth.hook_middleware import HookPathMiddleware
@@ -43,8 +44,9 @@ from phoenixadult.utils.concurrency import pools
 from phoenixadult.utils.concurrency.gate import limits
 from phoenixadult.utils.concurrency.pools import sizes
 from phoenixadult.utils.db import maintenance
+from phoenixadult.utils.http import client as http_client
 from phoenixadult.utils.http.security_headers import SecurityHeadersMiddleware
-from phoenixadult.utils.images import logo_cache
+from phoenixadult.utils.images import image_fetcher, logo_cache
 from phoenixadult.utils.logging.logger import configure_logging, logger
 from phoenixadult.utils.logging.request_context import RequestContextMiddleware
 from phoenixadult.utils.logging.response_trace import dump_dir, tracing_wanted
@@ -119,6 +121,14 @@ def _warn_on_legacy_snapshots() -> None:
         logger.warn(f'{stale} snapshot(s) still use the pre-{BUNDLE_ROOT} folder layout — run scripts/migrate_snapshot_layout.py --apply')
 
 
+async def close_http_clients() -> None:
+    await http_client.close_shared()
+    await image_fetcher.close_shared()
+    await snapshot_backfill.close_client()
+    for client in CLIENT_REGISTRY.values():
+        await client.aclose()
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_uvicorn_logging()
@@ -142,6 +152,7 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
         yield
     finally:
         backup.cancel()
+        await close_http_clients()
         pools.shutdown()
 
 

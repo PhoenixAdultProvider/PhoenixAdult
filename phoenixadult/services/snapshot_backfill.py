@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from functools import cache
 
 from phoenixadult.clients import get_client
 from phoenixadult.clients.aggregators.data18 import Data18Client
@@ -13,6 +14,16 @@ from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.studio_name import normalize_studio
 
 
+@cache
+def _data18() -> Data18Client:
+    return Data18Client()
+
+
+async def close_client() -> None:
+    if _data18.cache_info().currsize:
+        await _data18().aclose()
+
+
 async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> bool:
     if not env.data18_enabled:
         return False
@@ -23,7 +34,7 @@ async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> boo
     if not pending:
         return False
 
-    client = Data18Client()
+    client = _data18()
     changed = False
     for md in pending:
         try:
