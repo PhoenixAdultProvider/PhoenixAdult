@@ -26,7 +26,7 @@ from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode, split_s
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
-from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.logger import logger, verbose_enabled
 from phoenixadult.utils.people import filter_male_actors
 from phoenixadult.utils.plex.media_type import provider_mount_path
 from phoenixadult.utils.plex.rating_key import parse_rating_key
@@ -73,7 +73,8 @@ def _log_served(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
             f'Serving ratingKey={md.ratingKey} key={md.key} title="{md.title}" date={md.originallyAvailableAt} '
             f'genres={len(md.Genre or [])} actors={len(md.Role or [])} images={len(md.Image or [])}',
         )
-        logger.verbose(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
+        if verbose_enabled():
+            logger.verbose(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
 
 
 async def refresh_cached_snapshot(

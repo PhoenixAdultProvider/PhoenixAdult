@@ -28,7 +28,7 @@ from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import content_digest, fetch_dimensions, pixel_digest
 from phoenixadult.utils.images.image_referers import resolve_image_cookies, resolve_image_referers
 from phoenixadult.utils.images.proxy import proxy_url
-from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.logger import logger, verbose_enabled
 from phoenixadult.utils.people import PeopleResolver, to_plex_roles
 from phoenixadult.utils.plex.rating_key import to_guid, to_rating_key
 from phoenixadult.utils.processors.scene_link import is_api_url
@@ -313,7 +313,8 @@ class MetadataMapper:
 
 
 def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
-    logger.verbose(label, f'full response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
+    if verbose_enabled():
+        logger.verbose(label, f'full response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
     logger.debug(label, f'people image base -> {image_base_url()}')
 
     for md in response.MediaContainer.Metadata:

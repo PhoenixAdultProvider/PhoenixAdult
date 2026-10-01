@@ -108,4 +108,8 @@ def verbose_enabled() -> bool:
     return _base.isEnabledFor(VERBOSE)
 
 
+def debug_enabled() -> bool:
+    return _base.isEnabledFor(logging.DEBUG)
+
+
 logger = _Logger()

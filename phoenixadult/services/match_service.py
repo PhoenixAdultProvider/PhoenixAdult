@@ -26,7 +26,7 @@ from phoenixadult.utils.helpers.ids import unpack_cur_id
 from phoenixadult.utils.helpers.scoring import date_distance_score, title_distance_score
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
-from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.logger import debug_enabled, logger
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
 from phoenixadult.utils.processors.actor_strip import best_title_score
 from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry
@@ -317,7 +317,8 @@ class MatchService:
             results = [chosen]
 
         response = PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
-        logger.debug(provider.id, f'match response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
+        if debug_enabled():
+            logger.debug(provider.id, f'match response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
         return response
 
     def _empty(self, provider: ProviderInfo) -> PlexMatchResponse:
