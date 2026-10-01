@@ -106,7 +106,7 @@ async def _backup_task() -> None:
     hours = env.db_backup_interval_hours
     if hours <= 0:
         return
-    if maintenance.backup_age_hours() >= hours:
+    if await asyncio.to_thread(maintenance.backup_age_hours) >= hours:
         await _try_startup('db startup backup', maintenance.backup_once)
     while True:
         await asyncio.sleep(hours * 3600)
@@ -122,9 +122,9 @@ def _warn_on_legacy_snapshots() -> None:
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_uvicorn_logging()
+    await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     _log_startup_banner()
 
-    await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     await _try_startup('snapshot layout check', _warn_on_legacy_snapshots)
     await _try_startup('bundle sweep', bundle_sweep.startup_sweep)
     await _try_startup('plex connection migration', _migrate_plex_env)
