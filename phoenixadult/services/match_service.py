@@ -15,6 +15,7 @@ from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import canonical_site_display, find_site
 from phoenixadult.services import scrape_queue
+from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils.cache import search_store
@@ -85,10 +86,10 @@ def auto_match(results: list[PlexMatchResult]) -> tuple[PlexMatchResult | None, 
 
 
 class MatchService:
-    def __init__(self) -> None:
+    def __init__(self, metadata_service: MetadataService | None = None) -> None:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
-        self.metadata_service: Any = None
+        self.metadata_service = metadata_service
         self._search_memo: TTLCache[tuple[str, str, str, str, str], list[SearchResult]] = TTLCache(maxsize=_SEARCH_MEMO_MAX, ttl=_SEARCH_MEMO_TTL)
         self._search_coalesce: Coalescer[tuple[str, str, str, str, str], list[SearchResult] | None] = Coalescer()
 
@@ -159,28 +160,31 @@ class MatchService:
     def _chain_perfect_match(self, results: list[SearchResult], search_data: SearchContext, provider: ProviderInfo) -> None:
         if self.metadata_service is None:
             return
-        results = list({r.cur_id: r for r in results}.values())
-        scored = [(r.score if r.score is not None else title_distance_score(search_data.title, r.title), r) for r in results]
-        perfect = [(s, r) for s, r in scored if s >= 100]
-        if not perfect:
-            return
-        top = max(s for s, _ in perfect)
-        tied = [(s, r) for s, r in perfect if s == top]
-        if len(tied) != 1:
-            return
-        score, raw = tied[0]
         site = search_data.site_info
-        mapped = self._mapper.to_match_result(
-            raw,
-            site.name,
-            score,
-            provider.plex_identifier,
-            raw.release_date or None,
-            scraper_type=site.scraper_config.type,
-            filename_site=canonical_site_display(search_data.search_site),
-        )
-        if self.metadata_service.queue_snapshot(mapped.ratingKey, provider, search_data.language, label=mapped.title):
-            logger.info(provider.id, f'Perfect background match "{raw.title}" on {site.name} — chained snapshot scrape {mapped.ratingKey}')
+        filename_site = canonical_site_display(search_data.search_site)
+        raws: dict[str, SearchResult] = {}
+        mapped: list[PlexMatchResult] = []
+        for raw in {r.cur_id: r for r in results}.values():
+            score = raw.score if raw.score is not None else title_distance_score(search_data.title, raw.title)
+            if score < AUTO_MATCH_SCORE:
+                continue
+            match = self._mapper.to_match_result(
+                raw,
+                site.name,
+                score,
+                provider.plex_identifier,
+                raw.release_date or None,
+                scraper_type=site.scraper_config.type,
+                filename_site=filename_site,
+            )
+            raws[match.ratingKey] = raw
+            mapped.append(match)
+        mapped.sort(key=lambda m: m.score or 0, reverse=True)
+        chosen, _why = auto_match(mapped)
+        if chosen is None:
+            return
+        if self.metadata_service.queue_snapshot(chosen.ratingKey, provider, search_data.language, label=chosen.title):
+            logger.info(provider.id, f'Perfect background match "{raws[chosen.ratingKey].title}" on {site.name} — chained snapshot scrape {chosen.ratingKey}')
 
     def _queue_background_search(self, search_data: SearchContext, provider: ProviderInfo, wait_seconds: float) -> None:
 

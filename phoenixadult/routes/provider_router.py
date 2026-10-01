@@ -55,9 +55,8 @@ async def restore_queue() -> None:
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
     router = APIRouter(dependencies=[Depends(provider_guard)])
-    match_service = MatchService()
     metadata_service = MetadataService()
-    match_service.metadata_service = metadata_service
+    match_service = MatchService(metadata_service)
     _SERVICES.append((provider, match_service, metadata_service))
 
     def _empty_container() -> JSONResponse:
