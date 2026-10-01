@@ -213,8 +213,9 @@ class MetadataMapper:
         site_cookies = resolve_image_cookies(site) if site else []
         cookies = [detail.art_cookie, *site_cookies] if detail.art_cookie else site_cookies
 
-        thumb, art, images_proxied = await self._resolve_artwork(detail, referers, cookies)
-        plex_actors, plex_directors, plex_producers = await self._resolve_people(detail, referers, cookies)
+        (thumb, art, images_proxied), (plex_actors, plex_directors, plex_producers) = await asyncio.gather(
+            self._resolve_artwork(detail, referers, cookies), self._resolve_people(detail, referers, cookies)
+        )
 
         effective_date = detail.release_date or fallback_date
         year = _year_of(effective_date)
