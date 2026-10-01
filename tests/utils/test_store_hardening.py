@@ -9,6 +9,7 @@ from phoenixadult.config.env import env
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils import db
 from phoenixadult.utils.cache import scene_store, search_store
+from phoenixadult.utils.cache.bundle_sweep import read_bundle
 from phoenixadult.utils.fs.reloadable import MtimeCachedJson
 from phoenixadult.utils.images import face_crop_log
 from phoenixadult.utils.plex import client_hits
@@ -41,6 +42,12 @@ def test_flagging_a_person_ignores_case() -> None:
     md = {'title': 'T', 'Role': [{'tag': 'Jane Doe'}]}
     scene_store.upsert('Site', 'cur', 'hash1', 'scenes/ha/hash1', {'MediaContainer': {'identifier': 'p', 'Metadata': [md]}})
     assert scene_store.flag_people_changed('jane doe') == ['T']
+
+
+def test_a_bundle_with_a_garbled_version_is_skipped(tmp_path: Path) -> None:
+    bundle = tmp_path / 'snapshot.json'
+    bundle.write_text(json.dumps({'version': 'one', 'site': 's', 'cur_id': 'c', 'hash': 'h', 'response': {'x': 1}}), encoding='utf-8')
+    assert read_bundle(bundle) is None
 
 
 def test_relabelling_to_unrecorded_clears_the_source() -> None:

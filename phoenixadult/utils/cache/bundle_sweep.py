@@ -15,7 +15,13 @@ def read_bundle(path: Path) -> dict[str, Any] | None:
         payload = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
         return None
-    if not isinstance(payload, dict) or int(payload.get('version') or 0) > BUNDLE_VERSION:
+    if not isinstance(payload, dict):
+        return None
+    try:
+        version = int(payload.get('version') or 0)
+    except (TypeError, ValueError):
+        return None
+    if version > BUNDLE_VERSION:
         return None
     if not all(payload.get(field) for field in ('site', 'cur_id', 'hash', 'response')):
         return None
