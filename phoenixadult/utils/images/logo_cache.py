@@ -5,6 +5,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -256,6 +257,7 @@ def local_url(path: Path, mtime: float | None = None) -> str | None:
 _WELL_CACHE: dict[str, str] = {}
 _WELL_LOADED = False
 _WELL_DIRTY = False
+_WELL_LOCK = threading.RLock()
 
 
 def _well_store() -> Path:
@@ -267,6 +269,12 @@ def _well_key(rel: str, mtime: float, size: int) -> str:
 
 
 def _load_wells() -> None:
+    global _WELL_LOADED
+    with _WELL_LOCK:
+        _load_wells_locked()
+
+
+def _load_wells_locked() -> None:
     global _WELL_LOADED
     if _WELL_LOADED:
         return
@@ -280,6 +288,11 @@ def _load_wells() -> None:
 
 
 def _save_wells() -> None:
+    with _WELL_LOCK:
+        _save_wells_locked()
+
+
+def _save_wells_locked() -> None:
     global _WELL_DIRTY
     if not _WELL_DIRTY:
         return
@@ -321,7 +334,8 @@ def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
 
     _load_wells()
     key = _well_key(rel or path.as_posix(), mtime, size)
-    cached = _WELL_CACHE.get(key)
+    with _WELL_LOCK:
+        cached = _WELL_CACHE.get(key)
     if cached is not None:
         return cached
     well = 'dark'
@@ -342,8 +356,9 @@ def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
     except Exception as err:  # noqa: BLE001 - an unreadable logo falls back to the dark well
         logger.debug(f'logo-cache: could not read the ink of {path.name}, defaulting to the dark well: {err!r}')
         well = 'dark'
-    _WELL_CACHE[key] = well
-    _WELL_DIRTY = True
+    with _WELL_LOCK:
+        _WELL_CACHE[key] = well
+        _WELL_DIRTY = True
     return well
 
 
@@ -382,12 +397,13 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
 def _prune_wells(live: set[str]) -> None:
     global _WELL_DIRTY
 
-    stale = set(_WELL_CACHE) - live
-    if not stale:
-        return
-    for key in stale:
-        _WELL_CACHE.pop(key, None)
-    _WELL_DIRTY = True
+    with _WELL_LOCK:
+        stale = set(_WELL_CACHE) - live
+        if not stale:
+            return
+        for key in stale:
+            _WELL_CACHE.pop(key, None)
+        _WELL_DIRTY = True
 
 
 def entries() -> list[dict[str, Any]]:
