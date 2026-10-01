@@ -10,6 +10,7 @@ from phoenixadult.config.env import env
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.utils.http.bypass import bypass_post
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import trace_response
 
 
 class GraphQLClient(Client):
@@ -43,6 +44,7 @@ class GraphQLClient(Client):
 
         try:
             r = await self.http.post(endpoint, content=body, headers=headers)
+            trace_response(r)
         except httpx2.HTTPError as err:
             logger.warn('graphql', f'{tag} -> request failed: {err}')
             r = None

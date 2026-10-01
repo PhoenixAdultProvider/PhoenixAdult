@@ -15,7 +15,7 @@ from phoenixadult.utils.helpers.urls import absolute_url, css_bg_image
 
 STUDIO = 'Adult Prime'
 
-_STUDIO_OVERRIDES: dict[str, str] = {'Club Sweethearts': 'Club Sweethearts'}
+_OWN_STUDIOS = frozenset({'Club Sweethearts'})
 _SKIP_PREFIXES: list[str] = load_data(__file__, 'adultprime_skip_prefixes')
 
 _EURO_DATE_RE = re.compile(r'(\d{2})\.(\d{2})\.(\d{4})')
@@ -25,7 +25,7 @@ _TITLE_XP = '(//h1)[1]'
 
 
 def _studio_for(name: str) -> str:
-    return _STUDIO_OVERRIDES.get(name, STUDIO)
+    return name if name in _OWN_STUDIOS else STUDIO
 
 
 def _parse_euro_date(s: str) -> str | None:

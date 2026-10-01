@@ -340,7 +340,7 @@ class ManualNfoClient(Client):
             return
 
         title = nfo.title or basename
-        thumb = _find_sibling_image(located, '-poster')
+        thumb = await asyncio.to_thread(_find_sibling_image, located, '-poster')
 
         results.append(
             build_search_result(
@@ -446,11 +446,11 @@ class ManualNfoClient(Client):
             return
 
         images: list[str] = []
-        poster = _find_sibling_image(located, '-poster') or (nfo.thumb if _is_http(nfo.thumb) else None)
+        poster = await asyncio.to_thread(_find_sibling_image, located, '-poster') or (nfo.thumb if _is_http(nfo.thumb) else None)
         if poster:
             images.append(poster)
 
-        fanart = _find_sibling_image(located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
+        fanart = await asyncio.to_thread(_find_sibling_image, located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
         if fanart and fanart != poster:
             images.append(fanart)
 

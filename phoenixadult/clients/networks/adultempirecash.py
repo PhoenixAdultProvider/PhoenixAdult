@@ -20,7 +20,7 @@ _DATE_FMT = '%b %d, %Y'
 Variant = Literal['standard', 'imgFullFluid', 'sceneTitleP']
 
 _VARIANTS: dict[str, str] = load_data(__file__, 'adultempirecash_variants')
-_STUDIO_OVERRIDES: dict[str, str] = {'Horny Household': 'Horny Household'}
+_OWN_STUDIOS = frozenset({'Horny Household'})
 
 _GENRE_XPATH_OVERRIDES: dict[str, str] = {
     'Elegant Angel': '//div[strong[contains(.,"Attributes")]]/a',
@@ -33,7 +33,7 @@ def _variant_for(name: str) -> Variant:
 
 
 def _studio_for(name: str) -> str:
-    return _STUDIO_OVERRIDES.get(name, STUDIO)
+    return name if name in _OWN_STUDIOS else STUDIO
 
 
 def _upgrade_image(src: str) -> str:

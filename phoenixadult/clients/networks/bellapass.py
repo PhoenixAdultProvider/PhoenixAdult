@@ -16,14 +16,14 @@ from phoenixadult.utils.helpers.urls import absolute_url
 
 STUDIO = 'BellaPass'
 
-_STUDIO_OVERRIDES: dict[str, str] = {'Babe Archives': 'Babe Archives', 'Hussie Pass': 'Hussie Pass', 'See Him Fuck': 'See Him Fuck'}
+_OWN_STUDIOS = frozenset({'Babe Archives', 'Hussie Pass', 'See Him Fuck'})
 _TITLE_SELECTORS: dict[str, str] = {'Hussie Pass': 'h1', 'See Him Fuck': 'h1'}
 
 _PUNCT_RE = re.compile(r'\s*[^\w\s]+')
 
 
 def _studio_for(name: str) -> str:
-    return _STUDIO_OVERRIDES.get(name, STUDIO)
+    return name if name in _OWN_STUDIOS else STUDIO
 
 
 def _title_selector_for(name: str) -> str:

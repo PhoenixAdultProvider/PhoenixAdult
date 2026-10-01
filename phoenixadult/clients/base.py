@@ -406,7 +406,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             if not name or name in seen:
                 continue
             seen.add(name)
-            out.append(ActorResult(name=name, photo_url=e.photo_url or '', gender=e.gender or ''))
+            out.append(ActorResult(name=name, photo_url=e.photo_url or '', gender=e.gender or '', role=e.role or ''))
         return out
 
     def dedup_strings(self, values: list[str | None]) -> list[str]:
@@ -534,9 +534,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.summary = metadata.summary or ''
         metadata.studio = metadata.studio or site.name
         metadata.release_date = metadata.release_date or scene.scene_date or None
-        metadata.genres = metadata.genres
-        metadata.actors = metadata.actors
-        metadata.art = metadata.art
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
