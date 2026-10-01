@@ -96,15 +96,22 @@ def _extension(content_type: str, body: str) -> str:
     return 'html' if 'html' in kind or body.lstrip()[:1] == '<' else 'txt'
 
 
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def _prune(root: Path) -> None:
-    keep = sorted(root.glob('*.*'), key=lambda f: f.stat().st_mtime, reverse=True)
+    keep = sorted(root.glob('*.*'), key=_mtime, reverse=True)
     for stale in keep[DUMP_KEEP:]:
         stale.unlink(missing_ok=True)
 
 
 def write_dump(where: str, body: str, content_type: str) -> str:
     root = dump_dir()
-    stem = _UNSAFE.sub('-', where.replace('https://', '').replace('http://', '')).strip('-')[:90]
+    stem = _UNSAFE.sub('-', where.split('?', 1)[0].replace('https://', '').replace('http://', '')).strip('-')[:90]
     name = f'{next(_seq):04d}-{stem}-{hashlib.sha1(where.encode()).hexdigest()[:6]}.{_extension(content_type, body)}'
     try:
         root.mkdir(parents=True, exist_ok=True)
