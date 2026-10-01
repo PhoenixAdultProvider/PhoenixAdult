@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx2
 
@@ -13,8 +13,7 @@ from phoenixadult.utils.logging.logger import logger
 
 
 class GraphQLClient(Client):
-    def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
-        super().__init__({'Content-Type': 'application/json', **(extra_headers or {})})
+    default_headers: ClassVar[dict[str, str]] = {'Content-Type': 'application/json'}
 
     def _envelope(self, text: str, tag: str, capture_label: str | None, capture_sink: list[RawCaptureEntry] | None) -> Any:
         try:

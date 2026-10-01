@@ -5,7 +5,7 @@ import random
 import re
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from parsel import Selector
 
@@ -91,8 +91,10 @@ def _best_variant(candidates: list[str]) -> str | None:
 
 
 class NubilesClient(Client):
+    default_headers: ClassVar[dict[str, str]] = _SHARED_HEADERS
+
     def __init__(self) -> None:
-        super().__init__(_SHARED_HEADERS)
+        super().__init__()
         self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
 
     async def after_scene_scrape(self, detail: SceneDetail) -> None:

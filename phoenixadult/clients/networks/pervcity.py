@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
@@ -22,8 +22,7 @@ class PervCityClient(Client):
     title_xpath = '(//h1)[1]'
     genres_xpath = '//div[@class="tagcats"]/a'
 
-    def __init__(self) -> None:
-        super().__init__({'Cookie': 'warning_cookie=1'})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'warning_cookie=1'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         seen: set[str] = set()

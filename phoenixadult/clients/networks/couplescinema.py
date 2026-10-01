@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
@@ -18,8 +19,7 @@ _YEAR_RE = re.compile(r'^\d{4}$')
 class CouplesCinemaClient(Client):
     summary_xpath = '(//span[contains(@class,"description")])[1]'
 
-    def __init__(self) -> None:
-        super().__init__({'Cookie': 'WarningModal=true'})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'WarningModal=true'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

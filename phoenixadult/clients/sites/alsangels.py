@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
@@ -21,8 +21,7 @@ def _row_date(row: Any) -> str:
 
 
 class AlsAngelsClient(Client):
-    def __init__(self) -> None:
-        super().__init__({'Cookie': 'age_verified=true'})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'age_verified=true'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

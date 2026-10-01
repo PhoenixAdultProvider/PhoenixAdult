@@ -501,14 +501,14 @@ def test_a_series_title_carries_the_cast_that_survives_the_male_filter(
 ) -> None:
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true' if skip_male else 'false')
     metadata = _series('Funbag Fuckers', actors)
-    ScoreGroupClient(SITE)._name_the_series_entry(metadata)
+    ScoreGroupClient()._name_the_series_entry(metadata)
     assert metadata.title == expected
 
 
 def test_a_one_off_title_is_left_alone(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
     metadata = _series('Cool Scene', [('Jane Doe', '')])
-    ScoreGroupClient(SITE)._name_the_series_entry(metadata)
+    ScoreGroupClient()._name_the_series_entry(metadata)
     assert metadata.title == 'Cool Scene'
 
 
@@ -519,7 +519,7 @@ def test_every_series_title_is_stored_casefolded() -> None:
 def test_a_later_addition_to_the_series_list_is_matched_case_insensitively(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true')
     metadata = _series('HardSCORE 2', [('Angela White', ''), ('Kayla Kleevage', '')])
-    ScoreGroupClient(SITE)._name_the_series_entry(metadata)
+    ScoreGroupClient()._name_the_series_entry(metadata)
     assert metadata.title == 'HardSCORE 2 - Angela White and Kayla Kleevage'
 
 

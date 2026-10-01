@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from parsel import Selector
 
@@ -35,8 +36,7 @@ def _kink_tagline(channel_text: str, fallback: str) -> str:
 class KinkClient(Client):
     title_xpath = '(//h1[contains(@class,"fs-0")])[1]'
 
-    def __init__(self) -> None:
-        super().__init__({'Cookie': _VIEWING_COOKIE})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': _VIEWING_COOKIE}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

@@ -5,6 +5,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import ClassVar
 from urllib.parse import urljoin, urlsplit
 
 import httpx2
@@ -191,8 +192,7 @@ def _clean_thumb(u: str) -> str:
 
 
 class Data18Client(Client):
-    def __init__(self) -> None:
-        super().__init__({'Referer': DATA18_BASE, 'Cookie': 'data_user_captcha=1'})
+    default_headers: ClassVar[dict[str, str]] = {'Referer': DATA18_BASE, 'Cookie': 'data_user_captcha=1'}
 
     async def data18_search(
         self,

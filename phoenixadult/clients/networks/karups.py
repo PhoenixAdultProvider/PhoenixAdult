@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from parsel import Selector
 
@@ -24,8 +25,7 @@ def _de_ordinal(raw: str) -> str:
 
 
 class KarupsClient(Client):
-    def __init__(self) -> None:
-        super().__init__({'Cookie': 'warningHidden=hide'})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'warningHidden=hide'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.data_files import load_data
@@ -21,8 +23,7 @@ class QueenSnakeClient(Client):
     title_xpath = '(//span[@class="contentFilmName"])[1]'
     summary_xpath = '(//div[@class="contentPreviewDescription"])[1]'
 
-    def __init__(self) -> None:
-        super().__init__({'Cookie': 'cLegalAge=true'})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'cLegalAge=true'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

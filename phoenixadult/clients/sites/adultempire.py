@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.config.env import env
@@ -121,8 +121,10 @@ def _fmt_split_display(movie_title: str, scene_num: int, scene_title: str, actor
 class AdultEmpireClient(Client):
     genres_xpath = '//li//a[@label="Category"]'
 
+    default_headers: ClassVar[dict[str, str]] = {'Referer': _REFERER}
+
     def __init__(self) -> None:
-        super().__init__({'Referer': _REFERER})
+        super().__init__()
         self._age_confirmed = False
         self._age_lock = asyncio.Lock()
 

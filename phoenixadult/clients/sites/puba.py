@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail, SearchContext
@@ -17,8 +17,7 @@ class PubaClient(Client):
     genres_xpath = '//center//div//a[contains(@class,"btn-outline-secondary")]'
     actors_xpath = '//center//div//a[contains(@class,"btn-secondary")]'
 
-    def __init__(self) -> None:
-        super().__init__({'Referer': 'https://www.puba.com/pornstarnetwork/index.php', 'Cookie': 'PHPSESSID=rvo9ieo5bhoh81knnmu88c3lf3'})
+    default_headers: ClassVar[dict[str, str]] = {'Referer': 'https://www.puba.com/pornstarnetwork/index.php', 'Cookie': 'PHPSESSID=rvo9ieo5bhoh81knnmu88c3lf3'}
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 

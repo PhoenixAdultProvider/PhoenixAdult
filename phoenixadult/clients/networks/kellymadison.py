@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import quote
 
 from parsel import Selector
@@ -37,8 +37,7 @@ class KellyMadisonClient(Client):
     title_xpath = '(//h1[contains(@class,"title")])[1]'
     summary_xpath = '(//div[contains(.,"Episode Summary")]/p)[1]'
 
-    def __init__(self) -> None:
-        super().__init__({'Cookie': _NATS_COOKIE})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': _NATS_COOKIE}
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 

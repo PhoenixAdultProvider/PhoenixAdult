@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from parsel import Selector
 
@@ -27,8 +27,7 @@ class ColetteClient(Client):
     candidate_include = ('/videos/',)
     summary_xpath = '(//div[contains(@class,"info")]//p)[2]'
 
-    def __init__(self) -> None:
-        super().__init__({'Cookie': '_warning=True'})
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': '_warning=True'}
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 

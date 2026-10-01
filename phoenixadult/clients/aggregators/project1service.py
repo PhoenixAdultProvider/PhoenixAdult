@@ -5,7 +5,7 @@ import binascii
 import json
 import re
 import time
-from typing import Any, TypedDict
+from typing import Any, ClassVar, TypedDict
 from urllib.parse import quote, urlsplit
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
@@ -85,8 +85,7 @@ class _SceneExtra(TypedDict):
 
 
 class Project1ServiceClient(Client):
-    def __init__(self) -> None:
-        super().__init__({'Accept': 'application/json'})
+    default_headers: ClassVar[dict[str, str]] = {'Accept': 'application/json'}
 
     async def _get_token(self, site: ResolvedSiteInfo) -> str | None:
         host = urlsplit(site.base_url).hostname or ''

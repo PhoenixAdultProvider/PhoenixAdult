@@ -28,8 +28,7 @@ def _cls(name: str) -> str:
 class Network5KPClient(Client):
     scraper_type: ClassVar[str] = '5kporn'
 
-    def __init__(self) -> None:
-        super().__init__({'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE})
+    default_headers: ClassVar[dict[str, str]] = {'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         actor_query = split_actor_prefix(search_data.title)[0] if enabled_for(search_data.site_info) else search_data.title

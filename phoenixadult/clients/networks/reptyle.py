@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from phoenixadult.clients.base import Client, LoadedScene
 from phoenixadult.models.capture import RawCaptureEntry
@@ -64,14 +64,11 @@ def _strip_tags(html: str) -> str:
 
 
 class ReptyleClient(Client):
-    def __init__(self) -> None:
-        super().__init__(
-            {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Cookie': 'age_verified=yes',
-            }
-        )
+    default_headers: ClassVar[dict[str, str]] = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Cookie': 'age_verified=yes',
+    }
 
     async def _fetch_initial_state(self, url: str, capture: list[RawCaptureEntry] | None) -> dict[str, Any] | None:
         try:

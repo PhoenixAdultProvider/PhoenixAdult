@@ -139,9 +139,10 @@ class ImageCollector:
 
 class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks, none are mandatory
     scraper_type: ClassVar[str] = ''
+    default_headers: ClassVar[dict[str, str]] = {}
 
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
-        self._extra_headers = extra_headers or {}
+        self._extra_headers = {**self.default_headers, **(extra_headers or {})}
         self._http: httpx2.AsyncClient | None = None
         self._data18_enricher: Enricher | None = None
         self.pacer: ScenePacer | None = None
