@@ -4,8 +4,20 @@ from pathlib import Path
 
 import pytest
 
+from phoenixadult.config.env import env
 from phoenixadult.utils.fs.reloadable import MtimeCachedJson
+from phoenixadult.utils.images import face_crop_log
 from phoenixadult.utils.plex import client_hits
+
+
+def test_relabelling_to_unrecorded_clears_the_source() -> None:
+    directory = str(Path(env.people_cache_dir) / 'actors' / 'female')
+    face_crop_log.record(
+        directory, name='A', filename='actor.a_female.jpg', base='actor.a_female', orig_ext='.jpg', upstream_url='', cropped=False, source='IAFD'
+    )
+    assert face_crop_log.update(directory, 'actor.a_female.jpg', source='')
+    entry = face_crop_log.entry_for(directory, 'actor.a_female.jpg')
+    assert entry is not None and entry['source'] == ''
 
 
 def test_client_hits_keep_only_the_most_recent(monkeypatch: pytest.MonkeyPatch) -> None:

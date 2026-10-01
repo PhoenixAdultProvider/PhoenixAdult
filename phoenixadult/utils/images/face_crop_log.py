@@ -107,7 +107,7 @@ def update(directory: str, match_filename: str, **changes: Any) -> bool:
             return False
         if not isinstance(entry, dict):
             return False
-        source = str(changes.pop('source', None) or row['source'] or '')
+        source = str(changes.pop('source') or '') if 'source' in changes else str(row['source'] or '')
         entry.update(changes)
         new_key = f'{rel_dir}/{entry.get("filename") or match_filename}'
         if new_key != key:
