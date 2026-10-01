@@ -22,7 +22,7 @@ _generation = 0
 
 
 class Connection(CamelModel):
-    model_config = ConfigDict(alias_generator=CamelModel.model_config['alias_generator'], populate_by_name=True, frozen=True)
+    model_config = ConfigDict(frozen=True)
 
     id: int
     user_id: int
