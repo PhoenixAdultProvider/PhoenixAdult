@@ -1,13 +1,33 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from phoenixadult.config.env import env
+from phoenixadult.models.scrape import SearchResult
+from phoenixadult.utils import db
+from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.fs.reloadable import MtimeCachedJson
 from phoenixadult.utils.images import face_crop_log
 from phoenixadult.utils.plex import client_hits
+
+
+def test_a_percent_in_the_search_filter_is_literal() -> None:
+    search_store.save(('Site', 'plain', '2024-01-01', '', ''), [SearchResult(title='Plain', scene_url='https://x/1', cur_id='a')])
+    search_store.save(('Site', '100% real', '2024-01-02', '', ''), [SearchResult(title='Real', scene_url='https://x/2', cur_id='b')])
+    page = search_store.dump_page(needle='100%')
+    assert [row['title'] for members in page['groups'] for row in members] == ['100% real']
+
+
+def test_a_stored_result_from_an_older_shape_reads_as_a_miss() -> None:
+    key = ('Site', 'old', '2024-01-01', '', '')
+    search_store.save(key, [SearchResult(title='Old', scene_url='https://x/1', cur_id='a')])
+    conn = db.connect()
+    conn.execute('UPDATE search_results SET payload = ?', (json.dumps({'title': 'Old', 'retired_field': 1}),))
+    conn.commit()
+    assert search_store.load(key) is None
 
 
 def test_relabelling_to_unrecorded_clears_the_source() -> None:

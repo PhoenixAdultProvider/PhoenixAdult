@@ -69,9 +69,10 @@ def test_sweep_removes_only_expired_rows(monkeypatch) -> None:
         ('Nubile Films', 'ancient', '2024-01-01', '', ''), [SearchResult(title='Old', scene_url='https://x/o', cur_id='old')], time.time() - 11 * 86400
     )
     _seed(title='fresh')
-    r = authed_client().post('/searches/api/sweep', json={})
+    client = authed_client()
+    r = client.post('/searches/api/sweep', json={})
     assert r.status_code == 200 and r.json()['removed'] == 1
-    assert [e['title'] for e in r.json()['entries']] == ['fresh']
+    assert [e['title'] for e in client.get('/searches/api/list').json()['entries']] == ['fresh']
 
 
 def test_research_purges_and_requeues_with_the_stored_query(monkeypatch) -> None:

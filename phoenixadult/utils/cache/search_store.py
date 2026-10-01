@@ -67,7 +67,10 @@ def load(key: SearchKey) -> list[SearchResult] | None:
             conn.execute('DELETE FROM searches WHERE key_hash = ?', (kh,))
         return None
     rows = conn.execute('SELECT payload FROM search_results WHERE key_hash = ? ORDER BY pos', (kh,)).fetchall()
-    results = [SearchResult(**json.loads(r['payload'])) for r in rows]
+    try:
+        results = [SearchResult(**json.loads(r['payload'])) for r in rows]
+    except (TypeError, ValueError):
+        results = []
     if not results:
         with conn:
             conn.execute('DELETE FROM searches WHERE key_hash = ?', (kh,))
@@ -111,6 +114,35 @@ def find_title(cur_id: str) -> tuple[str, str] | None:
     if row is None:
         return None
     return str(row['title']), str(row['subsite'] or row['site'])
+
+
+def take_for_research(key_hash: str) -> dict[str, str] | None:
+    conn = db.connect()
+    row = conn.execute('SELECT site, title, date, scene_id, language FROM searches WHERE key_hash = ?', (key_hash,)).fetchone()
+    if row is None:
+        return None
+    purge(key_hash)
+    return {
+        'search_site': str(row['site']),
+        'title': str(row['title']),
+        'date': str(row['date'] or ''),
+        'scene_id': str(row['scene_id'] or ''),
+        'language': str(row['language'] or ''),
+    }
+
+
+def summary() -> dict[str, object]:
+    conn = db.connect()
+    ttl = _ttl_seconds()
+    expired = int(conn.execute('SELECT COUNT(*) AS n FROM searches WHERE saved_at < ?', (time.time() - ttl,)).fetchone()['n']) if ttl is not None else 0
+    return {
+        'totals': {
+            'searches': int(conn.execute('SELECT COUNT(*) AS n FROM searches').fetchone()['n']),
+            'results': int(conn.execute('SELECT COUNT(*) AS n FROM search_results').fetchone()['n']),
+            'expired': expired,
+        },
+        'ttlDays': env.search_store_ttl_days,
+    }
 
 
 def purge(key_hash: str) -> bool:
@@ -212,8 +244,8 @@ def dump_page(site: str = '', needle: str = '', dupes_only: bool = False, offset
         where.append('site = ?')
         params.append(site)
     if needle:
-        like = f'%{needle}%'
-        where.append('(LOWER(title) LIKE ? OR key_hash IN (SELECT key_hash FROM search_results WHERE LOWER(title) LIKE ?))')
+        like = db.like_contains(needle)
+        where.append("(LOWER(title) LIKE ? ESCAPE '\\' OR key_hash IN (SELECT key_hash FROM search_results WHERE LOWER(title) LIKE ? ESCAPE '\\'))")
         params.extend([like, like])
     clause = f' WHERE {" AND ".join(where)}' if where else ''
 

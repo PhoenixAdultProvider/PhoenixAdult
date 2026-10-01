@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from phoenixadult.registry import DEFAULT_PROVIDER_ID
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.routes.provider_router import match_service_for
-from phoenixadult.utils import db
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.pools import run_in
@@ -43,7 +43,7 @@ async def purge(request: Request) -> JSONResponse:
         return JSONResponse({'error': 'keyHash is required'}, status_code=400)
     if not await run_in('store', search_store.purge, key_hash):
         return JSONResponse({'error': 'no such stored search'}, status_code=404)
-    return JSONResponse({'ok': True, **await run_in('store', search_store.dump)})
+    return JSONResponse({'ok': True, **await run_in('store', search_store.summary)})
 
 
 @router.post('/api/purge-site')
@@ -53,19 +53,19 @@ async def purge_site(request: Request) -> JSONResponse:
     if not site:
         return JSONResponse({'error': 'site is required'}, status_code=400)
     purged = await run_in('store', search_store.purge_site, site)
-    return JSONResponse({'ok': True, 'purged': purged, **await run_in('store', search_store.dump)})
+    return JSONResponse({'ok': True, 'purged': purged, **await run_in('store', search_store.summary)})
 
 
 @router.post('/api/purge-all')
 async def purge_all() -> JSONResponse:
     purged = await run_in('store', search_store.purge_all)
-    return JSONResponse({'ok': True, 'purged': purged, **await run_in('store', search_store.dump)})
+    return JSONResponse({'ok': True, 'purged': purged, **await run_in('store', search_store.summary)})
 
 
 @router.post('/api/sweep')
 async def sweep() -> JSONResponse:
     removed = await run_in('store', search_store.sweep_expired)
-    return JSONResponse({'ok': True, 'removed': removed, **await run_in('store', search_store.dump)})
+    return JSONResponse({'ok': True, 'removed': removed, **await run_in('store', search_store.summary)})
 
 
 @router.post('/api/research')
@@ -75,25 +75,12 @@ async def research(request: Request) -> JSONResponse:
     if not key_hash:
         return JSONResponse({'error': 'keyHash is required'}, status_code=400)
 
-    def _take() -> dict[str, str] | None:
-        row = db.connect().execute('SELECT site, title, date, scene_id, language FROM searches WHERE key_hash = ?', (key_hash,)).fetchone()
-        if row is None:
-            return None
-        search_store.purge(key_hash)
-        return {
-            'search_site': str(row['site']),
-            'title': str(row['title']),
-            'date': str(row['date'] or ''),
-            'scene_id': str(row['scene_id'] or ''),
-            'language': str(row['language'] or ''),
-        }
-
-    replay = await run_in('store', _take)
+    replay = await run_in('store', search_store.take_for_research, key_hash)
     if replay is None:
         return JSONResponse({'error': 'no such stored search'}, status_code=404)
-    resolved = match_service_for('phoenixadult')
+    resolved = match_service_for(DEFAULT_PROVIDER_ID)
     if resolved is None:
         return JSONResponse({'error': 'provider not mounted'}, status_code=500)
     provider, match_service = resolved
     match_service.requeue_search(replay, provider)
-    return JSONResponse({'ok': True, **await run_in('store', search_store.dump)})
+    return JSONResponse({'ok': True, **await run_in('store', search_store.summary)})
