@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from phoenixadult.app_factory import create_app
 from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import listing as cache_listing
+from phoenixadult.utils.cache.scene_store import SceneFilter
 from tests.support import authed_client
 
 
@@ -65,10 +66,10 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.cache_listing, 'change_token', lambda: '3:123.0')
-    monkeypatch.setattr(mcr.cache_listing, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
+    monkeypatch.setattr(mcr.cache_listing, 'entries_page', lambda *_a, **_kw: ([{'key': 'studio/abc'}], 1))
     monkeypatch.setattr(mcr.cache_duplicates, 'duplicate_entries', lambda: ['studio/abc'])
-    monkeypatch.setattr(mcr.cache_listing, 'studios', lambda **_kw: ['Studio'])
-    monkeypatch.setattr(mcr.cache_listing, 'facets', lambda **_kw: {'taglines': ['T']})
+    monkeypatch.setattr(mcr.cache_listing, 'studios', lambda *_a, **_kw: ['Studio'])
+    monkeypatch.setattr(mcr.cache_listing, 'facets', lambda *_a, **_kw: {'taglines': ['T']})
     assert TestClient(create_app()).get('/metadata/state', headers={'accept': 'application/json'}).status_code == 401
     client = authed_client()
     assert client.get('/metadata/state').json() == {'token': '3:123.0'}
@@ -376,8 +377,8 @@ def test_entries_endpoint_passes_the_actor_filter(monkeypatch: pytest.MonkeyPatc
 
     seen: dict[str, object] = {}
 
-    def fake_page(**kw: object) -> tuple[list[dict[str, object]], int]:
-        seen.update(kw)
+    def fake_page(filters: SceneFilter, **_kw: object) -> tuple[list[dict[str, object]], int]:
+        seen['actor'] = filters.actor
         return [], 0
 
     monkeypatch.setattr(mcr.cache_listing, 'entries_page', fake_page)

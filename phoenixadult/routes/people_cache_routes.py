@@ -3,10 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, get_args
+from typing import Annotated, Any, get_args
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -146,75 +147,66 @@ def _display_entry(entry: dict[str, Any]) -> dict[str, Any]:
 PAGE_SIZE = 200
 
 
-def _matches(entry: dict[str, Any], needle: str, source: str, cropped: bool, noupstream: bool, generic: bool, single: bool) -> bool:
-    have = str(entry.get('source') or '')
-    if source == '__blank__' and have:
-        return False
-    if source and source != '__blank__' and have != source:
-        return False
-    if cropped and not entry.get('cropped'):
-        return False
-    if noupstream and entry.get('upstream_url'):
-        return False
-    if generic and have != 'Generic':
-        return False
-    name = str(entry.get('name') or '')
-    if single and len(name.split()) != 1:
-        return False
-    return not needle or needle in name.casefold()
+@dataclass
+class PeopleFilters:
+    type: str = ''
+    q: str = ''
+    source: str = ''
+    cropped: bool = False
+    noupstream: bool = False
+    generic: bool = False
+    single: bool = False
+    offset: Annotated[int, Query(ge=0)] = 0
+    limit: Annotated[int, Query(ge=1, le=500)] = PAGE_SIZE
+
+    def matches(self, entry: dict[str, Any]) -> bool:
+        have = str(entry.get('source') or '')
+        if self.source == '__blank__' and have:
+            return False
+        if self.source and self.source != '__blank__' and have != self.source:
+            return False
+        if self.cropped and not entry.get('cropped'):
+            return False
+        if self.noupstream and entry.get('upstream_url'):
+            return False
+        if self.generic and have != 'Generic':
+            return False
+        name = str(entry.get('name') or '')
+        if self.single and len(name.split()) != 1:
+            return False
+        needle = self.q.strip().casefold()
+        return not needle or needle in name.casefold()
 
 
-def _listing(
-    tab: str = '',
-    needle: str = '',
-    source: str = '',
-    cropped: bool = False,
-    noupstream: bool = False,
-    generic: bool = False,
-    single: bool = False,
-    offset: int = 0,
-    limit: int = PAGE_SIZE,
-    pick_default: bool = False,
-) -> dict[str, Any]:
+def _listing(filters: PeopleFilters, pick_default: bool = False) -> dict[str, Any]:
     everything = _list_people(env.people_cache_dir)
     counts = {t: sum(1 for e in everything if e['type'] == t) for t, _ in _TABS}
+    tab = filters.type if any(t == filters.type for t, _ in _TABS) else ''
     if pick_default:
         tab = next((t for t, _ in _TABS if counts[t]), _TABS[0][0])
     in_tab = [e for e in everything if not tab or e['type'] == tab]
-    hits = [e for e in in_tab if _matches(e, needle, source, cropped, noupstream, generic, single)]
+    hits = [e for e in in_tab if filters.matches(e)]
     return {
-        'entries': [_display_entry(e) for e in hits[offset : offset + limit]],
+        'entries': [_display_entry(e) for e in hits[filters.offset : filters.offset + filters.limit]],
         'total': len(hits),
         'counts': counts,
         'tab': tab,
         'sources': sorted({str(e['source']) for e in in_tab if e['source']}, key=str.casefold),
         'has_unrecorded': any(not e['source'] for e in in_tab),
         'library': len(everything),
-        'pageSize': limit,
+        'pageSize': filters.limit,
     }
 
 
 @router.get('/api/entries')
-async def entries_json(
-    type: str = '',
-    q: str = '',
-    source: str = '',
-    cropped: bool = False,
-    noupstream: bool = False,
-    generic: bool = False,
-    single: bool = False,
-    offset: int = Query(0, ge=0),
-    limit: int = Query(PAGE_SIZE, ge=1, le=500),
-) -> JSONResponse:
-    tab = type if any(t == type for t, _ in _TABS) else ''
-    payload = await run_in('store', _listing, tab, q.strip().casefold(), source, cropped, noupstream, generic, single, offset, limit)
-    return JSONResponse(payload)
+async def entries_json(filters: Annotated[PeopleFilters, Depends()]) -> JSONResponse:
+    return JSONResponse(await run_in('store', _listing, filters))
 
 
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    first = await run_in('store', _listing, '', '', '', False, False, False, False, 0, PAGE_SIZE, True)
+    first = await run_in('store', _listing, PeopleFilters(), True)
     type_counts = dict(first['counts'])
     default_tab = str(first['tab'])
     summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'

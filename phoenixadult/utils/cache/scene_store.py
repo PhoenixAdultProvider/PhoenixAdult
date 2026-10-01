@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+from dataclasses import dataclass, replace
 from typing import Any, TypedDict
 
 from phoenixadult.utils import db
@@ -542,6 +543,28 @@ def actor_names(query: str = '', limit: int = 50) -> list[str]:
     return [str(r['name']) for r in rows]
 
 
+@dataclass(frozen=True)
+class SceneFilter:
+    studio: str = ''
+    query: str = ''
+    year: str = ''
+    month: str = ''
+    day: str = ''
+    tagline: str = ''
+    collection: str = ''
+    data18: str = ''
+    actor: str = ''
+    genre: str = ''
+    cast: str = ''
+    director: str = ''
+    producer: str = ''
+    provider_sites: list[str] | None = None
+    dup_paths: list[str] | None = None
+
+
+ALL_SCENES = SceneFilter()
+
+
 _BLANK = '__blank__'
 _SET = '__set__'
 _MANUAL = '__manual__'
@@ -550,144 +573,83 @@ _ROLE_EXISTS = 'SELECT 1 FROM scene_people sp WHERE sp.scene_id = s.id AND sp.ro
 _GENRE_EXISTS = 'SELECT 1 FROM scene_genres sg WHERE sg.scene_id = s.id'
 
 
-def _entry_filters(
-    studio: str,
-    query: str,
-    year: str,
-    month: str,
-    day: str,
-    tagline: str,
-    collection: str,
-    data18: str,
-    actor: str,
-    genre: str,
-    cast: str,
-    director: str,
-    producer: str,
-    provider_sites: list[str] | None,
-    dup_paths: list[str] | None,
-) -> tuple[str, list[Any]]:
+def _entry_filters(f: SceneFilter) -> tuple[str, list[Any]]:
     where: list[str] = []
     params: list[Any] = []
-    if studio:
+    if f.studio:
         where.append('st.name = ?')
-        params.append(studio)
-    if provider_sites is not None:
-        if provider_sites:
-            where.append(f's.site IN ({",".join("?" * len(provider_sites))})')
-            params.extend(provider_sites)
+        params.append(f.studio)
+    if f.provider_sites is not None:
+        if f.provider_sites:
+            where.append(f's.site IN ({",".join("?" * len(f.provider_sites))})')
+            params.extend(f.provider_sites)
         else:
             where.append('1 = 0')
-    if query:
+    if f.query:
         where.append("(s.title LIKE ? ESCAPE '\\' OR COALESCE(st.name, '') LIKE ? ESCAPE '\\' OR COALESCE(tl.name, '') LIKE ? ESCAPE '\\')")
-        params.extend([db.like_contains(query)] * 3)
-    if year == _BLANK:
+        params.extend([db.like_contains(f.query)] * 3)
+    if f.year == _BLANK:
         where.append("COALESCE(s.release_date, '') = ''")
-    elif year:
+    elif f.year:
         where.append('substr(s.release_date, 1, 4) = ?')
-        params.append(year)
-    if month:
+        params.append(f.year)
+    if f.month:
         where.append('substr(s.release_date, 6, 2) = ?')
-        params.append(month)
-    if day:
+        params.append(f.month)
+    if f.day:
         where.append('substr(s.release_date, 9, 2) = ?')
-        params.append(day)
-    if tagline == _BLANK:
+        params.append(f.day)
+    if f.tagline == _BLANK:
         where.append('s.tagline_id IS NULL')
-    elif tagline:
+    elif f.tagline:
         where.append('tl.name = ?')
-        params.append(tagline)
-    if collection == _BLANK:
+        params.append(f.tagline)
+    if f.collection == _BLANK:
         where.append('NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)')
-    elif collection:
+    elif f.collection:
         where.append('EXISTS (SELECT 1 FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id WHERE sc.scene_id = s.id AND c.name = ?)')
-        params.append(collection)
-    if actor == _BLANK:
+        params.append(f.collection)
+    if f.actor == _BLANK:
         where.append(f'NOT EXISTS ({_ACTOR_EXISTS})')
-    elif actor:
+    elif f.actor:
         where.append(f"EXISTS ({_ACTOR_EXISTS} AND p.name LIKE ? ESCAPE '\\')")
-        params.append(db.like_contains(actor))
-    if genre == _BLANK:
+        params.append(db.like_contains(f.actor))
+    if f.genre == _BLANK:
         where.append(f'NOT EXISTS ({_GENRE_EXISTS})')
-    elif genre == _SET:
+    elif f.genre == _SET:
         where.append(f'EXISTS ({_GENRE_EXISTS})')
-    for role, choice in (('actor', cast), ('director', director), ('producer', producer)):
+    for role, choice in (('actor', f.cast), ('director', f.director), ('producer', f.producer)):
         if choice == _BLANK:
             where.append(f'NOT EXISTS ({_ROLE_EXISTS})')
             params.append(role)
         elif choice == _SET:
             where.append(f'EXISTS ({_ROLE_EXISTS})')
             params.append(role)
-    if data18 == _SET:
+    if f.data18 == _SET:
         where.append("COALESCE(s.data18_id, '') != ''")
-    elif data18 == _MANUAL:
+    elif f.data18 == _MANUAL:
         where.append("COALESCE(s.data18_id, '') != '' AND s.data18_manual = 1")
-    elif data18 == _BLANK:
+    elif f.data18 == _BLANK:
         where.append("COALESCE(s.data18_id, '') = ''")
-    if dup_paths is not None:
-        if dup_paths:
-            where.append(f's.rel_path IN ({",".join("?" * len(dup_paths))})')
-            params.extend(dup_paths)
+    if f.dup_paths is not None:
+        if f.dup_paths:
+            where.append(f's.rel_path IN ({",".join("?" * len(f.dup_paths))})')
+            params.extend(f.dup_paths)
         else:
             where.append('1 = 0')
     return (f' WHERE {" AND ".join(where)}' if where else ''), params
 
 
-def _where_for(values: dict[str, Any], drop: str = '') -> tuple[str, list[Any]]:
-    def text(name: str) -> str:
-        return '' if name == drop else str(values.get(name) or '')
-
-    def listed(name: str) -> list[str] | None:
-        if name == drop:
-            return None
-        got = values.get(name)
-        return list(got) if isinstance(got, list) else None
-
-    return _entry_filters(
-        text('studio'),
-        text('query'),
-        text('year'),
-        text('month'),
-        text('day'),
-        text('tagline'),
-        text('collection'),
-        text('data18'),
-        text('actor'),
-        text('genre'),
-        text('cast'),
-        text('director'),
-        text('producer'),
-        listed('provider_sites'),
-        listed('dup_paths'),
-    )
+def _where_for(f: SceneFilter, drop: str = '') -> tuple[str, list[Any]]:
+    if drop:
+        cleared: dict[str, Any] = {drop: None if drop in ('provider_sites', 'dup_paths') else ''}
+        f = replace(f, **cleared)
+    return _entry_filters(f)
 
 
-def query_entry_rows(
-    *,
-    studio: str = '',
-    query: str = '',
-    year: str = '',
-    month: str = '',
-    day: str = '',
-    tagline: str = '',
-    collection: str = '',
-    data18: str = '',
-    actor: str = '',
-    genre: str = '',
-    cast: str = '',
-    director: str = '',
-    producer: str = '',
-    provider_sites: list[str] | None = None,
-    dup_paths: list[str] | None = None,
-    sort: str = 'updated_at',
-    direction: str = 'desc',
-    limit: int = 500,
-    offset: int = 0,
-) -> tuple[list[SceneRow], int]:
+def query_entry_rows(f: SceneFilter, *, sort: str = 'updated_at', direction: str = 'desc', limit: int = 500, offset: int = 0) -> tuple[list[SceneRow], int]:
     conn = db.connect()
-    where_sql, params = _entry_filters(
-        studio, query, year, month, day, tagline, collection, data18, actor, genre, cast, director, producer, provider_sites, dup_paths
-    )
+    where_sql, params = _entry_filters(f)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'
@@ -704,11 +666,11 @@ def query_entry_rows(
 _COLLECTION_JOIN = ' LEFT JOIN scene_collections sc ON sc.scene_id = s.id LEFT JOIN collections c ON c.id = sc.collection_id'
 
 
-def facet_values(**active: Any) -> dict[str, Any]:
+def facet_values(f: SceneFilter) -> dict[str, Any]:
     conn = db.connect()
 
     def distinct(select: str, drop: str, joins: str = '') -> list[Any]:
-        where_sql, params = _where_for(active, drop)
+        where_sql, params = _where_for(f, drop)
         return [r[0] for r in conn.execute(f'SELECT DISTINCT {select} {_SUMMARY_TABLES}{joins}{where_sql}', params).fetchall()]
 
     def split(raw: list[Any]) -> tuple[list[str], bool]:
@@ -721,7 +683,7 @@ def facet_values(**active: Any) -> dict[str, Any]:
     days, _ = split(distinct('substr(s.release_date, 9, 2)', 'day'))
     sites, _ = split(distinct('s.site', 'provider_sites'))
 
-    where_sql, params = _where_for(active, 'data18')
+    where_sql, params = _where_for(f, 'data18')
     manual = conn.execute(f'SELECT EXISTS (SELECT 1 {_SUMMARY_TABLES}{where_sql}{" AND" if where_sql else " WHERE"} s.data18_manual = 1)', params).fetchone()[0]
 
     return {
@@ -738,8 +700,8 @@ def facet_values(**active: Any) -> dict[str, Any]:
     }
 
 
-def studio_names(**active: Any) -> list[str]:
-    where_sql, params = _where_for(active, 'studio')
+def studio_names(f: SceneFilter) -> list[str]:
+    where_sql, params = _where_for(f, 'studio')
     rows = db.connect().execute(f'SELECT DISTINCT st.name AS name {_SUMMARY_TABLES}{where_sql}', params).fetchall()
     return sorted({str(r['name']) for r in rows if r['name']}, key=str.casefold)
 

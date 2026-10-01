@@ -15,6 +15,7 @@ from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import listing as cache_listing
 from phoenixadult.utils.cache import metadata as mc
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.scene_store import SceneFilter
 from phoenixadult.utils.images import image_fetcher
 from tests.support import authed_client
 
@@ -310,7 +311,7 @@ def test_metadata_save_flags_a_hand_entered_data18_id(client: TestClient, tmp_pa
     assert stored is not None
     assert stored['MediaContainer']['Metadata'][0]['data18'] == {'type': 'scene', 'id': '987654', 'manual': True}
 
-    entries, _total = cache_listing.entries_page(data18='__manual__')
+    entries, _total = cache_listing.entries_page(SceneFilter(data18='__manual__'))
     assert [e['data18_id'] for e in entries] == ['987654']
     assert entries[0]['data18_manual'] is True
 
@@ -323,8 +324,8 @@ def test_a_scraped_data18_id_stays_filled_across_a_resave(client: TestClient, tm
     stored = mc.load_for_edit(r.json()['key'])
     assert stored is not None
     assert stored['MediaContainer']['Metadata'][0]['data18'] == {'type': 'movie', 'id': '111'}
-    assert cache_listing.entries_page(data18='__manual__')[1] == 0
-    assert cache_listing.entries_page(data18='__set__')[1] == 1
+    assert cache_listing.entries_page(SceneFilter(data18='__manual__'))[1] == 0
+    assert cache_listing.entries_page(SceneFilter(data18='__set__'))[1] == 1
 
 
 def test_clearing_the_data18_id_drops_the_ref(client: TestClient, tmp_path: Path) -> None:
@@ -335,7 +336,7 @@ def test_clearing_the_data18_id_drops_the_ref(client: TestClient, tmp_path: Path
     stored = mc.load_for_edit(r.json()['key'])
     assert stored is not None
     assert 'data18' not in stored['MediaContainer']['Metadata'][0]
-    assert cache_listing.entries_page(data18='__blank__')[1] == 1
+    assert cache_listing.entries_page(SceneFilter(data18='__blank__'))[1] == 1
 
 
 def test_metadata_edit_page_offers_the_data18_fields(client: TestClient, tmp_path: Path) -> None:

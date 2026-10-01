@@ -6,7 +6,8 @@ from typing import Any, TypedDict
 from phoenixadult.config.env import env
 from phoenixadult.registry import find_site, provider_name_for, provider_name_tokens
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.duplicates import duplicate_entries, stale_duplicate_entries
+from phoenixadult.utils.cache.duplicates import stale_duplicate_entries
+from phoenixadult.utils.cache.scene_store import ALL_SCENES, SceneFilter
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.logging.logger import logger
@@ -63,75 +64,28 @@ def _ui_entry(row: scene_store.SceneRow) -> UiEntry:
 
 
 def entries() -> list[UiEntry]:
-    rows, _total = scene_store.query_entry_rows(limit=-1)
+    rows, _total = scene_store.query_entry_rows(ALL_SCENES, limit=-1)
     return [_ui_entry(row) for row in rows]
 
 
-def _provider_sites(provider: str) -> list[str]:
+def provider_sites(provider: str) -> list[str]:
     tokens = provider_name_tokens(provider)
     return tokens if tokens or find_site(provider) else [provider]
 
 
 def entries_page(
-    *,
-    studio: str = '',
-    query: str = '',
-    year: str = '',
-    month: str = '',
-    day: str = '',
-    tagline: str = '',
-    collection: str = '',
-    data18: str = '',
-    actor: str = '',
-    genre: str = '',
-    cast: str = '',
-    director: str = '',
-    producer: str = '',
-    provider: str = '',
-    dups_only: bool = False,
-    dup_paths: list[str] | None = None,
-    sort: str = 'updated_at',
-    direction: str = 'desc',
-    limit: int = 200,
-    offset: int = 0,
+    filters: SceneFilter = ALL_SCENES, *, sort: str = 'updated_at', direction: str = 'desc', limit: int = 200, offset: int = 0
 ) -> tuple[list[UiEntry], int]:
-    rows, total = scene_store.query_entry_rows(
-        studio=studio,
-        query=query,
-        year=year,
-        month=month,
-        day=day,
-        tagline=tagline,
-        collection=collection,
-        data18=data18,
-        actor=actor,
-        genre=genre,
-        cast=cast,
-        director=director,
-        producer=producer,
-        provider_sites=_provider_sites(provider) if provider else None,
-        dup_paths=(duplicate_entries() if dup_paths is None else dup_paths) if dups_only else None,
-        sort=sort,
-        direction=direction,
-        limit=limit,
-        offset=offset,
-    )
+    rows, total = scene_store.query_entry_rows(filters, sort=sort, direction=direction, limit=limit, offset=offset)
     return [_ui_entry(row) for row in rows], total
 
 
-def _facet_scope(active: dict[str, Any]) -> dict[str, Any]:
-    scope = {k: v for k, v in active.items() if k != 'provider'}
-    provider = str(active.get('provider') or '')
-    scope['provider_sites'] = _provider_sites(provider) if provider else None
-    return scope
+def studios(filters: SceneFilter = ALL_SCENES) -> list[str]:
+    return scene_store.studio_names(filters)
 
 
-def studios(**active: Any) -> list[str]:
-    return scene_store.studio_names(**_facet_scope(active))
-
-
-def facets(**active: Any) -> dict[str, Any]:
-    values = scene_store.facet_values(**_facet_scope(active))
+def facets(filters: SceneFilter = ALL_SCENES) -> dict[str, Any]:
+    values = scene_store.facet_values(filters)
     sites = values.pop('sites', [])
     values['providers'] = sorted({provider_name_for(site) or site for site in sites}, key=str.casefold)
     return values

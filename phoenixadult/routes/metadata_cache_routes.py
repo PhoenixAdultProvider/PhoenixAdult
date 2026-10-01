@@ -259,7 +259,6 @@ _SCOPE_FIELDS = (
     'cast',
     'director',
     'producer',
-    'provider',
 )
 
 
@@ -292,8 +291,12 @@ class EntryFilters:
         if self.direction not in ('asc', 'desc'):
             self.direction = 'desc'
 
-    def scope(self, dup_paths: list[str] | None) -> dict[str, Any]:
-        return {name: getattr(self, name) for name in _SCOPE_FIELDS} | {'dup_paths': dup_paths}
+    def scope(self, dup_paths: list[str] | None) -> scene_store.SceneFilter:
+        return scene_store.SceneFilter(
+            **{name: getattr(self, name) for name in _SCOPE_FIELDS},
+            provider_sites=cache_listing.provider_sites(self.provider) if self.provider else None,
+            dup_paths=dup_paths,
+        )
 
 
 def _restricted_paths(filters: EntryFilters, dup_paths: list[str]) -> list[str] | None:
@@ -314,9 +317,7 @@ async def entries_json(filters: Annotated[EntryFilters, Depends()]) -> JSONRespo
         restrict = _restricted_paths(filters, show_paths)
         scope = filters.scope(restrict)
         entries, total = cache_listing.entries_page(
-            **{k: v for k, v in scope.items() if k != 'dup_paths'},
-            dups_only=restrict is not None,
-            dup_paths=restrict or [],
+            scope,
             sort=filters.sort,
             direction=filters.direction,
             limit=filters.limit if filters.limit > 0 else -1,
@@ -326,8 +327,8 @@ async def entries_json(filters: Annotated[EntryFilters, Depends()]) -> JSONRespo
             'entries': entries,
             'dup_keys': dup_keys,
             'total': total,
-            'studios': cache_listing.studios(**scope),
-            'facets': cache_listing.facets(**scope),
+            'studios': cache_listing.studios(scope),
+            'facets': cache_listing.facets(scope),
         }
 
     return JSONResponse(await run_in('store', _bundle))

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import fields
+
 from phoenixadult.routes.metadata_cache_routes import _SCOPE_FIELDS, EntryFilters
+from phoenixadult.utils.cache.scene_store import SceneFilter
 from tests.support import authed_client
 
 
@@ -11,9 +14,9 @@ def test_an_unknown_sort_falls_back_instead_of_reaching_sql() -> None:
 
 def test_scope_carries_every_filter_plus_the_duplicate_paths() -> None:
     scope = EntryFilters(studio='Vixen', genre='Anal').scope(['a/b'])
-    assert scope['studio'] == 'Vixen' and scope['genre'] == 'Anal'
-    assert scope['dup_paths'] == ['a/b']
-    assert set(scope) == {*_SCOPE_FIELDS, 'dup_paths'}
+    assert scope.studio == 'Vixen' and scope.genre == 'Anal'
+    assert scope.dup_paths == ['a/b'] and scope.provider_sites is None
+    assert {f.name for f in fields(SceneFilter)} == {*_SCOPE_FIELDS, 'provider_sites', 'dup_paths'}
 
 
 def test_the_query_alias_still_works_over_http() -> None:
