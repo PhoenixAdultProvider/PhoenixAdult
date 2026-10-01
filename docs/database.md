@@ -65,6 +65,8 @@ reserved in the Plex schema as a string, and an object there makes Plex reject
 the whole response), so bundles and manual saves carry
 them, and the metadata editor reads them for its Scene/Listing link and Source
 JSON panel — falling back to decoding the cur_id for scenes not yet refreshed.
+`sourceRef`, `data18`, and the per-image `locked`/`rotate` flags are internal: the
+provider routes strip them before a response goes to Plex.
 
 ## Design Principle
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+from pydantic.main import IncEx
 
 from phoenixadult.models.media_provider import MediaProviderResponse
 from phoenixadult.models.provider_info import ProviderInfo
@@ -15,6 +18,13 @@ from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.request_trace import trace_body
 from phoenixadult.utils.plex.media_type import plex_media_type_id
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
+
+_INTERNAL_IMAGE_FIELDS: set[str] = {'locked', 'rotate'}
+_HIDDEN_IMAGE_ITEMS: dict[str, IncEx | bool] = {'__all__': _INTERNAL_IMAGE_FIELDS}
+_HIDDEN_METADATA_FIELDS: dict[str, IncEx | bool] = {'sourceRef': True, 'data18': True, 'Image': _HIDDEN_IMAGE_ITEMS}
+_HIDDEN_METADATA_ITEMS: dict[str, IncEx | bool] = {'__all__': _HIDDEN_METADATA_FIELDS}
+_HIDDEN_CONTAINER: dict[str, IncEx | bool] = {'Metadata': _HIDDEN_METADATA_ITEMS}
+_INTERNAL_METADATA_FIELDS: dict[str, IncEx | bool] = {'MediaContainer': _HIDDEN_CONTAINER}
 
 _SERVICES: list[tuple[ProviderInfo, MatchService, MetadataService]] = []
 
@@ -53,6 +63,20 @@ async def restore_queue() -> None:
         logger.info('scrape-queue', f'restored {restored} queued background job(s) from disk')
 
 
+async def _answer(provider: ProviderInfo, label: str, respond: Callable[[], Awaitable[JSONResponse]]) -> JSONResponse:
+    try:
+        return await respond()
+    except MalformedRequestError as err:
+        logger.warn(provider.id, f'{label} 400: {err}')
+        return JSONResponse({'error': f'Bad request: {err}'}, status_code=400)
+    except ProviderUnavailableError as err:
+        logger.warn(provider.id, f'{label} 500: {err}')
+        return JSONResponse({'error': str(err)}, status_code=500)
+    except Exception:  # noqa: BLE001
+        logger.error(provider.id, f'{label} error', exc_info=True)
+        return JSONResponse({'error': 'Internal server error'}, status_code=500)
+
+
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
     router = APIRouter(dependencies=[Depends(provider_guard)])
     metadata_service = MetadataService()
@@ -86,9 +110,14 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
         body = await read_json_body(request)
         trace_body(provider.id, request, body)
         language = request.headers.get('x-plex-language')
-        try:
+
+        async def respond() -> JSONResponse:
+            try:
+                media_type = int(body.get('type', 1))
+            except (TypeError, ValueError):
+                raise MalformedRequestError(f'type must be an integer, got {body.get("type")!r}') from None
             req = MatchRequest(
-                type=int(body.get('type', 1)),
+                type=media_type,
                 title=body.get('title'),
                 year=body.get('year'),
                 guid=body.get('guid'),
@@ -98,37 +127,21 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
                 duration=body.get('duration'),
                 ohash=body.get('ohash'),
             )
-            result = await match_service.match(req, provider, language)
-            return plex_json(result)
-        except MalformedRequestError as err:
-            logger.warn(provider.id, f'Match 400: {err}')
-            return JSONResponse({'error': f'Bad request: {err}'}, status_code=400)
-        except ProviderUnavailableError as err:
-            logger.warn(provider.id, f'Match 500: {err}')
-            return JSONResponse({'error': str(err)}, status_code=500)
-        except Exception:  # noqa: BLE001
-            logger.error(provider.id, 'Match error', exc_info=True)
-            return JSONResponse({'error': 'Internal server error'}, status_code=500)
+            return plex_json(await match_service.match(req, provider, language))
+
+        return await _answer(provider, 'Match', respond)
 
     @router.get('/library/metadata/{rating_key}/images')
     async def images(rating_key: str, request: Request) -> JSONResponse:
-        try:
-            language = request.headers.get('x-plex-language')
-            result = await metadata_service.get_metadata(rating_key, provider, language)
+        async def respond() -> JSONResponse:
+            result = await metadata_service.get_metadata(rating_key, provider, request.headers.get('x-plex-language'))
             if not result:
                 return JSONResponse({'error': 'Not found'}, status_code=404)
             image_list = result.MediaContainer.Metadata[0].Image or []
-            images = [img.model_dump(by_alias=True, exclude_none=True) for img in image_list]
+            images = [img.model_dump(by_alias=True, exclude_none=True, exclude=_INTERNAL_IMAGE_FIELDS) for img in image_list]
             return JSONResponse(media_container(provider.plex_identifier, images, key='Image'))
-        except MalformedRequestError as err:
-            logger.warn(provider.id, f'Images 400: {err}')
-            return JSONResponse({'error': f'Bad request: {err}'}, status_code=400)
-        except ProviderUnavailableError as err:
-            logger.warn(provider.id, f'Images 500: {err}')
-            return JSONResponse({'error': str(err)}, status_code=500)
-        except Exception:  # noqa: BLE001
-            logger.error(provider.id, 'Images error', exc_info=True)
-            return JSONResponse({'error': 'Internal server error'}, status_code=500)
+
+        return await _answer(provider, 'Images', respond)
 
     @router.get('/library/metadata/{rating_key}/{sub}')
     async def empty_sub(rating_key: str, sub: str) -> JSONResponse:
@@ -137,20 +150,12 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
 
     @router.get('/library/metadata/{rating_key}')
     async def metadata(rating_key: str, request: Request) -> JSONResponse:
-        try:
-            language = request.headers.get('x-plex-language')
-            result = await metadata_service.get_metadata(rating_key, provider, language, is_refresh=True)
+        async def respond() -> JSONResponse:
+            result = await metadata_service.get_metadata(rating_key, provider, request.headers.get('x-plex-language'), is_refresh=True)
             if not result:
                 return JSONResponse({'error': 'Not found'}, status_code=404)
-            return plex_json(result)
-        except MalformedRequestError as err:
-            logger.warn(provider.id, f'Metadata 400: {err}')
-            return JSONResponse({'error': f'Bad request: {err}'}, status_code=400)
-        except ProviderUnavailableError as err:
-            logger.warn(provider.id, f'Metadata 500: {err}')
-            return JSONResponse({'error': str(err)}, status_code=500)
-        except Exception:  # noqa: BLE001
-            logger.error(provider.id, 'Metadata error', exc_info=True)
-            return JSONResponse({'error': 'Internal server error'}, status_code=500)
+            return JSONResponse(result.model_dump(by_alias=True, exclude_none=True, exclude=_INTERNAL_METADATA_FIELDS))
+
+        return await _answer(provider, 'Metadata', respond)
 
     return router

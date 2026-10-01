@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from phoenixadult.models.metadata import PlexMetadataResponse
+from phoenixadult.routes.provider_router import _INTERNAL_METADATA_FIELDS
 from phoenixadult.services import plex_connections
 from phoenixadult.utils.auth import user_store
 from phoenixadult.utils.plex import client_hits
@@ -33,6 +35,22 @@ def test_guessing_the_current_password_is_throttled() -> None:
     codes = [client.post('/account/api/password', json={'current': 'wrong', 'new': 'Newpassword1!'}).status_code for _ in range(8)]
     assert codes[0] == 403
     assert 429 in codes
+
+
+def test_internal_fields_never_reach_plex() -> None:
+    md = {
+        'type': 'movie',
+        'ratingKey': 'k',
+        'guid': 'g',
+        'title': 't',
+        'sourceRef': {'url': 'https://x', 'data': {'secret': 1}},
+        'data18': {'type': 'scene', 'id': '1'},
+        'Image': [{'url': 'https://x/1.jpg', 'type': 'coverPoster', 'locked': True, 'rotate': 90}],
+    }
+    response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': 'p', 'size': 1, 'Metadata': [md]}})
+    served = response.model_dump(by_alias=True, exclude_none=True, exclude=_INTERNAL_METADATA_FIELDS)['MediaContainer']['Metadata'][0]
+    assert 'sourceRef' not in served and 'data18' not in served
+    assert served['Image'] == [{'url': 'https://x/1.jpg', 'type': 'coverPoster'}]
 
 
 def test_inline_handlers_never_embed_escaped_values_in_js_strings() -> None:
