@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 from phoenixadult.models.scraper_config import ScraperConfig
@@ -20,14 +20,18 @@ class SiteInfo:
     provider_id: str | None = None
     provider_name: str | None = None
     direct_url_template: str | None = None
-    aliases: list[str] = field(default_factory=list)
+    aliases: tuple[str, ...] = ()
     sub_group: str | None = None
-    image_referers: list[str] = field(default_factory=list)
-    image_cookies: list[str] = field(default_factory=list)
+    image_referers: tuple[str, ...] = ()
+    image_cookies: tuple[str, ...] = ()
     search_method: SearchMethod | None = None
     search_notes: str | None = None
     use_bypass: bool = False
     token_prefixes: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in ('aliases', 'image_referers', 'image_cookies', 'token_prefixes'):
+            object.__setattr__(self, name, tuple(getattr(self, name)))
 
     def search_url(self, query: str) -> str:
         path = self.search_path.replace('{query}', query)
