@@ -498,7 +498,7 @@ Notes:
 | `STRIP_ENABLE` | `false` | Enable the two strip-symbol rules below, which cut a junk prefix/suffix off the parsed title before searching. |
 | `STRIP_SYMBOL` | _(unset)_ | When strip is on and this symbol appears in the title, keep only the text before its first occurrence. |
 | `STRIP_SYMBOL_REVERSE` | _(unset)_ | When strip is on and this symbol appears in the title, keep only the text after its last occurrence. |
-| `SEARCH_TITLE_TRASH` | built-in list | Whole-word release/scene-group tokens stripped from the parsed title before searching (e.g. `RARBG`, `1080p`, `WEB`). |
+| `SEARCH_TITLE_TRASH` | built-in list | Whole-word release/scene-group tokens stripped from the parsed title before searching (e.g. `RARBG`, `1080p`, `WEB`). Entries are regular expressions; the Config UI refuses an invalid one, and an invalid entry set in `.env` is skipped with a warning. |
 | `SEARCH_STRIP_ACTORS` | _(unset)_ | Sites whose filenames lead with actor names: the names are dropped when building the site search, and title scoring uses the best of the stripped and unstripped title. Entries match a site, a studio, or a whole network (e.g. `Nubiles`). Porn Pros does not need listing — it keys on the title alone and tries the stripped form itself. |
 | `DISABLE_AUTO_MATCH` | `false` | Suppress every match request Plex did not flag as user-initiated (`manual=1`). |
 

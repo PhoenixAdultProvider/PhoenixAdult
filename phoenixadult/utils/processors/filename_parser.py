@@ -51,13 +51,22 @@ _trash_source = ''
 _trash_regex: re.Pattern[str] | None = None
 
 
+def _valid_pattern(token: str) -> bool:
+    try:
+        re.compile(token)
+    except re.error as err:
+        logger.warn('filenameParser', f'ignoring SEARCH_TITLE_TRASH entry {token!r}: {err}')
+        return False
+    return True
+
+
 def _trash_re() -> re.Pattern[str] | None:
     global _trash_source, _trash_regex
-    extra = [s.strip() for s in (env.search_title_trash_raw or '').split(',') if s.strip()]
-    tokens = list(dict.fromkeys([*DEFAULT_SEARCH_TITLE_TRASH, *extra]))
-    source = '|'.join(tokens)
-    if source != _trash_source:
-        _trash_source = source
+    raw = env.search_title_trash_raw or ''
+    if raw != _trash_source or _trash_regex is None:
+        extra = [t for t in (s.strip() for s in raw.split(',')) if t and _valid_pattern(t)]
+        source = '|'.join(dict.fromkeys([*DEFAULT_SEARCH_TITLE_TRASH, *extra]))
+        _trash_source = raw
         _trash_regex = re.compile(rf'\b(?:{source})\b', re.IGNORECASE) if source else None
     return _trash_regex
 

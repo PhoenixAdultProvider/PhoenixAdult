@@ -51,6 +51,7 @@ class EnvVarSpec:
     max: int | None = None
     preview: Literal['image'] | None = None
     secret_items: bool = False
+    pattern_items: bool = False
 
 
 ENV_CATALOG: list[EnvVarSpec] = [
@@ -411,6 +412,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Matching & Title Parsing',
         'list',
         default_value='',
+        pattern_items=True,
     ),
     EnvVarSpec(
         'SCENE_GAP',
@@ -572,6 +574,12 @@ def normalize_env_value(spec: EnvVarSpec, raw: str) -> tuple[bool, str]:
 
     if spec.kind == 'list':
         items = [s.strip() for s in value.split(',') if s.strip()]
+        if spec.pattern_items:
+            for item in items:
+                try:
+                    re.compile(item)
+                except re.error as err:
+                    return False, f'{spec.key} entry {item!r} is not a valid pattern: {err}'
         return True, ','.join(items)
 
     return True, value
