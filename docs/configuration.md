@@ -41,6 +41,9 @@ always because the Config UI previously saved an override for that key — clear
 git-ignored — it holds only the keys you changed in the UI. Only UI-editable keys are
 honored from that file; unknown keys are ignored.
 
+On/off variables accept `true`/`1`/`yes`/`on` to switch on and `false`/`0`/`no`/`off` to
+switch off, in any case. A blank value falls back to the default.
+
 ### What Needs a Restart
 
 Most options apply immediately. These are read once at startup — change them and

@@ -9,10 +9,19 @@ def _cwd() -> Path:
 
 
 TRUTHY = frozenset({'1', 'true', 'yes', 'on'})
+FALSY = frozenset({'0', 'false', 'no', 'off'})
 
 
 def _flag(name: str, default: str) -> str:
     return (os.environ.get(name) or default).strip().lower()
+
+
+def _on(name: str) -> bool:
+    return _flag(name, 'false') in TRUTHY
+
+
+def _on_unless_off(name: str) -> bool:
+    return _flag(name, 'true') not in FALSY
 
 
 class _Env:
@@ -22,7 +31,7 @@ class _Env:
 
     @property
     def dev_ui_enabled(self) -> bool:
-        return _flag('DEV_UI_ENABLE', 'false') == 'true'
+        return _on('DEV_UI_ENABLE')
 
     @property
     def log_dir(self) -> str:
@@ -34,11 +43,11 @@ class _Env:
         raw = os.environ.get(name)
         if raw is None or raw.strip() == '':
             return False
-        return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
+        return raw.strip().lower() not in FALSY
 
     @property
     def http_body_dump(self) -> bool:
-        return _flag('HTTP_BODY_DUMP', 'false') in TRUTHY
+        return _on('HTTP_BODY_DUMP')
 
     @property
     def log_body_max_chars(self) -> int:
@@ -61,7 +70,7 @@ class _Env:
 
     @property
     def disable_auto_match(self) -> bool:
-        return _flag('DISABLE_AUTO_MATCH', 'false') != 'false'
+        return _on('DISABLE_AUTO_MATCH')
 
     @property
     def disable_auto_match_raw(self) -> str | None:
@@ -77,7 +86,7 @@ class _Env:
 
     @property
     def strip_symbols_enabled(self) -> bool:
-        return _flag('STRIP_ENABLE', 'false') == 'true'
+        return _on('STRIP_ENABLE')
 
     @property
     def strip_symbol(self) -> str:
@@ -152,19 +161,19 @@ class _Env:
 
     @property
     def image_proxy_pin(self) -> bool:
-        return _flag('IMAGE_PROXY_PIN', 'true') != 'false'
+        return _on_unless_off('IMAGE_PROXY_PIN')
 
     @property
     def image_guard_enabled(self) -> bool:
-        return _flag('IMAGE_GUARD_ENABLE', 'true') != 'false'
+        return _on_unless_off('IMAGE_GUARD_ENABLE')
 
     @property
     def token_based_auth(self) -> bool:
-        return _flag('TOKEN_BASED_AUTH', '') == 'true'
+        return _on('TOKEN_BASED_AUTH')
 
     @property
     def client_token_required(self) -> bool:
-        return _flag('CLIENT_TOKEN_REQUIRED', '') == 'true'
+        return _on('CLIENT_TOKEN_REQUIRED')
 
     @property
     def api_requests_per_day(self) -> int:
@@ -175,7 +184,7 @@ class _Env:
 
     @property
     def bypass_auto_retry(self) -> bool:
-        return _flag('BYPASS_AUTO_RETRY', '') == 'true'
+        return _on('BYPASS_AUTO_RETRY')
 
     @property
     def bypass_order_raw(self) -> str | None:
@@ -200,7 +209,7 @@ class _Env:
 
     @property
     def reqbin_enabled(self) -> bool:
-        return _flag('REQBIN_ENABLE', 'false') == 'true'
+        return _on('REQBIN_ENABLE')
 
     @property
     def reqbin_api_key(self) -> str | None:
@@ -212,19 +221,19 @@ class _Env:
 
     @property
     def people_cache_enabled(self) -> bool:
-        return _flag('PEOPLE_CACHE_ENABLE', 'true') != 'false'
+        return _on_unless_off('PEOPLE_CACHE_ENABLE')
 
     @property
     def people_cache_replace_enabled(self) -> bool:
-        return _flag('PEOPLE_CACHE_REPLACE_ENABLE', 'false') == 'true'
+        return _on('PEOPLE_CACHE_REPLACE_ENABLE')
 
     @property
     def people_cache_face_enabled(self) -> bool:
-        return _flag('PEOPLE_CACHE_FACE_ENABLE', 'false') == 'true'
+        return _on('PEOPLE_CACHE_FACE_ENABLE')
 
     @property
     def metadata_cache_enabled(self) -> bool:
-        return _flag('METADATA_CACHE_ENABLE', 'false') == 'true'
+        return _on('METADATA_CACHE_ENABLE')
 
     @property
     def metadata_cache_dir(self) -> str:
@@ -240,15 +249,15 @@ class _Env:
 
     @property
     def gender_detect_enabled(self) -> bool:
-        return _flag('GENDER_DETECT_ENABLE', 'true') != 'false'
+        return _on_unless_off('GENDER_DETECT_ENABLE')
 
     @property
     def gender_skip_male_enabled(self) -> bool:
-        return _flag('GENDER_SKIP_MALE_ENABLE', 'false') == 'true'
+        return _on('GENDER_SKIP_MALE_ENABLE')
 
     @property
     def generic_image_enabled(self) -> bool:
-        return _flag('GENERIC_IMAGE_ENABLE', 'true') != 'false'
+        return _on_unless_off('GENERIC_IMAGE_ENABLE')
 
     @property
     def generic_female_url_raw(self) -> str | None:
@@ -264,7 +273,7 @@ class _Env:
 
     @property
     def data18_enabled(self) -> bool:
-        return _flag('DATA18_ENABLE', '') == 'true'
+        return _on('DATA18_ENABLE')
 
     @property
     def data18_accuracy(self) -> int:
@@ -276,7 +285,7 @@ class _Env:
 
     @property
     def data18_extra_enabled(self) -> bool:
-        return _flag('DATA18_EXTRA', '') == 'true'
+        return _on('DATA18_EXTRA')
 
     @property
     def google_search_api_key(self) -> str | None:
@@ -288,7 +297,7 @@ class _Env:
 
     @property
     def phoenix_extra_collections(self) -> bool:
-        return _flag('PHOENIX_EXTRA_COLLECTIONS', '') == 'true'
+        return _on('PHOENIX_EXTRA_COLLECTIONS')
 
 
 env = _Env()
