@@ -179,9 +179,14 @@ async def change_password(request: Request) -> JSONResponse:
     new = str(body.get('new') or '')
     if (problem := password_error(new)) is not None:
         return JSONResponse({'error': problem}, status_code=400)
+    scope, key = 'password', str(user.id)
+    if (wait := rate_limit.retry_after(scope, key)) > 0:
+        return JSONResponse({'error': f'Too many attempts — wait {int(wait) + 1}s.'}, status_code=429, headers={'Retry-After': str(int(wait) + 1)})
     verified = await run_in('store', user_store.verify_login, user.username, current)
     if verified is None:
+        rate_limit.record_failure(scope, key)
         return JSONResponse({'error': 'Current password is incorrect.'}, status_code=403)
+    rate_limit.record_success(scope, key)
     keep_hash = hash_token(request.cookies.get(SESSION_COOKIE, '')) if user.via == 'session' else None
     await run_in('store', user_store.set_password, user.id, new, keep_hash)
     logger.info('auth', f'password changed: {user.username}')

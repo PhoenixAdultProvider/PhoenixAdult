@@ -28,6 +28,13 @@ def test_a_client_id_owned_by_another_user_cannot_be_claimed() -> None:
     assert admin.post(f'/plex/connections/{mine}', json={'allowedClients': ['my-pms']}).status_code == 200
 
 
+def test_guessing_the_current_password_is_throttled() -> None:
+    client = authed_client()
+    codes = [client.post('/account/api/password', json={'current': 'wrong', 'new': 'Newpassword1!'}).status_code for _ in range(8)]
+    assert codes[0] == 403
+    assert 429 in codes
+
+
 def test_inline_handlers_never_embed_escaped_values_in_js_strings() -> None:
     for page in _HTML.glob('*.html'):
         for line in page.read_text(encoding='utf-8').splitlines():

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import secrets
 import time
 from dataclasses import dataclass
+from functools import cache
 from typing import Any, Literal
 
 from phoenixadult.utils import db
@@ -68,9 +70,17 @@ def get_by_id(user_id: int) -> UserRow | None:
     return _row_to_user(row) if row else None
 
 
+@cache
+def _decoy_hash() -> str:
+    return hash_password(secrets.token_urlsafe(16))
+
+
 def verify_login(username: str, password: str) -> UserRow | None:
     row = db.connect().execute('SELECT * FROM users WHERE username = ? COLLATE NOCASE', (username.strip(),)).fetchone()
-    if row is None or not verify_password(password, row['password_hash']):
+    if row is None:
+        verify_password(password, _decoy_hash())
+        return None
+    if not verify_password(password, row['password_hash']):
         return None
     return _row_to_user(row)
 
