@@ -291,8 +291,10 @@ Each connection stores its own:
 - **Allowed Plex Clients** — `X-Plex-Client-Identifier` values associated with this
   connection. They map an incoming client to its owning user, which is how a request picks
   up that user's MetadataAPI token, and they are the allowlist `CLIENT_TOKEN_REQUIRED`
-  checks on match/metadata requests. Find a server's identifier in a verbose request
-  dump, the Clients tab, or its `Preferences.xml` (`ProcessedMachineIdentifier`).
+  checks on match/metadata requests. An identifier already listed under another user's
+  connection is refused (409), so one user cannot take over another's Plex client. Find a
+  server's identifier in a verbose request dump, the Clients tab, or its `Preferences.xml`
+  (`ProcessedMachineIdentifier`).
 - **Update channel and release** — `plex` follows the server's own channel preference
   (`ButlerUpdateChannel`), or force `public`/`beta` (beta needs Plex Pass). The release
   dropdown appears whenever a platform lists more than one build; unset picks the release

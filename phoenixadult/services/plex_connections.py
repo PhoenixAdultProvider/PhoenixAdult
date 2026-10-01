@@ -122,6 +122,23 @@ def delete(connection_id: int) -> None:
     _bump()
 
 
+def claimed_by_other_users(connection_id: int, client_ids: list[str]) -> list[str]:
+    wanted = sorted({c.strip() for c in client_ids if c.strip()})
+    if not wanted:
+        return []
+    marks = ','.join('?' * len(wanted))
+    rows = (
+        db.connect()
+        .execute(
+            'SELECT DISTINCT pcc.client_id FROM plex_connection_clients pcc JOIN plex_connections c ON c.id = pcc.connection_id '
+            f'WHERE pcc.client_id IN ({marks}) AND c.user_id != (SELECT user_id FROM plex_connections WHERE id = ?)',  # noqa: S608 - placeholders only
+            (*wanted, connection_id),
+        )
+        .fetchall()
+    )
+    return sorted(str(r['client_id']) for r in rows)
+
+
 def set_allowed_clients(connection_id: int, client_ids: list[str]) -> None:
     cleaned = {c.strip() for c in client_ids if c.strip()}
     conn = db.connect()

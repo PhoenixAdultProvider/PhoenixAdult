@@ -90,11 +90,14 @@ async def update_connection(connection_id: int, request: Request) -> JSONRespons
     if connection is None:
         return JSONResponse({'error': 'No such connection'}, status_code=404)
     body = await read_json_body(request)
+    wanted = [str(c) for c in body['allowedClients']] if isinstance(body.get('allowedClients'), list) else None
+    if wanted is not None and (taken := await run_in('store', plex_connections.claimed_by_other_users, connection_id, wanted)):
+        return JSONResponse({'error': f'Already registered by another user: {", ".join(taken)}'}, status_code=409)
     fields: dict[str, Any] = {k: v for k, v in body.items() if k != 'allowedClients'}
     if fields:
         await run_in('store', plex_connections.update_fields, connection_id, fields)
-    if isinstance(body.get('allowedClients'), list):
-        await run_in('store', plex_connections.set_allowed_clients, connection_id, [str(c) for c in body['allowedClients']])
+    if wanted is not None:
+        await run_in('store', plex_connections.set_allowed_clients, connection_id, wanted)
     updated = await run_in('store', plex_connections.get, connection_id)
     return JSONResponse(updated.as_dict() if updated else {})
 
