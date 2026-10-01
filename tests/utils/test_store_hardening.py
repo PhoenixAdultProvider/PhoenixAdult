@@ -8,7 +8,7 @@ import pytest
 from phoenixadult.config.env import env
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils import db
-from phoenixadult.utils.cache import search_store
+from phoenixadult.utils.cache import scene_store, search_store
 from phoenixadult.utils.fs.reloadable import MtimeCachedJson
 from phoenixadult.utils.images import face_crop_log
 from phoenixadult.utils.plex import client_hits
@@ -28,6 +28,19 @@ def test_a_stored_result_from_an_older_shape_reads_as_a_miss() -> None:
     conn.execute('UPDATE search_results SET payload = ?', (json.dumps({'title': 'Old', 'retired_field': 1}),))
     conn.commit()
     assert search_store.load(key) is None
+
+
+def test_the_change_token_moves_when_locks_change() -> None:
+    scene_store.upsert('Site', 'cur', 'hash1', 'scenes/ha/hash1', {'MediaContainer': {'identifier': 'p', 'Metadata': [{'title': 'T'}]}})
+    before = scene_store.change_token()
+    scene_store.set_locks('hash1', ['title'], False)
+    assert scene_store.change_token() != before
+
+
+def test_flagging_a_person_ignores_case() -> None:
+    md = {'title': 'T', 'Role': [{'tag': 'Jane Doe'}]}
+    scene_store.upsert('Site', 'cur', 'hash1', 'scenes/ha/hash1', {'MediaContainer': {'identifier': 'p', 'Metadata': [md]}})
+    assert scene_store.flag_people_changed('jane doe') == ['T']
 
 
 def test_relabelling_to_unrecorded_clears_the_source() -> None:

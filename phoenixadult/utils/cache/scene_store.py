@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import json
 import sqlite3
 import time
@@ -53,6 +54,15 @@ _UPSERT = (
     f'INSERT INTO scenes({", ".join(_SCENE_COLUMNS)}) VALUES({", ".join("?" * len(_SCENE_COLUMNS))}) '
     f'ON CONFLICT(hash) DO UPDATE SET {", ".join(f"{c} = excluded.{c}" for c in _SCENE_COLUMNS[1:])}'
 )
+
+
+_revisions = itertools.count(1)
+_revision = 0
+
+
+def _touch() -> None:
+    global _revision
+    _revision = next(_revisions)
 
 
 def _person_id(conn: sqlite3.Connection, name: str, studio_id: int | None, gender: str) -> int:
@@ -153,6 +163,7 @@ def upsert(
                 'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos, priority, locked) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (scene_id, str(img.get('type') or ''), url, width, height, size, pos, int(bool(img.get('priority'))), int(bool(img.get('locked')))),
             )
+    _touch()
 
 
 def _tag_list(conn: sqlite3.Connection, scene_id: int, table: str, dim_table: str, dim_col: str) -> list[str]:
@@ -293,6 +304,7 @@ def delete(rel_path: str) -> bool:
     conn = db.connect()
     with conn:
         cur = conn.execute('DELETE FROM scenes WHERE rel_path = ?', (rel_path,))
+    _touch()
     return bool(cur.rowcount)
 
 
@@ -300,7 +312,8 @@ def flag_people_changed(name: str) -> list[str]:
     conn = db.connect()
     with conn:
         rows = conn.execute(
-            'SELECT s.hash, s.title FROM scenes s JOIN scene_people sp ON sp.scene_id = s.id JOIN people p ON p.id = sp.person_id WHERE p.name = ?',
+            'SELECT s.hash, s.title FROM scenes s JOIN scene_people sp ON sp.scene_id = s.id JOIN people p ON p.id = sp.person_id '
+            'WHERE p.name = ? COLLATE NOCASE',
             (name,),
         ).fetchall()
         if rows:
@@ -345,6 +358,7 @@ def set_locks(scene_hash: str, fields: list[str], images_locked: bool) -> None:
             'UPDATE scenes SET locked_fields = ?, images_locked = ? WHERE hash = ?',
             (json.dumps(sorted(set(fields))), int(images_locked), scene_hash),
         )
+    _touch()
 
 
 def snapshot_state(site: str, cur_id: str) -> dict[str, str] | None:
@@ -416,6 +430,7 @@ def drop_orphan_images() -> int:
     conn = db.connect()
     with conn:
         cur = conn.execute(f'DELETE {_ORPHAN_IMAGES}')
+    _touch()
     return int(cur.rowcount)
 
 
@@ -431,6 +446,7 @@ def relocate(scene_hash: str, new_rel: str) -> bool:
             (new_rel, old_url, new_url, old_url, new_url, scene_id),
         )
         conn.execute('UPDATE scene_images SET rel_path = replace(rel_path, ?, ?) WHERE scene_id = ?', (old_url, new_url, scene_id))
+    _touch()
     return True
 
 
@@ -720,9 +736,11 @@ def image_check_rows() -> list[sqlite3.Row]:
 def prune_orphan_names() -> dict[str, int]:
     conn = db.connect()
     with conn:
-        return db.prune_orphan_names(conn)
+        pruned = db.prune_orphan_names(conn)
+    _touch()
+    return pruned
 
 
 def change_token() -> str:
     row = db.connect().execute('SELECT COUNT(*) AS count, COALESCE(MAX(updated_at), 0) AS newest FROM scenes').fetchone()
-    return f'{int(row["count"])}:{float(row["newest"])}'
+    return f'{int(row["count"])}:{float(row["newest"])}:{_revision}'
