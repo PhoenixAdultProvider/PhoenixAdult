@@ -17,10 +17,6 @@ class NameDimension:
     junctions: tuple[tuple[str, str], ...] = ()
     refs: tuple[tuple[str, str], ...] = ()
 
-    @property
-    def usage(self) -> tuple[str, str]:
-        return (self.junctions or self.refs)[0]
-
 
 NAME_DIMENSIONS: dict[str, NameDimension] = {
     'people': NameDimension(junctions=(('scene_people', 'person_id'),)),
@@ -31,16 +27,6 @@ NAME_DIMENSIONS: dict[str, NameDimension] = {
     'countries': NameDimension(junctions=(('scene_countries', 'country_id'),)),
 }
 
-_CASE_INDEXES = (
-    'CREATE UNIQUE INDEX IF NOT EXISTS people_ci_global ON people(name COLLATE NOCASE) WHERE scope_studio_id IS NULL',
-    'CREATE UNIQUE INDEX IF NOT EXISTS people_ci_scoped ON people(name COLLATE NOCASE, scope_studio_id) WHERE scope_studio_id IS NOT NULL',
-    'CREATE UNIQUE INDEX IF NOT EXISTS studios_ci ON studios(name COLLATE NOCASE)',
-    'CREATE UNIQUE INDEX IF NOT EXISTS taglines_ci ON taglines(name COLLATE NOCASE)',
-    'CREATE UNIQUE INDEX IF NOT EXISTS collections_ci ON collections(name COLLATE NOCASE)',
-    'CREATE UNIQUE INDEX IF NOT EXISTS genres_ci ON genres(name COLLATE NOCASE)',
-    'CREATE UNIQUE INDEX IF NOT EXISTS countries_ci ON countries(name COLLATE NOCASE)',
-)
-
 
 def merge_name_row(conn: sqlite3.Connection, table: str, keep: int, drop: int) -> None:
     spec = NAME_DIMENSIONS[table]
@@ -50,94 +36,6 @@ def merge_name_row(conn: sqlite3.Connection, table: str, keep: int, drop: int) -
     for child, column in spec.refs:
         conn.execute(f'UPDATE {child} SET {column} = ? WHERE {column} = ?', (keep, drop))  # noqa: S608
     conn.execute(f'DELETE FROM {table} WHERE id = ?', (drop,))  # noqa: S608
-
-
-def _duplicate_name_groups(conn: sqlite3.Connection, table: str, key: Callable[[str], str]) -> list[list[sqlite3.Row]]:
-    scoped = table == 'people'
-    scope = ', scope_studio_id' if scoped else ''
-    rows = conn.execute(f'SELECT id, name{scope} FROM {table} ORDER BY id').fetchall()  # noqa: S608
-    groups: dict[tuple[str, object], list[sqlite3.Row]] = {}
-    for row in rows:
-        group = (key(str(row['name'])), row['scope_studio_id'] if scoped else None)
-        groups.setdefault(group, []).append(row)
-    return [members for members in groups.values() if len(members) > 1]
-
-
-def _canonical_dimension_name(table: str, name: str) -> str:
-    from phoenixadult.utils.processors.title_case import title_case
-
-    if table == 'genres':
-        from phoenixadult.utils.genres.data import genre_rules
-
-        mapped = genre_rules().replace_lookup.get(name.lower())
-        if mapped:
-            return mapped
-    return title_case(name, type='name' if table == 'people' else 'title')
-
-
-def _is_canonical(table: str, name: str) -> bool:
-    return name == _canonical_dimension_name(table, name)
-
-
-def _fold_duplicate_names(conn: sqlite3.Connection, key_for: Callable[[str], Callable[[str], str]], reason: str) -> int:
-    merged = 0
-    for table, spec in NAME_DIMENSIONS.items():
-        child, column = spec.usage
-        for members in _duplicate_name_groups(conn, table, key_for(table)):
-            used = {
-                int(r['id']): int(conn.execute(f'SELECT COUNT(*) n FROM {child} WHERE {column} = ?', (int(r['id']),)).fetchone()['n'])  # noqa: S608
-                for r in members
-            }
-            ranked = sorted(members, key=lambda r: (not _is_canonical(table, str(r['name'])), not used[int(r['id'])], int(r['id'])))
-            keep = ranked[0]
-            for row in ranked[1:]:
-                logger.info('db', f'{table}: folding "{row["name"]}" into "{keep["name"]}" — {reason}')
-                _carry_curated_fields(conn, table, int(keep['id']), int(row['id']))
-                merge_name_row(conn, table, int(keep['id']), int(row['id']))
-                merged += 1
-    return merged
-
-
-def _carry_curated_fields(conn: sqlite3.Connection, table: str, keep: int, drop: int) -> None:
-    if table != 'people':
-        return
-    for column in ('gender', 'iafd_id'):
-        conn.execute(
-            f"UPDATE people SET {column} = (SELECT {column} FROM people WHERE id = ?) WHERE id = ? AND COALESCE({column}, '') = ''",  # noqa: S608
-            (drop, keep),
-        )
-
-
-def _fold_case_duplicate_names(conn: sqlite3.Connection) -> None:
-    merged = _fold_duplicate_names(conn, lambda _table: str.casefold, 'one spelling per name')
-    for statement in _CASE_INDEXES:
-        conn.execute(statement)
-    if merged:
-        logger.info('db', f'merged {merged} name(s) that differed only by capitalisation')
-
-
-def _recased_key(table: str) -> Callable[[str], str]:
-    return lambda name: _canonical_dimension_name(table, name).casefold()
-
-
-def _fold_recased_duplicate_names(conn: sqlite3.Connection) -> None:
-    merged = _fold_duplicate_names(conn, _recased_key, 'title_case now maps both spellings to one')
-    if merged:
-        logger.info('db', f'merged {merged} name(s) that title_case recased into an existing spelling')
-
-
-def _recase_noncanonical_names(conn: sqlite3.Connection) -> None:
-    _fold_recased_duplicate_names(conn)
-    recased = 0
-    for table in NAME_DIMENSIONS:
-        for row in conn.execute(f'SELECT id, name FROM {table}').fetchall():  # noqa: S608 - fixed table names
-            cased = _canonical_dimension_name(table, str(row['name']))
-            if cased and cased != str(row['name']):
-                logger.info('db', f'{table}: recased "{row["name"]}" to "{cased}"')
-                conn.execute(f'UPDATE OR IGNORE {table} SET name = ? WHERE id = ?', (cased, int(row['id'])))  # noqa: S608
-                recased += 1
-    if recased:
-        logger.info('db', f'recased {recased} stored name(s) to their canonical spelling')
 
 
 def prune_orphan_names(conn: sqlite3.Connection) -> dict[str, int]:

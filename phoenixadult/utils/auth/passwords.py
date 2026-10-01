@@ -45,13 +45,6 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def needs_rehash(stored: str) -> bool:
-    try:
-        return _hasher.check_needs_rehash(stored)
-    except InvalidHashError:
-        return True
-
-
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 

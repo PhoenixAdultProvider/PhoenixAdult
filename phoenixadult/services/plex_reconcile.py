@@ -178,10 +178,6 @@ def progress(connection_id: int) -> dict[str, Any]:
     return dict(_progress.get(connection_id) or {'active': False, 'total': 0, 'inspected': 0})
 
 
-def is_running(connection_id: int) -> bool:
-    return bool((_progress.get(connection_id) or {}).get('active'))
-
-
 async def _inspect_item(
     client: PlexClient, section: str, stub: dict[str, Any], rating_key: str, site_name: str, field_filter: set[str]
 ) -> tuple[ItemReport, dict[str, list[str]] | None, str]:

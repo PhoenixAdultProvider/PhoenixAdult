@@ -38,10 +38,6 @@ def bundle_path(scene_hash: str) -> str:
     return f'{BUNDLE_ROOT}/{scene_hash[:_FANOUT]}/{scene_hash}'
 
 
-def is_legacy_path(rel_path: str) -> bool:
-    return not rel_path.startswith(f'{BUNDLE_ROOT}/')
-
-
 def bundle_payload(
     site_name: str, cur_id: str, scene_hash: str, data: dict[str, Any], image_meta: dict[str, tuple[int, int, int]] | None = None
 ) -> dict[str, Any]:

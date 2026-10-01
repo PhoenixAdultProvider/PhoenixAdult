@@ -28,14 +28,6 @@ def proxy_url(
     return sign_url(out)
 
 
-def proxy_target(url: str) -> str:
-    if '/images/proxy' in url:
-        qs = parse_qs(urlsplit(url).query)
-        if qs.get('url'):
-            return unquote(qs['url'][0])
-    return url
-
-
 def proxy_params(url: str) -> tuple[str, list[str], list[str]]:
     if '/images/proxy' in url:
         qs = parse_qs(urlsplit(url).query)

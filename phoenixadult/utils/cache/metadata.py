@@ -32,8 +32,6 @@ from phoenixadult.utils.logging.logger import logger
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
-IMAGE_FETCH_CONCURRENCY = gate.IMAGE_FETCH
-
 
 def _image_gate() -> asyncio.Semaphore:
     return loop_gate('image-fetch', gate.IMAGE_FETCH)
