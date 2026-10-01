@@ -26,6 +26,11 @@ class _ImpersonateBackend:
         except ImportError:
             logger.debug('bypass:Impersonate', 'curl_cffi not installed; skipping')
             return None
+        try:
+            await guard_target(req.url)
+        except ValueError as err:
+            logger.warn('bypass:Impersonate', f'refusing {req.url}: {err}')
+            return None
 
         timeout = (req.timeout_ms or 30_000) / 1000
         kwargs: dict[str, Any] = {
@@ -40,6 +45,8 @@ class _ImpersonateBackend:
                 async with AsyncSession() as session:
                     if req.method == 'POST':
                         r = await session.post(req.url, data=req.body, **kwargs)
+                    elif req.method == 'HEAD':
+                        r = await session.head(req.url, **kwargs)
                     else:
                         r = await session.get(req.url, **kwargs)
                 break

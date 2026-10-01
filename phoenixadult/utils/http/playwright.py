@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.http.bypass_types import BypassRequest, BypassResponse
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.logger import logger
 
 
@@ -22,6 +23,11 @@ class _PlaywrightBackend:
             from playwright.async_api import async_playwright
         except ImportError:
             logger.debug('bypass:Playwright', 'not installed; skipping')
+            return None
+        try:
+            await guard_target(req.url)
+        except ValueError as err:
+            logger.warn('bypass:Playwright', f'refusing {req.url}: {err}')
             return None
 
         timeout = req.timeout_ms or env.bypass_timeout_ms
