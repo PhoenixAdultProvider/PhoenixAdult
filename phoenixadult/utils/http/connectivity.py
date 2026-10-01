@@ -5,6 +5,8 @@ import contextlib
 import time
 from contextvars import ContextVar
 
+from phoenixadult.config.env import env
+
 _failures: ContextVar[list[str] | None] = ContextVar('transport_failures', default=None)
 
 _PROBE_TARGETS = (('1.1.1.1', 443), ('8.8.8.8', 443))
@@ -42,6 +44,8 @@ async def _probe_once() -> bool:
 
 async def internet_reachable() -> bool:
     global _probe_cache
+    if (env.https_proxy or '').strip():
+        return True
     now = time.monotonic()
     if _probe_cache is not None and now - _probe_cache[0] < _PROBE_TTL:
         return _probe_cache[1]
