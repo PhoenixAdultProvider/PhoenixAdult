@@ -153,21 +153,27 @@ def _decode_pixels(data: bytes) -> str:
         return _sha1(img.convert('RGB').tobytes())
 
 
-async def content_digest(url: str) -> str | None:
-    if (hit := _byte_digests.get(url)) is not None:
+def cache_key(url: str, cookies: list[str] | None = None) -> str:
+    return f'{url}\x00{"; ".join(cookies)}' if cookies and not _is_data18_host(url) else url
+
+
+async def content_digest(url: str, cookies: list[str] | None = None) -> str | None:
+    key = cache_key(url, cookies)
+    if (hit := _byte_digests.get(key)) is not None:
         return hit
-    entry = _cache.get(url)
+    entry = _cache.get(key)
     if entry is None:
         return None
     digest = await run_in('image', _sha1, entry.data)
-    _byte_digests[url] = digest
+    _byte_digests[key] = digest
     return digest
 
 
-async def pixel_digest(url: str) -> str | None:
-    if (hit := _pixel_digests.get(url)) is not None:
+async def pixel_digest(url: str, cookies: list[str] | None = None) -> str | None:
+    key = cache_key(url, cookies)
+    if (hit := _pixel_digests.get(key)) is not None:
         return hit
-    entry = _cache.get(url)
+    entry = _cache.get(key)
     if entry is None:
         return None
     try:
@@ -175,7 +181,7 @@ async def pixel_digest(url: str) -> str | None:
     except Exception as err:  # noqa: BLE001 - an undecodable image simply is not deduped
         logger.debug(f'pixel digest failed for {url}: {err!r}')
         return None
-    _pixel_digests[url] = digest
+    _pixel_digests[key] = digest
     return digest
 
 
@@ -220,10 +226,11 @@ _coalesce: Coalescer[str, ImageEntry] = Coalescer()
 
 
 async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
-    cached = _cache.get(url)
+    key = cache_key(url, configured_cookies)
+    cached = _cache.get(key)
     if cached:
         return cached
-    return await _coalesce.run(url, lambda: _fetch_image(url, configured_referers, configured_cookies, pinned))
+    return await _coalesce.run(key, lambda: _fetch_image(url, configured_referers, configured_cookies, pinned))
 
 
 async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
@@ -278,7 +285,7 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
         width, height, solid = 0, 0, False
 
     entry = ImageEntry(data=data, content_type=content_type, cached_at=time.time(), width=width, height=height, solid=solid)
-    _cache[url] = entry
+    _cache[cache_key(url, configured_cookies)] = entry
     return entry
 
 
@@ -329,7 +336,7 @@ async def fetch_dimensions(url: str, referers: list[str] | None = None, cookies:
     if cached_hit:
         return {'width': cached_dims[0], 'height': cached_dims[1]} if cached_dims else None
 
-    if (entry := _cache.get(url)) is not None and entry.width > 0 and entry.height > 0:
+    if (entry := _cache.get(cache_key(url, cookies))) is not None and entry.width > 0 and entry.height > 0:
         _dims_cache[url] = (entry.width, entry.height)
         return {'width': entry.width, 'height': entry.height}
 

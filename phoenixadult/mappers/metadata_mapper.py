@@ -136,11 +136,11 @@ def pixel_keys(entries: list[dict[str, Any]], digests: list[str | None]) -> list
     return keys
 
 
-async def _dedupe_artwork(probed: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    kept = _keep_first_by(probed, list(await asyncio.gather(*(content_digest(p['url']) for p in probed))))
+async def _dedupe_artwork(probed: list[dict[str, Any]], cookies: list[str] | None = None) -> list[dict[str, Any]]:
+    kept = _keep_first_by(probed, list(await asyncio.gather(*(content_digest(p['url'], cookies) for p in probed))))
 
     async def digest_if_ambiguous(entry: dict[str, Any], ambiguous: bool) -> str | None:
-        return await pixel_digest(entry['url']) if ambiguous else None
+        return await pixel_digest(entry['url'], cookies) if ambiguous else None
 
     wanted = needs_pixel_check(kept)
     digests = list(await asyncio.gather(*(digest_if_ambiguous(entry, ambiguous) for entry, ambiguous in zip(kept, wanted, strict=True))))
@@ -270,7 +270,7 @@ class MetadataMapper:
             return {'url': raw_url, 'dims': dims, 'image_class': result.image_class}
 
         probed = await asyncio.gather(*(probe(u) for u in art))
-        return await _dedupe_artwork([p for p in probed if p is not None])
+        return await _dedupe_artwork([p for p in probed if p is not None], cookies)
 
     async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
         valid = await self._probe_artwork(detail.art, referers, cookies)
