@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from phoenixadult.utils.helpers.dates import format_duration
 from phoenixadult.utils.helpers.ids import pack_cur_id, unpack_cur_id
 from phoenixadult.utils.helpers.scoring import title_distance_score
@@ -86,3 +88,26 @@ def test_scene_url_id_reads_the_site_id_from_a_path_or_a_query() -> None:
     assert scene_url_id('https://lubed.com/api/releases/soapy-wet-threesome') == ''
     assert scene_url_id('https://example.com/2024/some-scene/') == ''
     assert scene_url_id(None) == ''
+
+
+@pytest.mark.parametrize(
+    ('raw', 'expected'),
+    [
+        ('30 minutes ago', '2024-03-15'),
+        ('13 hours ago', '2024-03-14'),
+        ('a day ago', '2024-03-14'),
+        ('Posted 3 days ago', '2024-03-12'),
+        ('an hour ago', '2024-03-15'),
+        ('2 weeks ago', '2024-03-01'),
+        ('1 month ago', '2024-02-15'),
+        ('2 years ago', '2022-03-15'),
+        ('yesterday', None),
+        ('', None),
+    ],
+)
+def test_relative_dates_count_back_from_now(raw: str, expected: str | None) -> None:
+    from datetime import UTC, datetime
+
+    from phoenixadult.utils.helpers.dates import relative_iso_date
+
+    assert relative_iso_date(raw, now=datetime(2024, 3, 15, 12, 0, tzinfo=UTC)) == expected

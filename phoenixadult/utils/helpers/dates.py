@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from dateutil import parser as date_parser
@@ -50,29 +50,15 @@ def epoch_date(value: Any) -> str | None:
 _RELATIVE_AGO_RE = re.compile(r'(\d+|a|an)\s+(minute|hour|day|week|month|year)s?\s*ago\b')
 
 
+_AGO_UNITS = {'minute': 'minutes', 'hour': 'hours', 'day': 'days', 'week': 'weeks', 'month': 'months', 'year': 'years'}
+
+
 def relative_iso_date(raw: str, now: datetime | None = None) -> str | None:
-    if not raw:
-        return None
-    m = _RELATIVE_AGO_RE.search(raw.strip().lower())
+    m = _RELATIVE_AGO_RE.search(raw.strip().lower()) if raw else None
     if not m:
         return None
     n = 1 if m.group(1) in ('a', 'an') else int(m.group(1))
-    if n < 0:
-        return None
-    base = now if now is not None else datetime.now(UTC)
-    unit = m.group(2)
-    if unit == 'minute':
-        shifted = base - timedelta(minutes=n)
-    elif unit == 'hour':
-        shifted = base - timedelta(hours=n)
-    elif unit == 'day':
-        shifted = base - timedelta(days=n)
-    elif unit == 'week':
-        shifted = base - timedelta(weeks=n)
-    elif unit == 'month':
-        shifted = base - relativedelta(months=n)
-    else:
-        shifted = base - relativedelta(years=n)
+    shifted = (now if now is not None else datetime.now(UTC)) - relativedelta(**{_AGO_UNITS[m.group(2)]: n})
     return f'{shifted.year:04d}-{shifted.month:02d}-{shifted.day:02d}'
 
 

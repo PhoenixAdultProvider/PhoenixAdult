@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from text2digits import text2digits
 
@@ -202,6 +203,14 @@ def _capitalize(s: str) -> str:
 _TokenKind = Literal['word', 'space', 'symbol', 'punct']
 
 
+class _Word(NamedTuple):
+    text: str
+    clean: str
+    clean_lower: str
+    after_dot: bool
+    after_apostrophe: bool
+
+
 @dataclass
 class _Token:
     text: str
@@ -290,58 +299,59 @@ class _TitleCaseEngine:
 
     def _normalize_word(self, word: str, *, after_dot: bool = False, after_apostrophe: bool = False) -> str:
         clean_word = _strip_non_word(word)
-        clean_lower = clean_word.lower()
+        w = _Word(word, clean_word, clean_word.lower(), after_dot, after_apostrophe)
+        cased = next((c for rule in self._word_rules() if (c := rule(w)) is not None), None)
+        return self._manual_word_fix(cased if cased is not None else _capitalize(word))
 
-        if self.clean_site and clean_lower == self.clean_site:
-            return self._manual_word_fix(self.site_name)
+    def _word_rules(self) -> tuple[Callable[[_Word], str | None], ...]:
+        return (
+            self._site_name_rule,
+            self._contraction_tail_rule,
+            self._contraction_rule,
+            self._tld_rule,
+            self._initial_rule,
+            self._acronym_or_size,
+            self._upper_exception_rule,
+            self._shouting_rule,
+            self._lower_exception_rule,
+            self._mixed_case_rule,
+        )
 
-        if after_apostrophe and clean_lower in _CONTRACTIONS:
-            return self._manual_word_fix(word.lower())
+    def _site_name_rule(self, w: _Word) -> str | None:
+        return self.site_name if self.clean_site and w.clean_lower == self.clean_site else None
 
-        if "'" in word:
-            return self._manual_word_fix(self._handle_contraction_word(word))
+    def _contraction_tail_rule(self, w: _Word) -> str | None:
+        return w.text.lower() if w.after_apostrophe and w.clean_lower in _CONTRACTIONS else None
 
-        if after_dot and clean_lower in _TLD_FRAGMENTS:
-            return self._manual_word_fix(word.lower())
+    def _contraction_rule(self, w: _Word) -> str | None:
+        return self._handle_contraction_word(w.text) if "'" in w.text else None
 
-        if self.type == 'name' and len(clean_word) == 1 and clean_word.isupper():
-            return self._manual_word_fix(word)
+    def _tld_rule(self, w: _Word) -> str | None:
+        return w.text.lower() if w.after_dot and w.clean_lower in _TLD_FRAGMENTS else None
 
-        is_special, special_val = self._is_acronym_or_size(clean_lower, clean_word)
-        if is_special:
-            assert special_val is not None
-            return self._manual_word_fix(special_val)
+    def _initial_rule(self, w: _Word) -> str | None:
+        return w.text if self.type == 'name' and len(w.clean) == 1 and w.clean.isupper() else None
 
-        if clean_lower in _UPPER_EXCEPTIONS:
-            return self._manual_word_fix(word.upper())
+    def _acronym_or_size(self, w: _Word) -> str | None:
+        exempt = (
+            (w.clean_lower in _NAME_EXCEPTIONS and self.site_name in _NAME_EXCEPTION_SITES) or w.clean_lower in self.lower_exceptions or self.type == 'name'
+        )
+        short_caps = 2 <= len(w.clean) <= 4 and w.clean == w.clean.upper()
+        known = w.clean_lower in _SIZE_CODES or w.clean_lower in _ACRONYMS
+        return w.clean.upper() if not exempt and (known or short_caps) else None
 
-        if clean_word and clean_word == clean_word.upper() and clean_lower not in self.lower_exceptions:
-            return self._manual_word_fix(word.upper())
+    def _upper_exception_rule(self, w: _Word) -> str | None:
+        return w.text.upper() if w.clean_lower in _UPPER_EXCEPTIONS else None
 
-        if clean_lower in self.lower_exceptions:
-            return self._manual_word_fix(word.lower())
+    def _shouting_rule(self, w: _Word) -> str | None:
+        shouting = w.clean and w.clean == w.clean.upper() and w.clean_lower not in self.lower_exceptions
+        return w.text.upper() if shouting else None
 
-        has_lower = bool(re.search(r'[a-z]', word))
-        has_upper = bool(re.search(r'[A-Z]', word))
-        if has_lower and has_upper:
-            return self._manual_word_fix(word)
+    def _lower_exception_rule(self, w: _Word) -> str | None:
+        return w.text.lower() if w.clean_lower in self.lower_exceptions else None
 
-        return self._manual_word_fix(_capitalize(word))
-
-    def _is_acronym_or_size(self, clean_lower: str, clean_word: str) -> tuple[bool, str | None]:
-        if clean_lower in _NAME_EXCEPTIONS and self.site_name in _NAME_EXCEPTION_SITES:
-            return False, None
-        if clean_lower in self.lower_exceptions:
-            return False, None
-        if self.type == 'name':
-            return False, None
-        if clean_lower in _SIZE_CODES:
-            return True, clean_word.upper()
-        if clean_lower in _ACRONYMS:
-            return True, clean_word.upper()
-        if 2 <= len(clean_word) <= 4 and clean_word == clean_word.upper():
-            return True, clean_word.upper()
-        return False, None
+    def _mixed_case_rule(self, w: _Word) -> str | None:
+        return w.text if re.search(r'[a-z]', w.text) and re.search(r'[A-Z]', w.text) else None
 
     def _handle_contraction_word(self, word: str) -> str:
         out: list[str] = []

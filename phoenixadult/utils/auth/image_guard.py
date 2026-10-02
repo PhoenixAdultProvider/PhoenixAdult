@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from inspect import isawaitable
 from urllib.parse import urlparse
 
 from fastapi import Request
@@ -57,19 +59,35 @@ def _same_origin_subresource(request: Request) -> bool:
     return bool(referer_host) and referer_host == request.url.hostname
 
 
+def _plex_user_agent(request: Request) -> bool:
+    return _PLEX_UA in (request.headers.get('user-agent') or '').lower()
+
+
+def _loopback(request: Request) -> bool:
+    return is_loopback(request.client.host if request.client else None)
+
+
+async def _signed_in(request: Request) -> bool:
+    return await resolve_user(request) is not None
+
+
+_ADMISSIONS: tuple[tuple[str, Callable[[Request], bool | Awaitable[bool]]], ...] = (
+    ('signature', signed_request_ok),
+    ('plex user-agent', _plex_user_agent),
+    ('loopback', _loopback),
+    ('signed-in user', _signed_in),
+    ('same-origin subresource', _same_origin_subresource),
+    ('image subresource', _image_subresource),
+)
+
+
 async def _admitted_by(request: Request) -> str | None:
-    if signed_request_ok(request):
-        return 'signature'
-    if _PLEX_UA in (request.headers.get('user-agent') or '').lower():
-        return 'plex user-agent'
-    if is_loopback(request.client.host if request.client else None):
-        return 'loopback'
-    if await resolve_user(request) is not None:
-        return 'signed-in user'
-    if _same_origin_subresource(request):
-        return 'same-origin subresource'
-    if _image_subresource(request):
-        return 'image subresource'
+    for reason, admits in _ADMISSIONS:
+        verdict = admits(request)
+        if isawaitable(verdict):
+            verdict = await verdict
+        if verdict:
+            return reason
     return None
 
 

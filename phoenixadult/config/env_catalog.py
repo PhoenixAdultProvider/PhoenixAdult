@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -543,43 +544,61 @@ def humanize_bytes(raw: str | None) -> str:
 # ── Validation / Normalization ────────────────────────────────────────────────
 
 
-def normalize_env_value(spec: EnvVarSpec, raw: str) -> tuple[bool, str]:
-    value = raw.strip()
+_Verdict = tuple[bool, str]
 
-    if spec.kind == 'boolean':
-        if value not in ('true', 'false'):
-            return False, f'{spec.key} must be On or Off'
-        return True, value
 
-    if spec.kind == 'number':
-        if not re.match(r'^-?\d+$', value):
-            return False, f'{spec.key} must be an integer'
-        n = int(value)
-        if spec.min is not None and n < spec.min:
-            return False, f'{spec.key} must be ≥ {spec.min}'
-        if spec.max is not None and n > spec.max:
-            return False, f'{spec.key} must be ≤ {spec.max}'
-        return True, str(n)
-
-    if spec.kind == 'bytes':
-        parsed = parse_bytes(value)
-        if parsed is None:
-            return False, f'{spec.key} must be a size like 20M, 2000K or 100B'
-        return True, parsed
-
-    if spec.kind == 'enum':
-        if spec.options and value not in spec.options:
-            return False, f'{spec.key} must be one of: {", ".join(spec.options)}'
-        return True, value
-
-    if spec.kind == 'list':
-        items = [s.strip() for s in value.split(',') if s.strip()]
-        if spec.pattern_items:
-            for item in items:
-                try:
-                    re.compile(item)
-                except re.error as err:
-                    return False, f'{spec.key} entry {item!r} is not a valid pattern: {err}'
-        return True, ','.join(items)
-
+def _normalize_boolean(spec: EnvVarSpec, value: str) -> _Verdict:
+    if value not in ('true', 'false'):
+        return False, f'{spec.key} must be On or Off'
     return True, value
+
+
+def _normalize_number(spec: EnvVarSpec, value: str) -> _Verdict:
+    if not re.match(r'^-?\d+$', value):
+        return False, f'{spec.key} must be an integer'
+    n = int(value)
+    if spec.min is not None and n < spec.min:
+        return False, f'{spec.key} must be ≥ {spec.min}'
+    if spec.max is not None and n > spec.max:
+        return False, f'{spec.key} must be ≤ {spec.max}'
+    return True, str(n)
+
+
+def _normalize_bytes(spec: EnvVarSpec, value: str) -> _Verdict:
+    parsed = parse_bytes(value)
+    if parsed is None:
+        return False, f'{spec.key} must be a size like 20M, 2000K or 100B'
+    return True, parsed
+
+
+def _normalize_enum(spec: EnvVarSpec, value: str) -> _Verdict:
+    if spec.options and value not in spec.options:
+        return False, f'{spec.key} must be one of: {", ".join(spec.options)}'
+    return True, value
+
+
+def _normalize_list(spec: EnvVarSpec, value: str) -> _Verdict:
+    items = [s.strip() for s in value.split(',') if s.strip()]
+    if not spec.pattern_items:
+        return True, ','.join(items)
+    for item in items:
+        try:
+            re.compile(item)
+        except re.error as err:
+            return False, f'{spec.key} entry {item!r} is not a valid pattern: {err}'
+    return True, ','.join(items)
+
+
+_NORMALIZERS: dict[str, Callable[[EnvVarSpec, str], _Verdict]] = {
+    'boolean': _normalize_boolean,
+    'number': _normalize_number,
+    'bytes': _normalize_bytes,
+    'enum': _normalize_enum,
+    'list': _normalize_list,
+}
+
+
+def normalize_env_value(spec: EnvVarSpec, raw: str) -> _Verdict:
+    normalize = _NORMALIZERS.get(spec.kind)
+    value = raw.strip()
+    return normalize(spec, value) if normalize else (True, value)

@@ -7,7 +7,7 @@ from starlette.requests import Request
 from phoenixadult.utils.auth import image_guard as ig
 
 
-def _request(headers: dict[str, str], path: str = '/images/proxy') -> Request:
+def _request(headers: dict[str, str], path: str = '/images/proxy', client: str = '203.0.113.5') -> Request:
     scope = {
         'type': 'http',
         'method': 'GET',
@@ -15,7 +15,7 @@ def _request(headers: dict[str, str], path: str = '/images/proxy') -> Request:
         'raw_path': path.encode(),
         'query_string': b'',
         'headers': Headers(headers).raw,
-        'client': ('203.0.113.5', 1234),
+        'client': (client, 1234),
         'scheme': 'http',
         'server': ('provider.test', 80),
         'root_path': '',
@@ -71,3 +71,21 @@ async def test_the_consumers_we_serve_are_still_admitted(headers: dict[str, str]
 async def test_a_typed_in_url_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     navigation = {'user-agent': 'Mozilla/5.0', 'accept': 'text/html,image/webp', 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'none'}
     assert await ig._admitted_by(_request(navigation)) is None
+
+
+async def test_a_loopback_client_is_admitted() -> None:
+    assert await ig._admitted_by(_request({'user-agent': 'curl/8'}, client='127.0.0.1')) == 'loopback'
+
+
+async def test_a_signed_url_is_admitted_first() -> None:
+    from phoenixadult.utils.auth.url_signing import sign_url
+
+    path, _, query = str(sign_url('/images/local/actor.jpg')).partition('?')
+    request = _request({'user-agent': 'PlexMediaServer/1.40'}, path=path, client='127.0.0.1')
+    request.scope['query_string'] = query.encode()
+    assert await ig._admitted_by(request) == 'signature'
+
+
+async def test_the_earliest_matching_reason_wins() -> None:
+    plex_fetching_an_image = {'user-agent': 'PlexMediaServer/1.40', 'accept': 'image/png'}
+    assert await ig._admitted_by(_request(plex_fetching_an_image, client='127.0.0.1')) == 'plex user-agent'
