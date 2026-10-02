@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import NamedTuple
 
 from phoenixadult import provider_version
 from phoenixadult.models.provider_info import ProviderInfo
@@ -47,28 +48,28 @@ def _with_archive(sites: list[SiteInfo], archived: list[SiteInfo]) -> list[SiteI
 SITE_DEFINITIONS: list[SiteInfo] = _with_archive(list(_SELECTOR_SITES), _ARCHIVE_SITES)
 
 
-def _build_tables(
-    providers: list[ProviderInfo], sites: list[SiteInfo]
-) -> tuple[
-    dict[str, ProviderInfo],
-    dict[str, ResolvedSiteInfo],
-    dict[str, list[ResolvedSiteInfo]],
-    dict[str, str],
-    dict[str, list[str]],
-    list[tuple[str, ResolvedSiteInfo]],
-]:
-    provider_by_id = {p.id: p for p in providers}
+class _Tables(NamedTuple):
+    provider_by_id: dict[str, ProviderInfo]
+    site_by_token: dict[str, ResolvedSiteInfo]
+    sites_by_provider: dict[str, list[ResolvedSiteInfo]]
+    display_by_token: dict[str, str]
+    tokens_by_provider_name: dict[str, list[str]]
+    prefix_table: list[tuple[str, ResolvedSiteInfo]]
 
+
+def _resolve_sites(sites: list[SiteInfo], provider_by_id: dict[str, ProviderInfo]) -> list[ResolvedSiteInfo]:
     resolved: list[ResolvedSiteInfo] = []
     for site in sites:
         data = {f.name: getattr(site, f.name) for f in dataclasses.fields(site)}
         data['provider_id'] = site.provider_id or DEFAULT_PROVIDER_ID
         resolved.append(ResolvedSiteInfo(**data))
+    unknown = next((site for site in resolved if site.provider_id not in provider_by_id), None)
+    if unknown is not None:
+        raise ValueError(f'Site "{unknown.name}" references unknown providerId "{unknown.provider_id}".')
+    return resolved
 
-    for site in resolved:
-        if site.provider_id not in provider_by_id:
-            raise ValueError(f'Site "{site.name}" references unknown providerId "{site.provider_id}".')
 
+def _token_tables(resolved: list[ResolvedSiteInfo]) -> tuple[dict[str, ResolvedSiteInfo], dict[str, str]]:
     site_by_token: dict[str, ResolvedSiteInfo] = {}
     display_by_token: dict[str, str] = {}
     for site in resolved:
@@ -78,27 +79,32 @@ def _build_tables(
                 raise ValueError(f'Registry conflict: token "{key}" claimed by both "{site_by_token[key].name}" and "{site.name}".')
             site_by_token[key] = site
             display_by_token[key] = token
+    return site_by_token, display_by_token
 
-    sites_by_provider: dict[str, list[ResolvedSiteInfo]] = {p.id: [] for p in providers}
-    for site in resolved:
-        sites_by_provider[site.provider_id].append(site)
 
-    tokens_by_provider_name: dict[str, list[str]] = {}
-    for site in resolved:
-        tokens_by_provider_name.setdefault(site.provider_name or site.name, []).extend([site.name, *site.aliases])
-
-    prefix_table: list[tuple[str, ResolvedSiteInfo]] = []
+def _prefix_table(resolved: list[ResolvedSiteInfo]) -> list[tuple[str, ResolvedSiteInfo]]:
+    table: list[tuple[str, ResolvedSiteInfo]] = []
     for site in resolved:
         for prefix in site.token_prefixes:
             key = normalize_site_key(prefix)
             if not key:
                 raise ValueError(f'Site "{site.name}" declares an empty token prefix.')
-            if any(key == existing for existing, _ in prefix_table):
+            if any(key == existing for existing, _ in table):
                 raise ValueError(f'Registry conflict: token prefix "{key}" declared twice.')
-            prefix_table.append((key, site))
-    prefix_table.sort(key=lambda entry: -len(entry[0]))
+            table.append((key, site))
+    return sorted(table, key=lambda entry: -len(entry[0]))
 
-    return provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name, prefix_table
+
+def _build_tables(providers: list[ProviderInfo], sites: list[SiteInfo]) -> _Tables:
+    provider_by_id = {p.id: p for p in providers}
+    resolved = _resolve_sites(sites, provider_by_id)
+    site_by_token, display_by_token = _token_tables(resolved)
+    sites_by_provider: dict[str, list[ResolvedSiteInfo]] = {p.id: [] for p in providers}
+    tokens_by_provider_name: dict[str, list[str]] = {}
+    for site in resolved:
+        sites_by_provider[site.provider_id].append(site)
+        tokens_by_provider_name.setdefault(site.provider_name or site.name, []).extend([site.name, *site.aliases])
+    return _Tables(provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name, _prefix_table(resolved))
 
 
 provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name, site_by_token_prefix = _build_tables(

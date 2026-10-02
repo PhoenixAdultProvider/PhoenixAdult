@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -77,6 +78,32 @@ async def _answer(provider: ProviderInfo, label: str, respond: Callable[[], Awai
         return JSONResponse({'error': 'Internal server error'}, status_code=500)
 
 
+def _describe(provider: ProviderInfo) -> MediaProviderResponse:
+    return MediaProviderResponse.model_validate(
+        {
+            'MediaProvider': {
+                'identifier': provider.plex_identifier,
+                'title': provider.title,
+                'version': provider.version,
+                'Types': [{'type': plex_media_type_id(provider.media_type), 'Scheme': [{'scheme': provider.plex_identifier}]}],
+                'Feature': [
+                    {'type': 'match', 'key': '/library/metadata/matches'},
+                    {'type': 'metadata', 'key': '/library/metadata'},
+                ],
+            }
+        }
+    )
+
+
+def _match_request(body: dict[str, Any]) -> MatchRequest:
+    try:
+        media_type = int(body.get('type', 1))
+    except (TypeError, ValueError):
+        raise MalformedRequestError(f'type must be an integer, got {body.get("type")!r}') from None
+    fields = ('title', 'year', 'guid', 'filename', 'manual', 'includeAdult', 'duration', 'ohash')
+    return MatchRequest(type=media_type, **{name: body.get(name) for name in fields})
+
+
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
     router = APIRouter(dependencies=[Depends(provider_guard)])
     metadata_service = MetadataService()
@@ -89,21 +116,7 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
     @router.get('')
     @router.get('/')
     async def describe() -> JSONResponse:
-        response = MediaProviderResponse.model_validate(
-            {
-                'MediaProvider': {
-                    'identifier': provider.plex_identifier,
-                    'title': provider.title,
-                    'version': provider.version,
-                    'Types': [{'type': plex_media_type_id(provider.media_type), 'Scheme': [{'scheme': provider.plex_identifier}]}],
-                    'Feature': [
-                        {'type': 'match', 'key': '/library/metadata/matches'},
-                        {'type': 'metadata', 'key': '/library/metadata'},
-                    ],
-                }
-            }
-        )
-        return plex_json(response)
+        return plex_json(_describe(provider))
 
     @router.post('/library/metadata/matches')
     async def match(request: Request) -> JSONResponse:
@@ -112,22 +125,7 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
         language = request.headers.get('x-plex-language')
 
         async def respond() -> JSONResponse:
-            try:
-                media_type = int(body.get('type', 1))
-            except (TypeError, ValueError):
-                raise MalformedRequestError(f'type must be an integer, got {body.get("type")!r}') from None
-            req = MatchRequest(
-                type=media_type,
-                title=body.get('title'),
-                year=body.get('year'),
-                guid=body.get('guid'),
-                filename=body.get('filename'),
-                manual=body.get('manual'),
-                includeAdult=body.get('includeAdult'),
-                duration=body.get('duration'),
-                ohash=body.get('ohash'),
-            )
-            return plex_json(await match_service.match(req, provider, language))
+            return plex_json(await match_service.match(_match_request(body), provider, language))
 
         return await _answer(provider, 'Match', respond)
 
