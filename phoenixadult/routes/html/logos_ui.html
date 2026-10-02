@@ -6,11 +6,11 @@
   <style>
     body {padding: 24px; }
     .sub code { color: var(--soft-text); }
-    .off-banner { background: var(--banner-warning-bg); color: var(--banner-warning-text); border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
-    .count-badge { font-size: 12px; color: var(--label-text); }
+    .off-banner { background: var(--banner-warning-bg); color: var(--banner-warning-text); border-radius: 6px; padding: 8px 14px; font-size: var(--text-sm); margin-bottom: 16px; }
+    .count-badge { font-size: var(--text-xs); color: var(--label-text); }
     .add-btn { text-decoration: none; }
     .filters .pa-btn { align-self: flex-start; }
-    .rescan-status { font-size: 12px; color: var(--label-text); }
+    .rescan-status { font-size: var(--text-xs); color: var(--label-text); }
     .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
     .studios { position: sticky; top: 12px; max-height: calc(100vh - 120px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
     .studios .st { justify-content: space-between; width: 100%; gap: var(--space-2); border-color: transparent; background: none; }
@@ -27,7 +27,7 @@
     .logo-grid.force-light .logo-box { background: repeating-conic-gradient(var(--logo-proof-light-a) 0% 25%, var(--logo-proof-light-b) 0% 50%) 0 0 / 20px 20px; }
     .logo-grid.force-dark .logo-box { background: repeating-conic-gradient(var(--logo-proof-dark-a) 0% 25%, var(--logo-proof-dark-b) 0% 50%) 0 0 / 20px 20px; }
     .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
-    .site { font-size: 14px; font-weight: 600; text-align: center; overflow-wrap: anywhere; }
+    .site { font-size: var(--text-base); font-weight: 600; text-align: center; overflow-wrap: anywhere; }
     .site .unknown { color: var(--label-text); font-weight: 400; font-style: italic; }
 
     @media (max-width: 720px) {

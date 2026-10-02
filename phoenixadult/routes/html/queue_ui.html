@@ -4,27 +4,27 @@
 {% block head %}
   <style>
     body {padding: 24px; }
-    h2 { font-size: 15px; margin: 22px 0 10px; color: var(--soft-text); }
+    h2 { font-size: var(--text-base); margin: 22px 0 10px; color: var(--soft-text); }
     h2 .count-badge { margin-left: 8px; }
     .pacers { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
     .pacer { font-size: var(--text-sm); display: flex; gap: 14px; align-items: baseline; }
     .pacer .tag { font-weight: 600; }
     .pacer .cd { font-variant-numeric: tabular-nums; color: var(--status-warn-text); }
     .pacer .cd.ready { color: var(--status-ok-text); }
-    .pacer .win { color: var(--label-text); font-size: 12px; }
-    .count-badge { font-size: 12px; color: var(--label-text); font-weight: 400; }
+    .pacer .win { color: var(--label-text); font-size: var(--text-xs); }
+    .count-badge { font-size: var(--text-xs); color: var(--label-text); font-weight: 400; }
     .queues { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
     .queue-col { min-width: 0; }
     .queue-tabs { display: none; }
-    .eta { font-size: 13px; color: var(--status-warn-text); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+    .eta { font-size: var(--text-sm); color: var(--status-warn-text); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
     .list { display: flex; flex-direction: column; gap: 6px; }
     .item { font-size: var(--text-sm); display: flex; align-items: center; gap: 10px; }
     .item.running { border-color: var(--running-item-border); background: var(--running-item-bg); }
     .item .label { flex: 1; word-break: break-all; }
-    .item .age { color: var(--label-text); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .pos { color: var(--empty-text); font-size: 12px; width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
+    .item .age { color: var(--label-text); font-size: var(--text-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .pos { color: var(--empty-text); font-size: var(--text-xs); width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
     .cd.banned { color: var(--status-danger-text); font-weight: 700; }
-    .pause-banner { background: var(--banner-danger-bg); color: var(--banner-danger-text); border-radius: 6px; padding: 8px 14px; font-size: 13px;
+    .pause-banner { background: var(--banner-danger-bg); color: var(--banner-danger-text); border-radius: 6px; padding: 8px 14px; font-size: var(--text-sm);
                     margin-bottom: 12px; display: flex; gap: 12px; align-items: center; }
     .pause-banner .pa-btn { background: transparent; border-color: var(--banner-danger-border); color: var(--banner-danger-text); }
     .pause-banner .pa-btn:hover { background: var(--banner-danger-border); color: var(--banner-danger-bg); }

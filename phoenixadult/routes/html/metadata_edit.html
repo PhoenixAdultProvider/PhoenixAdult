@@ -9,16 +9,16 @@
     .sub a.srclink:hover { text-decoration: underline; }
     .sub details { margin-top: 8px; }
     .sub summary { cursor: pointer; }
-    .sub pre { background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; max-height: 320px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+    .sub pre { background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; max-height: 320px; overflow: auto; font-size: var(--text-xs); white-space: pre-wrap; word-break: break-word; }
     h1, .sub, .cols, .bar { max-width: 1100px; margin-inline: auto; }
     input[type=date] { -webkit-appearance: none; appearance: none; }
-    .state { text-transform: uppercase; letter-spacing: .04em; font-size: 10px; padding: 1px 7px; border-radius: 10px; background: var(--badge-neutral-bg); color: var(--badge-neutral-text); }
+    .state { text-transform: uppercase; letter-spacing: .04em; font-size: var(--text-2xs); padding: 1px 7px; border-radius: 10px; background: var(--badge-neutral-bg); color: var(--badge-neutral-text); }
     .state.manual { background: var(--badge-violet-solid-bg); color: var(--button-text); }
     .state.filled { background: var(--badge-info-bg); color: var(--badge-info-text); }
     input[type=date]::-webkit-calendar-picker-indicator { filter: var(--invert-icon); cursor: pointer; }
     textarea.pa-input { min-height: 110px; resize: vertical; }
     .slugrow { display: flex; align-items: center; gap: 8px; }
-    .slugrow code { flex: 1 1 auto; font-size: 12px; color: var(--link-text); background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 5px 8px; overflow-x: auto; white-space: nowrap; }
+    .slugrow code { flex: 1 1 auto; font-size: var(--text-xs); color: var(--link-text); background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 5px 8px; overflow-x: auto; white-space: nowrap; }
 
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
     .addrow { display: flex; gap: 6px; margin-top: 8px; }
@@ -30,7 +30,7 @@
     .img select, .img .drop { width: 100%; margin-top: 6px; }
     .img .spin { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
     .img .spin .pa-btn { flex: 1 1 auto; }
-    .img .spin span { flex: 0 0 auto; min-width: 28px; text-align: center; font-size: 11px; color: var(--status-warn-text); }
+    .img .spin span { flex: 0 0 auto; min-width: 28px; text-align: center; font-size: var(--text-2xs); color: var(--status-warn-text); }
     .img .spin span:empty { display: none; }
 
     .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; position: sticky; bottom: 0; background: var(--page-bg); padding: 14px 0; border-top: 1px solid var(--progress-track); }
@@ -38,12 +38,12 @@
 
     label.has-lock, legend.has-lock { display: flex; align-items: center; gap: 6px; }
     legend.has-lock { width: 100%; }
-    .lock-toggle { margin-left: auto; padding: 2px 7px; font-size: 13px; line-height: 1.4; border-radius: 5px; cursor: pointer;
+    .lock-toggle { margin-left: auto; padding: 2px 7px; font-size: var(--text-sm); line-height: 1.4; border-radius: 5px; cursor: pointer;
                    background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); opacity: 0.75; }
     .lock-toggle.on { opacity: 1; border-color: var(--soft-warn-text); background: var(--badge-warning-bg); }
     span.lock-toggle { cursor: default; border: 0; background: none; }
     input.locked, textarea.locked { border-color: var(--soft-warn-text); }
-    .img .lockbtn { flex: 0 0 auto; padding: 2px 8px; font-size: 13px; border-radius: 5px; cursor: pointer;
+    .img .lockbtn { flex: 0 0 auto; padding: 2px 8px; font-size: var(--text-sm); border-radius: 5px; cursor: pointer;
                     background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); opacity: 0.75; }
     .img .lockbtn.on { opacity: 1; border-color: var(--soft-warn-text); background: var(--badge-warning-bg); }
     @media (max-width: 720px) {
@@ -53,7 +53,7 @@
       .addrow .pa-btn { width: 100%; }
       .bar { flex-wrap: wrap; }
       .bar .pa-btn { flex: 1 1 auto; }
-      .lock-toggle, .img .lockbtn { padding: 6px 12px; font-size: 16px; }
+      .lock-toggle, .img .lockbtn { padding: 6px 12px; }
     }
   </style>
 {% endblock %}

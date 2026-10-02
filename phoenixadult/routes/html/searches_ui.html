@@ -10,23 +10,23 @@
     .stat b { font-variant-numeric: tabular-nums; }
     .stat.warn b { color: var(--status-warn-text); }
     .group { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
-    .group-head { font-size: 12px; color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+    .group-head { font-size: var(--text-xs); color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
     .search-card { margin-bottom: var(--space-2); }
     .group .search-card:last-child { margin-bottom: 0; }
     .card-head { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
-    .q-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+    .q-title { font-size: var(--text-base); font-weight: 600; overflow-wrap: anywhere; }
     .site-chip { cursor: pointer; border: 0; }
-    .meta { color: var(--muted-text); font-size: 12px; }
+    .meta { color: var(--muted-text); font-size: var(--text-xs); }
     .meta.expired { color: var(--status-danger-text); }
     .card-actions { margin-left: auto; display: flex; gap: 6px; }
     details { margin-top: 8px; }
-    summary { cursor: pointer; font-size: 12px; color: var(--link-text); }
-    .result { display: flex; gap: 8px 10px; align-items: baseline; flex-wrap: wrap; padding: 6px 0 0 12px; font-size: 13px; }
-    .score { font-variant-numeric: tabular-nums; border-radius: 5px; padding: 0 6px; font-size: 12px; background: var(--progress-track); color: var(--soft-text); }
+    summary { cursor: pointer; font-size: var(--text-xs); color: var(--link-text); }
+    .result { display: flex; gap: 8px 10px; align-items: baseline; flex-wrap: wrap; padding: 6px 0 0 12px; font-size: var(--text-sm); }
+    .score { font-variant-numeric: tabular-nums; border-radius: 5px; padding: 0 6px; font-size: var(--text-xs); background: var(--progress-track); color: var(--soft-text); }
     .score.hi { background: var(--button-success-bg); color: var(--button-text); }
     .r-title { overflow-wrap: anywhere; }
-    .r-sub { color: var(--label-text); font-size: 12px; }
-    .r-links a { color: var(--link-text); font-size: 12px; margin-right: 8px; }
+    .r-sub { color: var(--label-text); font-size: var(--text-xs); }
+    .r-links a { color: var(--link-text); font-size: var(--text-xs); margin-right: 8px; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }

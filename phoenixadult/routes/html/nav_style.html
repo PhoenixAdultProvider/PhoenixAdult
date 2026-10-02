@@ -7,14 +7,14 @@
              view-transition-name: app-nav; }
   .app-nav::-webkit-scrollbar { display: none; }
   .app-nav a { display: flex; align-items: center; padding: 0 14px; border-bottom: 2px solid transparent; color: var(--nav-link-text); text-decoration: none;
-               font: 500 14px/1 system-ui, sans-serif; white-space: nowrap; }
+               font: 500 var(--text-base)/1 var(--font-ui); white-space: nowrap; }
   .app-nav a:hover { background: var(--nav-link-hover-bg); color: var(--nav-link-hover-text); }
   .app-nav a.active { border-bottom-color: var(--nav-active-underline); color: var(--nav-active-text); }
   .app-nav-spacer { height: var(--app-nav-h); }
   .theme-ctl { margin-left: auto; display: flex; align-items: center; gap: 4px; padding-left: 14px; flex: none; }
   .theme-ctl button { display: flex; align-items: center; justify-content: center; height: 28px; min-width: 30px; width: auto;
                       margin: 0; padding: 0 7px; flex: none; background: none; border: 1px solid transparent; border-radius: 6px;
-                      color: var(--nav-link-text); cursor: pointer; font: 500 12px/1 system-ui, sans-serif; }
+                      color: var(--nav-link-text); cursor: pointer; font: 500 var(--text-xs)/1 var(--font-ui); }
   .theme-ctl button:hover { background: var(--nav-link-hover-bg); color: var(--nav-link-hover-text); }
   .theme-ctl button.active { background: var(--nav-toggle-active-bg); border-color: var(--nav-toggle-active-border); color: var(--nav-active-text); }
   .theme-ctl svg { display: block; }
@@ -22,6 +22,6 @@
   .nav-user + .theme-ctl, .nav-logout + .theme-ctl { margin-left: 0; }
   .nav-logout { display: flex; align-items: center; height: 28px; align-self: center; margin: 0 0 0 4px; padding: 0 10px; flex: none; width: auto;
                 background: none; min-width: 0; white-space: nowrap;
-                border: 1px solid var(--nav-border); border-radius: 6px; color: var(--nav-link-text); cursor: pointer; font: 500 12px/1 system-ui, sans-serif; }
+                border: 1px solid var(--nav-border); border-radius: 6px; color: var(--nav-link-text); cursor: pointer; font: 500 var(--text-xs)/1 var(--font-ui); }
   .nav-logout:hover { background: var(--nav-link-hover-bg); color: var(--nav-link-hover-text); }
 </style>

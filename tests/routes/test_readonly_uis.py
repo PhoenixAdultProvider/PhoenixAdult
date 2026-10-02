@@ -154,6 +154,7 @@ def test_no_page_redeclares_a_shared_component() -> None:
         assert not re.search(rf'^\s*(?:{generic})\s*[{{,]', css, re.M), f'{page.name} declares its own copy of a shared component'
         assert '@keyframes' not in css, f'{page.name} declares an animation; base.html owns them'
         assert not re.search(r'@media \(max-width:\s*(?!720px)\d+px\)', css), f'{page.name} uses a breakpoint other than 720px'
+        assert not re.search(r'font(?:-size)?:[^;]*?[0-9.]+(?:px|rem)', css), f'{page.name} sizes text outside the --text-* scale'
 
 
 def test_source_json_is_admin_only(member: TestClient) -> None:

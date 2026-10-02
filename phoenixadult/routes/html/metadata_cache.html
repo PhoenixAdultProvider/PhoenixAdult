@@ -24,17 +24,17 @@
       border: 1px dashed var(--card-border);
     }
     .c-title {
-      font-size: 18px; font-weight: 600; line-height: 1.3; text-align: center;
+      font-size: var(--text-xl); font-weight: 600; line-height: 1.3; text-align: center;
       color: var(--card-title-text); overflow-wrap: anywhere;
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
     }
-    .c-studio { font-size: 13px; color: var(--muted-text); overflow-wrap: anywhere; }
-    .c-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; overflow-wrap: anywhere; }
+    .c-studio { font-size: var(--text-sm); color: var(--muted-text); overflow-wrap: anywhere; }
+    .c-row { display: flex; justify-content: space-between; gap: 12px; font-size: var(--text-sm); overflow-wrap: anywhere; }
     .c-row::before {
       content: attr(data-label); flex: 0 0 auto; align-self: center; color: var(--label-text);
-      font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+      font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .04em;
     }
-    .c-actors { font-size: 13px; color: var(--soft-text); overflow-wrap: anywhere; }
+    .c-actors { font-size: var(--text-sm); color: var(--soft-text); overflow-wrap: anywhere; }
     .c-actors a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--hint-text); }
     .c-actors a:hover { color: var(--link-text); border-bottom-color: var(--link-text); }
     .c-more {
@@ -44,7 +44,7 @@
     .c-more:hover { color: var(--page-text); border-color: var(--hint-text); }
     .c-actors::before {
       content: attr(data-label); display: block; color: var(--label-text);
-      font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px;
+      font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px;
     }
     .c-record { display: flex; gap: 5px; align-items: baseline; min-width: 0; }
     .c-record span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -79,7 +79,6 @@
       .sortbar select { flex: 1; min-width: 0; width: 100%; }
 
 
-      .c-title { font-size: 20px; }
       .c-cached .cached-ts { white-space: normal; }
     }
   </style>

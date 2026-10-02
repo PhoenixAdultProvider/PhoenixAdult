@@ -5,13 +5,13 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; }
     body { min-height: 100vh; padding: 24px; max-width: 1100px; margin: 0 auto; }
-    h2 { font-size: 0.8rem; font-weight: 600; color: var(--section-heading-text); margin: 1.5rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    h2 { font-size: var(--text-sm); font-weight: 600; color: var(--section-heading-text); margin: 1.5rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
     .dev-card { margin-bottom: var(--space-4); }
     .row .pa-label { margin-top: 0; }
     .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
     .row > div { flex: 1; min-width: 200px; }
     .examples { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
-    code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.78rem; color: var(--code-text); }
+    code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: var(--text-xs); color: var(--code-text); }
     .row > .field-year { flex: 0; min-width: 6rem; }
     .row > .field-tight { flex: 0; }
     .pipeline-toggle { display: flex; align-items: center; gap: 0.4rem; margin: 2rem 0 0; cursor: pointer; white-space: nowrap; }
@@ -20,33 +20,33 @@
     .step { border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; margin-bottom: 0.6rem; }
     .step-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; background: var(--strip-bg); }
     .step-header:hover { background: var(--strip-hover-bg); }
-    .step-title { font-weight: 600; flex: 1; font-size: 0.9rem; }
-    .step-duration { font-size: 0.75rem; color: var(--label-text); }
+    .step-title { font-weight: 600; flex: 1; font-size: var(--text-base); }
+    .step-duration { font-size: var(--text-xs); color: var(--label-text); }
     .step-body { padding: 0.75rem 1rem; border-top: 1px solid var(--panel-border); display: none; }
     .step-body.open { display: block; }
 
     .captures-section { margin-top: 0.75rem; }
-    .captures-label   { font-size: 0.72rem; color: var(--label-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .captures-label   { font-size: var(--text-xs); color: var(--label-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
     .capture          { border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; margin-bottom: 0.4rem; background: var(--inset-bg); }
     .capture-header   { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.65rem; user-select: none; background: var(--strip-alt-bg); }
     .capture-header > .pa-badge,
     .capture-header > .capture-label { cursor: pointer; }
     .capture-header:hover { background: var(--strip-alt-hover-bg); }
-    .capture-label    { flex: 1; font-size: 0.78rem; color: var(--soft-text); word-break: break-all; }
+    .capture-label    { flex: 1; font-size: var(--text-xs); color: var(--soft-text); word-break: break-all; }
     .capture-url      { color: var(--link-text); text-decoration: none; }
     .capture-url:hover { color: var(--link-hover-text); text-decoration: underline; }
     .copy-btn { flex-shrink: 0; }
-    .capture-size     { font-size: 0.7rem; color: var(--label-text); }
+    .capture-size     { font-size: var(--text-2xs); color: var(--label-text); }
     .capture-body     { display: none; }
     .capture-body.open { display: block; }
     .capture-body pre { margin: 0; border: 0; border-radius: 0; max-height: 500px; }
-    .step-error { color: var(--status-danger-text); font-size: 0.85rem; margin-bottom: 0.5rem; }
-    pre { background: var(--log-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.75rem; font-size: 0.75rem; overflow-x: auto; color: var(--log-text); white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
+    .step-error { color: var(--status-danger-text); font-size: var(--text-base); margin-bottom: 0.5rem; }
+    pre { background: var(--log-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.75rem; font-size: var(--text-xs); overflow-x: auto; color: var(--log-text); white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
 
-    .log-box { padding: 0.5rem 0.75rem; max-height: 320px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .log-line { font-size: 0.72rem; line-height: 1.5; color: var(--soft-text); white-space: pre-wrap; word-break: break-word; border-bottom: 1px solid var(--log-divider); padding: 0.1rem 0; }
+    .log-box { padding: 0.5rem 0.75rem; max-height: 320px; overflow-y: auto; font-family: var(--font-mono); }
+    .log-line { font-size: var(--text-xs); line-height: 1.5; color: var(--soft-text); white-space: pre-wrap; word-break: break-word; border-bottom: 1px solid var(--log-divider); padding: 0.1rem 0; }
     .log-line:last-child { border-bottom: 0; }
-    .log-level { display: inline-block; min-width: 3.2rem; font-weight: 700; text-transform: uppercase; font-size: 0.62rem; margin-right: 0.5rem; }
+    .log-level { display: inline-block; min-width: 3.2rem; font-weight: 700; text-transform: uppercase; font-size: var(--text-2xs); margin-right: 0.5rem; }
     .log-info  .log-level { color: var(--log-info-text); }
     .log-warn  .log-level { color: var(--log-warn-level-text); }
     .log-warn  { color: var(--log-warn-text); }
@@ -61,49 +61,49 @@
     .result-card.selected { border-color: var(--focus-ring); box-shadow: 0 0 0 2px var(--focus-glow); }
     .result-card.loading { opacity: 0.6; pointer-events: none; }
     .result-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--placeholder-bg); display: block; }
-    .result-thumb-placeholder { width: 100%; aspect-ratio: 16/9; background: var(--placeholder-bg); display: flex; align-items: center; justify-content: center; color: var(--placeholder-icon-text); font-size: 1.5rem; }
+    .result-thumb-placeholder { width: 100%; aspect-ratio: 16/9; background: var(--placeholder-bg); display: flex; align-items: center; justify-content: center; color: var(--placeholder-icon-text); font-size: var(--text-2xl); }
     .result-info { padding: 0.5rem; }
-    .result-title { font-size: 0.75rem; font-weight: 600; color: var(--page-text); line-height: 1.3; margin-bottom: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .result-score { font-size: 0.7rem; color: var(--label-text); }
+    .result-title { font-size: var(--text-xs); font-weight: 600; color: var(--page-text); line-height: 1.3; margin-bottom: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .result-score { font-size: var(--text-2xs); color: var(--label-text); }
     .result-score span { color: var(--status-ok-text); font-weight: 600; }
 
     #meta-panel { display: none; }
     .meta-layout { display: grid; grid-template-columns: 180px 1fr; gap: 1.25rem; align-items: start; }
     .meta-poster { width: 100%; border-radius: 6px; border: 1px solid var(--panel-border); }
-    .meta-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: var(--placeholder-bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--placeholder-icon-text); font-size: 2rem; }
+    .meta-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: var(--placeholder-bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--placeholder-icon-text); font-size: var(--text-2xl); }
     .meta-field { margin-bottom: 0.6rem; }
-    .meta-label { font-size: 0.7rem; color: var(--label-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
-    .meta-value { font-size: 0.9rem; color: var(--page-text); }
+    .meta-label { font-size: var(--text-2xs); color: var(--label-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
+    .meta-value { font-size: var(--text-base); color: var(--page-text); }
     .meta-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-    .meta-tag { background: var(--chip-bg); border: 1px solid var(--chip-border); border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.75rem; color: var(--chip-text); }
+    .meta-tag { background: var(--chip-bg); border: 1px solid var(--chip-border); border-radius: 4px; padding: 0.15rem 0.5rem; font-size: var(--text-xs); color: var(--chip-text); }
     .actor-cards { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .actor-card { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; width: 84px; }
     .actor-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--placeholder-bg); }
-    .actor-avatar-ph { width: 64px; height: 64px; border-radius: 50%; background: var(--placeholder-bg); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--placeholder-icon-text); }
-    .actor-name { font-size: 0.72rem; text-align: center; color: var(--page-text); line-height: 1.2; word-break: break-word; }
-    .actor-name span { opacity: 0.6; font-size: 0.65rem; }
+    .actor-avatar-ph { width: 64px; height: 64px; border-radius: 50%; background: var(--placeholder-bg); display: flex; align-items: center; justify-content: center; font-size: var(--text-2xl); color: var(--placeholder-icon-text); }
+    .actor-name { font-size: var(--text-xs); text-align: center; color: var(--page-text); line-height: 1.2; word-break: break-word; }
+    .actor-name span { opacity: 0.6; font-size: var(--text-2xs); }
     .image-strip { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 0.5rem; }
     .image-strip img { height: 80px; border-radius: 4px; border: 1px solid var(--panel-border); flex-shrink: 0; cursor: pointer; }
     .image-strip img:hover { border-color: var(--focus-ring); }
 
     .art-bg { position: fixed; inset: 0; z-index: -1; opacity: 0.08; background-size: cover; background-position: center; pointer-events: none; transition: background-image 0.5s; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
     th { text-align: left; padding: 0.5rem 0.75rem; color: var(--table-header-text); font-weight: 600; border-bottom: 1px solid var(--table-border); }
     td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--table-row-border); vertical-align: top; }
     td:first-child { font-weight: 600; color: var(--table-key-text); }
 
     tr.group-row td:first-child { color: var(--table-group-text); }
     .group-badge { display: inline-block; padding: 0.1rem 0.4rem; margin-left: 0.4rem;
-                   font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
+                   font-size: var(--text-2xs); font-weight: 700; letter-spacing: 0.04em;
                    color: var(--badge-indigo-text); background: var(--badge-indigo-bg); border-radius: 999px;
                    text-transform: uppercase; }
-    details > summary { cursor: pointer; color: var(--muted-text); font-size: 0.75rem;
+    details > summary { cursor: pointer; color: var(--muted-text); font-size: var(--text-xs);
                         user-select: none; padding: 0.1rem 0; }
     details > summary:hover { color: var(--soft-text); }
     details[open] > summary { color: var(--highlight-text); margin-bottom: 0.3rem; }
     .alias-list  { display: flex; flex-wrap: wrap; gap: 0.25rem; padding-top: 0.2rem; }
-    .alias-chip  { display: inline-block; padding: 0.12rem 0.45rem; font-size: 0.7rem;
+    .alias-chip  { display: inline-block; padding: 0.12rem 0.45rem; font-size: var(--text-2xs);
                    color: var(--chip-text); background: var(--chip-bg); border: 1px solid var(--chip-border);
                    border-radius: 4px; white-space: nowrap; }
     table.sites-table { table-layout: fixed; }
@@ -128,7 +128,7 @@
       .step-title { order: 3; flex: 1 1 100%; min-width: 0; line-height: 1.35; overflow-wrap: anywhere; }
       .step-body { padding: 0.6rem 0.7rem; }
 
-      pre { font-size: 0.72rem; padding: 0.6rem; max-height: 300px; overflow-wrap: anywhere; word-break: normal; }
+      pre { padding: 0.6rem; max-height: 300px; overflow-wrap: anywhere; word-break: normal; }
       code { overflow-wrap: anywhere; }
 
       .capture-header { flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.6rem; }
@@ -151,10 +151,10 @@
       table.sites-table thead { display: none; }
       table.sites-table tr { display: block; padding: 0.7rem 0; border-bottom: 1px solid var(--table-row-border); }
       table.sites-table td:nth-child(n) { display: block; width: auto; padding: 0; border: 0; }
-      .c-site { font-size: 0.95rem; margin-bottom: 0.35rem; }
+      .c-site { font-size: var(--text-lg); margin-bottom: 0.35rem; }
       .c-type, .c-scraper, .c-aliases { display: flex; gap: 0.5rem; align-items: baseline; margin-top: 0.25rem; }
       .c-type::before, .c-scraper::before, .c-aliases::before {
-        content: attr(data-label); flex: 0 0 auto; color: var(--label-text); font-size: 0.62rem;
+        content: attr(data-label); flex: 0 0 auto; color: var(--label-text); font-size: var(--text-2xs);
         text-transform: uppercase; letter-spacing: 0.06em;
       }
       .c-aliases details { flex: 1 1 auto; min-width: 0; }
@@ -166,7 +166,7 @@
   <div class="art-bg" id="artBg"></div>
 
   <h1>🎬 Provider Dev UI</h1>
-  <p style="color:var(--label-text);margin-top:0.25rem;font-size:0.875rem">Test the full scraper pipeline — search, select a result, inspect metadata</p>
+  <p style="color:var(--label-text);margin-top:0.25rem;font-size:var(--text-base)">Test the full scraper pipeline — search, select a result, inspect metadata</p>
 
   <div class="pa-card dev-card" style="margin-top:1.25rem">
     <div class="row" style="align-items:flex-start">
@@ -174,7 +174,7 @@
         <label class="pa-label" for="filename">Filename</label>
         <input class="pa-input" type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
         <div class="examples">
-          <span style="font-size:0.72rem;color:var(--hint-text);align-self:center">Examples:</span>
+          <span style="font-size:var(--text-xs);color:var(--hint-text);align-self:center">Examples:</span>
           <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.24.03.15.scene.name.mp4')">Date Short</button>
           <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">Date Long</button>
         </div>
@@ -415,7 +415,7 @@
       const box = document.getElementById(containerId);
       if (!box) return;
       if (!logs || !logs.length) {
-        box.innerHTML = '<p style="color:var(--hint-text);font-size:0.8rem">No logs captured</p>';
+        box.innerHTML = '<p style="color:var(--hint-text);font-size:var(--text-sm)">No logs captured</p>';
         return;
       }
       box.innerHTML = logs.map((l) => {
@@ -460,7 +460,7 @@
             <span class="step-duration">${s.durationMs != null ? s.durationMs + 'ms' : ''}</span>
           </div>
           <div class="step-body ${(NARROW.matches ? !s.ok : s.ok) ? 'open' : ''}" id="${id}">
-            ${body || '<p style="color:var(--hint-text);font-size:0.82rem">No data</p>'}
+            ${body || '<p style="color:var(--hint-text);font-size:var(--text-sm)">No data</p>'}
           </div>
         </div>`;
       }).join('');
@@ -537,7 +537,7 @@
 
       document.getElementById('meta-panel').style.display = 'none';
       document.getElementById('meta-steps').innerHTML = '';
-      document.getElementById('meta-fields').innerHTML = '<p style="color:var(--label-text);font-size:0.85rem"><span class="pa-spinner"></span> Fetching metadata…</p>';
+      document.getElementById('meta-fields').innerHTML = '<p style="color:var(--label-text);font-size:var(--text-base)"><span class="pa-spinner"></span> Fetching metadata…</p>';
       document.getElementById('meta-poster-wrap').innerHTML = '<div class="meta-poster-placeholder">🎬</div>';
       document.getElementById('fixture-section').style.display = 'none';
       document.getElementById('roundtrip-section').style.display = 'none';
@@ -614,7 +614,7 @@
       if (clearLogo) fields.push(field('Logo', `<img src="${esc(clearLogo.url)}" style="max-height:56px;max-width:100%;background:repeating-conic-gradient(var(--checkerboard-a) 0% 25%, var(--checkerboard-b) 0% 50%) 0 0 / 16px 16px;border:1px solid var(--panel-border);border-radius:6px;padding:6px" onerror="this.style.opacity='0.2'">`));
       if (meta.contentRating) fields.push(field('Content Rating', '<span class="meta-tag" style="background:var(--badge-danger-bg);color:var(--badge-danger-text);border-color:var(--badge-danger-border);letter-spacing:0.04em;font-weight:700">' + esc(meta.contentRating).toUpperCase() + '</span>'));
       if (meta.releaseDate)   fields.push(field('Released', esc(meta.releaseDate) + (meta.year ? ' &middot; ' + meta.year : '')));
-      if (meta.summary)       fields.push(field('Summary', '<span style="font-size:0.82rem;line-height:1.5;color:var(--muted-text)">' + esc(meta.summary) + '</span>'));
+      if (meta.summary)       fields.push(field('Summary', '<span style="font-size:var(--text-sm);line-height:1.5;color:var(--muted-text)">' + esc(meta.summary) + '</span>'));
       if (meta.genres?.length)      fields.push(field('Genres', tags(meta.genres)));
       const personCards = (people) => '<div class="actor-cards">' + people.map((p) => {
         const border = p.gender === 'male'
@@ -637,8 +637,8 @@
 
       const rawCount = meta.rawImageCount != null ? meta.rawImageCount : meta.images.length;
       fields.push(field('Images', `${rawCount} raw → ${meta.images.length} mapped`));
-      if (meta.thumb) fields.push(field('Thumb URL', `<code style="word-break:break-all;font-size:0.7rem">${esc(meta.thumb)}</code>`));
-      if (meta.art)   fields.push(field('Art URL',   `<code style="word-break:break-all;font-size:0.7rem">${esc(meta.art)}</code>`));
+      if (meta.thumb) fields.push(field('Thumb URL', `<code style="word-break:break-all;font-size:var(--text-2xs)">${esc(meta.thumb)}</code>`));
+      if (meta.art)   fields.push(field('Art URL',   `<code style="word-break:break-all;font-size:var(--text-2xs)">${esc(meta.art)}</code>`));
 
       document.getElementById('meta-fields').innerHTML = fields.join('');
 

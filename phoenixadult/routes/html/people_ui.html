@@ -14,7 +14,7 @@
       .person-card.gn { border-left-color: var(--gender-none); }
       .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
       .hd b { white-space: nowrap; }
-      .ts { margin-left: auto; color: var(--label-text); font-size: 12px; }
+      .ts { margin-left: auto; color: var(--label-text); font-size: var(--text-xs); }
       .pa-badge.crop { background: var(--badge-info-bg); }
       .pa-badge.orig { background: var(--badge-neutral-bg); }
       .pa-badge.src { background: var(--badge-muted-bg); border: 1px solid var(--badge-muted-border); color: var(--badge-muted-text); }
@@ -24,10 +24,10 @@
       .role.r-producer { background: var(--role-producer-bg); }
       .imgs { display: flex; gap: 10px; }
       figure { margin: 0; flex: 1; text-align: center; }
-      figcaption { font-size: 11px; color: var(--muted-text); margin-bottom: 4px; }
+      figcaption { font-size: var(--text-2xs); color: var(--muted-text); margin-bottom: 4px; }
       img { width: 100%; height: 170px; object-fit: contain; background: var(--image-well-bg); border-radius: 6px; }
       body.sfw .imgs { display: none; }
-      .gender { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--muted-text); }
+      .gender { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: var(--text-xs); color: var(--muted-text); }
       .g.gf.active { background: var(--female); }
       .g.gm.active { background: var(--button-primary-bg); }
       .g.gt.active { background: var(--trans); }
@@ -49,7 +49,7 @@
       .noupstream.on { background: var(--badge-warning-bg); color: var(--badge-warning-text); border-color: var(--badge-warning-border); }
       .genericonly.on { background: var(--badge-violet-deep-bg); color: var(--badge-violet-deep-text); border-color: var(--badge-violet-border); }
       .singleonly.on { background: var(--badge-teal-bg); color: var(--badge-teal-text); border-color: var(--badge-teal-border); }
-      .tab .cnt { opacity: .65; font-size: 11px; }
+      .tab .cnt { opacity: .65; font-size: var(--text-2xs); }
       @media (max-width: 720px) {
         body { padding: 14px; }
         .people-grid { grid-template-columns: 1fr; }
