@@ -97,7 +97,7 @@ filterwarnings = ["ignore:The anyio.abc.BlockingPortal alias is deprecated:Depre
 [tool.coverage.run]
 branch = true
 source = ["phoenixadult"]
-omit = ["phoenixadult/graveyard/*"]
+omit = ["phoenixadult/graveyard/*", "*/zz_*_probe.py"]
 
 
 [tool.coverage.report]
