@@ -289,25 +289,45 @@ def _epoch() -> tuple[str, int]:
         return _current
 
 
-def connect() -> sqlite3.Connection:
+class _Held:
+    def __init__(self, conn: sqlite3.Connection, key: tuple[str, int]) -> None:
+        self.conn = conn
+        self.key = key
+
+    def __del__(self) -> None:
+        self.conn.close()
+
+
+def _open_connection(path: str) -> sqlite3.Connection:
     global _migrated
-    key = _epoch()
-    cached: sqlite3.Connection | None = getattr(_local, 'conn', None)
-    if cached is not None and getattr(_local, 'key', None) == key:
-        return cached
-    Path(key[0]).parent.mkdir(parents=True, exist_ok=True)
     with _lock:
-        conn = sqlite3.connect(key[0], check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute(f'PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}')
-        conn.execute('PRAGMA journal_mode=WAL')
-        conn.execute('PRAGMA synchronous=NORMAL')
-        conn.execute('PRAGMA foreign_keys=ON')
-        if not _migrated:
-            _migrate(conn, key[0])
-            _migrated = True
+        conn = sqlite3.connect(path, check_same_thread=False)
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute(f'PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}')
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('PRAGMA synchronous=NORMAL')
+            conn.execute('PRAGMA foreign_keys=ON')
+            if not _migrated:
+                _migrate(conn, path)
+                _migrated = True
+        except BaseException:
+            conn.close()
+            raise
         _open.append((threading.get_ident(), conn))
-    _local.conn, _local.key = conn, key
+    return conn
+
+
+def connect() -> sqlite3.Connection:
+    key = _epoch()
+    held: _Held | None = getattr(_local, 'held', None)
+    if held is not None and held.key == key:
+        return held.conn
+    if held is not None:
+        held.conn.close()
+    Path(key[0]).parent.mkdir(parents=True, exist_ok=True)
+    conn = _open_connection(key[0])
+    _local.held = _Held(conn, key)
     return conn
 
 

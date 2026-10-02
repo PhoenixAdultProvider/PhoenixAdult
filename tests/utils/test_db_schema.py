@@ -9,13 +9,14 @@ def test_a_fresh_database_lands_on_the_latest_schema() -> None:
 
 def test_a_pre_v1_database_is_refused_with_a_clear_error(tmp_path, monkeypatch) -> None:
     import sqlite3
+    from contextlib import closing
 
     import pytest
 
     from phoenixadult.utils import db
 
     stale = tmp_path / 'old.db'
-    with sqlite3.connect(stale) as raw:
+    with closing(sqlite3.connect(stale)) as raw:
         raw.execute('PRAGMA user_version = 16')
     monkeypatch.setenv('STATE_DB_PATH', str(stale))
     db.close()

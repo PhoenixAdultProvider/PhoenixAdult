@@ -58,3 +58,40 @@ def test_closing_from_the_owning_thread_still_closes(two_paths: tuple[str, str])
     db.close()
     with pytest.raises(sqlite3.ProgrammingError):
         conn.execute('SELECT 1')
+
+
+def _is_closed(conn: object) -> bool:
+    import sqlite3
+
+    try:
+        conn.execute('SELECT 1')  # type: ignore[attr-defined]
+    except sqlite3.ProgrammingError:
+        return True
+    return False
+
+
+def test_a_finished_thread_closes_its_connection() -> None:
+    import gc
+    import threading
+
+    from phoenixadult.utils import db
+
+    opened: list[object] = []
+    worker = threading.Thread(target=lambda: opened.append(db.connect()))
+    worker.start()
+    worker.join()
+    gc.collect()
+    assert opened and _is_closed(opened[0]), 'a dead thread must not leave its connection open'
+
+
+def test_reconnecting_after_a_path_switch_closes_the_old_connection(tmp_path, monkeypatch) -> None:
+    import shutil
+
+    from phoenixadult.utils import db
+
+    first = db.connect()
+    moved = tmp_path / 'moved.db'
+    shutil.copyfile(db.env.state_db_path, moved)
+    monkeypatch.setenv('STATE_DB_PATH', str(moved))
+    second = db.connect()
+    assert second is not first and _is_closed(first)
