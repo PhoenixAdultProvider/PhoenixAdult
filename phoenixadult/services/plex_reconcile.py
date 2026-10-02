@@ -208,6 +208,104 @@ async def _inspect_item(
     return entry, desired, section
 
 
+_Work = tuple[str, dict[str, Any], str, str]
+_Inspected = tuple[ItemReport, dict[str, list[str]] | None, str]
+
+
+class _Reconciler:
+    def __init__(
+        self,
+        client: PlexClient,
+        apply: bool,
+        limit: int | None,
+        fields: set[str] | None,
+        sites: set[str] | None,
+        on_progress: Callable[[int, int], None] | None,
+    ) -> None:
+        self.client = client
+        self.report = ReconcileReport(applied=apply)
+        self.apply = apply
+        self.limit = limit
+        self.field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
+        self.site_filter = {s.casefold() for s in sites} if sites else None
+        self.on_progress = on_progress
+        self.done = False
+        self.inspected = 0
+
+    async def run(self) -> ReconcileReport:
+        work = await self._collect_work()
+        self._progress(len(work))
+        sem = asyncio.Semaphore(_INSPECT_CONCURRENCY)
+        tasks = [asyncio.create_task(self._inspect(sem, w, len(work))) for w in work]
+        try:
+            for task in tasks:
+                inspected = await task
+                if inspected is not None:
+                    await self._record(*inspected)
+        finally:
+            self.done = True
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        return self.report
+
+    async def _collect_work(self) -> list[_Work]:
+        prefixes = _guid_prefixes()
+        work: list[_Work] = []
+        for section in await self.client.movie_sections():
+            for stub in await self.client.section_items(section):
+                self.report.scanned += 1
+                rating_key = our_rating_key(stub.get('guid') or '', prefixes)
+                if not rating_key:
+                    continue
+                self.report.matched += 1
+                site_name = (parse_rating_key(rating_key) or {}).get('site_name') or ''
+                if self.site_filter is None or site_name.casefold() in self.site_filter:
+                    work.append((section, stub, rating_key, site_name))
+        return work
+
+    def _progress(self, total: int) -> None:
+        if self.on_progress:
+            self.on_progress(total, self.inspected)
+
+    async def _inspect(self, sem: asyncio.Semaphore, w: _Work, total: int) -> _Inspected | None:
+        async with sem:
+            if self.done:
+                return None
+            inspected = await _inspect_item(self.client, *w, self.field_filter)
+            self.inspected += 1
+            self._progress(total)
+            return inspected
+
+    async def _record(self, entry: ItemReport, desired: dict[str, list[str]] | None, section: str) -> None:
+        report = self.report
+        if desired is None:
+            report.skipped_no_snapshot += 1
+            report.items.append(entry)
+            return
+        if entry.locked:
+            report.skipped_locked += 1
+        if not entry.removals:
+            if entry.locked:
+                report.items.append(entry)
+            return
+        if self.limit is not None and report.changed >= self.limit:
+            self.done = True
+            return
+        report.changed += 1
+        report.items.append(entry)
+        if self.apply:
+            await self._apply(entry, desired, section)
+
+    async def _apply(self, entry: ItemReport, desired: dict[str, list[str]], section: str) -> None:
+        for provider_field, stale in entry.removals.items():
+            if provider_field in ('Collection', 'Genre'):
+                await self.client.set_tags(section, entry.rating_key, _FIELDS[provider_field], desired[provider_field])
+            else:
+                await self.client.remove_tags(section, entry.rating_key, _FIELDS[provider_field], stale)
+        logger.info(_TAG, f'{entry.rating_key} "{entry.title}": reconciled {entry.removals}')
+
+
 async def reconcile(
     connection: Connection,
     token: str,
@@ -217,81 +315,11 @@ async def reconcile(
     sites: set[str] | None = None,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> ReconcileReport:
-    report = ReconcileReport(applied=apply)
-    field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
-    site_filter = {s.casefold() for s in sites} if sites else None
     client = PlexClient(connection.server_url, token)
-    prefixes = _guid_prefixes()
     try:
-        work: list[tuple[str, dict[str, Any], str, str]] = []
-        for section in await client.movie_sections():
-            for stub in await client.section_items(section):
-                report.scanned += 1
-                rating_key = our_rating_key(stub.get('guid') or '', prefixes)
-                if not rating_key:
-                    continue
-                report.matched += 1
-                parsed = parse_rating_key(rating_key)
-                site_name = (parsed or {}).get('site_name') or ''
-                if site_filter is not None and site_name.casefold() not in site_filter:
-                    continue
-                work.append((section, stub, rating_key, site_name))
-
-        inspected_count = 0
-        if on_progress:
-            on_progress(len(work), 0)
-        sem = asyncio.Semaphore(_INSPECT_CONCURRENCY)
-        done = False
-
-        async def _guarded(w: tuple[str, dict[str, Any], str, str]) -> tuple[ItemReport, dict[str, list[str]] | None, str] | None:
-            async with sem:
-                if done:
-                    return None
-                inspected = await _inspect_item(client, *w, field_filter)
-                nonlocal inspected_count
-                inspected_count += 1
-                if on_progress:
-                    on_progress(len(work), inspected_count)
-                return inspected
-
-        tasks = [asyncio.create_task(_guarded(w)) for w in work]
-        try:
-            for task in tasks:
-                inspected = await task
-                if inspected is None:
-                    continue
-                entry, desired, section = inspected
-                if desired is None:
-                    report.skipped_no_snapshot += 1
-                    report.items.append(entry)
-                    continue
-                if entry.locked:
-                    report.skipped_locked += 1
-                if not entry.removals:
-                    if entry.locked:
-                        report.items.append(entry)
-                    continue
-                if limit is not None and report.changed >= limit:
-                    done = True
-                    continue
-
-                report.changed += 1
-                report.items.append(entry)
-                if apply:
-                    for provider_field, stale in entry.removals.items():
-                        if provider_field in ('Collection', 'Genre'):
-                            await client.set_tags(section, entry.rating_key, _FIELDS[provider_field], desired[provider_field])
-                        else:
-                            await client.remove_tags(section, entry.rating_key, _FIELDS[provider_field], stale)
-                    logger.info(_TAG, f'{entry.rating_key} "{entry.title}": reconciled {entry.removals}')
-        finally:
-            done = True
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+        report = await _Reconciler(client, apply, limit, fields, sites, on_progress).run()
     finally:
         await client.aclose()
-
     verb = 'removed from' if apply else 'would be removed from'
     logger.info(_TAG, f'scanned {report.scanned}, ours {report.matched}, stale tags {verb} {report.changed} item(s)')
     return report

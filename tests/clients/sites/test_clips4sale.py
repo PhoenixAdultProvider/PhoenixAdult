@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import httpx
+import pytest
 import respx
 
 from phoenixadult.clients.sites.clips4sale import Clips4SaleClient
@@ -56,3 +57,21 @@ async def test_detail() -> None:
     assert detail.actors == []
     assert 'https://cdn/p.jpg' in (detail.art or [])
     assert 'http://imagecdn.clips4sale.com/accounts99/57445/clip_images/previewlg_99999999.jpg' in (detail.art or [])
+
+
+@pytest.mark.parametrize(
+    ('raw', 'clean'),
+    [
+        ('Cool Scene (HD - HD)', 'Cool Scene'),
+        ('Cool Scene (1080p MP4)', 'Cool Scene'),
+        ('Cool Scene 4K wmv', 'Cool Scene'),
+        ('Cool Scene - standard;', 'Cool Scene'),
+        ('Cool Scene.avi', 'Cool Scene'),
+        ('Cool Scene (720P)', 'Cool Scene'),
+        ('Cool Scene', 'Cool Scene'),
+    ],
+)
+def test_titles_lose_their_format_and_quality_tags(raw: str, clean: str) -> None:
+    from phoenixadult.clients.sites.clips4sale import _clean_title
+
+    assert _clean_title(raw) == clean

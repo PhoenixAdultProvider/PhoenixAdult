@@ -191,6 +191,22 @@ def _clean_thumb(u: str) -> str:
     return u.replace('/th8', '').replace('-th8', '')
 
 
+def _special_gallery_images(viewer: Selector, gallery_id: int) -> list[str] | None:
+    seed = _clean_thumb(viewer.xpath('//img[contains(@src,"th8")]/@src').get() or '')
+    total_text = viewer.xpath('normalize-space(//div[@id="primaryphoto"]//div//b[1])').get() or ''
+    try:
+        start_num = int(seed.split('/')[-1].split('.')[0])
+        total = min(int(total_text.split('of')[-1].strip()), _MAX_GALLERY_IMAGES)
+    except ValueError:
+        return None
+    end_num = start_num + (total * 2 if gallery_id == 1101 else total)
+    if gallery_id == 1901:
+        stem = re.sub(r'_2[^_]*$', '', seed)
+        return [f'{stem}/t{str(idx).zfill(2)}.jpg' for idx in range(start_num, end_num)]
+    stem = re.sub(r'/[^/]*$', '', seed)
+    return [f'{stem}/{str(idx).zfill(2)}.jpg' for idx in range(start_num, end_num)]
+
+
 class Data18Client(Client):
     default_headers: ClassVar[dict[str, str]] = {'Referer': DATA18_BASE}
     default_cookies: ClassVar[dict[str, str]] = {'data_user_captcha': '1'}
@@ -455,81 +471,40 @@ class Data18Client(Client):
         return urls
 
     async def fetch_images(self, scene_url: str) -> list[str]:
-        out: list[str] = []
         details_page_elements = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
         if not details_page_elements and (resolved := await self._resolve_id_url(scene_url)) != scene_url:
             scene_url = resolved
             details_page_elements = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
-
         if not details_page_elements:
             logger.warn('data18', 'sceneURL fetch failed - possible IP ban')
-            return out
+            return []
 
         sel = details_page_elements['sel']
-
         id_match = re.search(r'/scenes/(\d+)', scene_url)
-        scene_id = id_match.group(1) if id_match else ''
-        scene_prefix = scene_id[:1]
-        scene_suffix = scene_id[1:]
+        out: dict[str, None] = dict.fromkeys(await self._gallery_images(sel, id_match.group(1) if id_match else ''))
+        out.update(dict.fromkeys(filter(None, [sel.xpath('//div[@id="moviewrap"]//*[@src][1]/@src').get()])))
+        out.update(dict.fromkeys(filter(None, sel.xpath('//a[@data-lightbox="relatedscenecover"]/@href').getall())))
+        logger.info('data18', f'Collected {len(out)} image URL(s) from {scene_url}')
+        return list(out)
 
-        stop_after_photoset = False
+    async def _gallery_images(self, sel: Selector, scene_id: str) -> list[str]:
+        out: dict[str, None] = {}
         for gallery in sel.xpath('//div[@id="galleriesoff"]//div'):
-            if stop_after_photoset:
-                break
-
-            id_attr = gallery.xpath('./@id').get() or ''
             try:
-                gallery_id = int(id_attr.replace('gallery', ''))
+                gallery_id = int((gallery.xpath('./@id').get() or '').replace('gallery', ''))
             except ValueError:
                 continue
-
-            viewer_url = f'{DATA18_BASE}/sys/media_photos.php?s={scene_prefix}&scene={scene_suffix}&pic={gallery_id}'
+            viewer_url = f'{DATA18_BASE}/sys/media_photos.php?s={scene_id[:1]}&scene={scene_id[1:]}&pic={gallery_id}'
             viewer_page_elements = await self.fetch_and_load(viewer_url, label=f'[data18] gallery {gallery_id}')
             if not viewer_page_elements:
                 continue
-
             viewer = viewer_page_elements['sel']
-
-            for img in self._thumbs_from_page(viewer):
-                if '/th8_2' in img:
-                    continue
-
-                full = _clean_thumb(img)
-                if full not in out:
-                    out.append(full)
-
-            if gallery_id in _SPECIAL_GALLERIES:
-                try:
-                    seed = _clean_thumb(viewer.xpath('//img[contains(@src,"th8")]/@src').get() or '')
-                    start_num = int(seed.split('/')[-1].split('.')[0])
-                    total_text = viewer.xpath('normalize-space(//div[@id="primaryphoto"]//div//b[1])').get() or ''
-                    total = min(int(total_text.split('of')[-1].strip()), _MAX_GALLERY_IMAGES)
-                    end_num = start_num + (total * 2 if gallery_id == 1101 else total)
-                    for idx in range(start_num, end_num):
-                        padded = str(idx).zfill(2)
-                        if gallery_id == 1901:
-                            img = f'{re.sub(r"_2[^_]*$", "", seed)}/t{padded}.jpg'
-                        else:
-                            img = f'{re.sub(r"/[^/]*$", "", seed)}/{padded}.jpg'
-
-                        if img not in out:
-                            out.append(img)
-
-                    if not env.data18_extra_enabled and gallery_id == 1901:
-                        stop_after_photoset = True
-                except (ValueError, IndexError):
-                    pass
-
-        poster = sel.xpath('//div[@id="moviewrap"]//*[@src][1]/@src').get()
-        if poster and poster not in out:
-            out.append(poster)
-
-        for cover in sel.xpath('//a[@data-lightbox="relatedscenecover"]/@href').getall():
-            if cover and cover not in out:
-                out.append(cover)
-
-        logger.info('data18', f'Collected {len(out)} image URL(s) from {scene_url}')
-        return out
+            out.update(dict.fromkeys(_clean_thumb(img) for img in self._thumbs_from_page(viewer) if '/th8_2' not in img))
+            special = _special_gallery_images(viewer, gallery_id) if gallery_id in _SPECIAL_GALLERIES else None
+            out.update(dict.fromkeys(special or []))
+            if special is not None and not env.data18_extra_enabled and gallery_id == 1901:
+                break
+        return list(out)
 
     async def find_candidates(self, query: str, kind: str, max_pages: int = 10) -> list[Data18Candidate]:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()

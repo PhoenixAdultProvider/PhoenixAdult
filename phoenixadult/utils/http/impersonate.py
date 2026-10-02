@@ -21,9 +21,8 @@ class _ImpersonateBackend:
         return importlib.util.find_spec('curl_cffi') is not None
 
     async def request(self, req: BypassRequest) -> BypassResponse | None:
-        try:
-            from curl_cffi.requests import AsyncSession
-        except ImportError:
+        session_class = _session_class()
+        if session_class is None:
             logger.debug('bypass:Impersonate', 'curl_cffi not installed; skipping')
             return None
         try:
@@ -31,38 +30,54 @@ class _ImpersonateBackend:
         except ValueError as err:
             logger.warn('bypass:Impersonate', f'refusing {req.url}: {err}')
             return None
+        r = await _send_with_retry(session_class, req)
+        if r is None:
+            return None
+        return BypassResponse(status=r.status_code, body=r.text, headers=dict(r.headers), cookies=_cookies_of(r), final_url=str(r.url))
 
-        timeout = (req.timeout_ms or 30_000) / 1000
-        kwargs: dict[str, Any] = {
-            'headers': req.headers or None,
-            'cookies': req.cookies or None,
-            'impersonate': _IMPERSONATE,
-            'timeout': timeout,
-            'allow_redirects': True,
-        }
-        for attempt in (1, 2):
-            try:
-                async with AsyncSession() as session:
-                    if req.method == 'POST':
-                        r = await session.post(req.url, data=req.body, **kwargs)
-                    elif req.method == 'HEAD':
-                        r = await session.head(req.url, **kwargs)
-                    else:
-                        r = await session.get(req.url, **kwargs)
-                break
-            except Exception as err:  # noqa: BLE001 - any curl_cffi failure → retry once, then skip backend
-                if attempt == 1 and any(mark in str(err) for mark in _TRANSIENT):
-                    logger.debug('bypass:Impersonate', f'{req.url} dropped the connection, retrying once: {err}')
-                    await asyncio.sleep(_RETRY_PAUSE)
-                    continue
-                logger.warn('bypass:Impersonate', f'{req.url} failed: {err}')
-                return None
 
+def _session_class() -> Any:
+    try:
+        from curl_cffi.requests import AsyncSession
+    except ImportError:
+        return None
+    return AsyncSession
+
+
+async def _send(session_class: Any, req: BypassRequest) -> Any:
+    kwargs: dict[str, Any] = {
+        'headers': req.headers or None,
+        'cookies': req.cookies or None,
+        'impersonate': _IMPERSONATE,
+        'timeout': (req.timeout_ms or 30_000) / 1000,
+        'allow_redirects': True,
+    }
+    async with session_class() as session:
+        if req.method == 'POST':
+            return await session.post(req.url, data=req.body, **kwargs)
+        verb = session.head if req.method == 'HEAD' else session.get
+        return await verb(req.url, **kwargs)
+
+
+async def _send_with_retry(session_class: Any, req: BypassRequest) -> Any:
+    for attempt in (1, 2):
         try:
-            cookies = dict(r.cookies)
-        except (TypeError, ValueError):
-            cookies = {}
-        return BypassResponse(status=r.status_code, body=r.text, headers=dict(r.headers), cookies=cookies, final_url=str(r.url))
+            return await _send(session_class, req)
+        except Exception as err:  # noqa: BLE001 - any curl_cffi failure → retry once, then skip backend
+            if attempt == 1 and any(mark in str(err) for mark in _TRANSIENT):
+                logger.debug('bypass:Impersonate', f'{req.url} dropped the connection, retrying once: {err}')
+                await asyncio.sleep(_RETRY_PAUSE)
+                continue
+            logger.warn('bypass:Impersonate', f'{req.url} failed: {err}')
+            return None
+    return None
+
+
+def _cookies_of(r: Any) -> dict[str, str]:
+    try:
+        return dict(r.cookies)
+    except (TypeError, ValueError):
+        return {}
 
 
 impersonate_backend = _ImpersonateBackend()

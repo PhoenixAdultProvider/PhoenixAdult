@@ -5,6 +5,7 @@ import binascii
 import json
 import re
 import time
+from dataclasses import dataclass, field
 from typing import Any, ClassVar, TypedDict
 from urllib.parse import quote, urlsplit
 
@@ -79,6 +80,60 @@ def _best_image_url(release: dict[str, Any], base: str) -> str | None:
     return None
 
 
+@dataclass
+class _Query:
+    search_data: SearchContext
+    headers: dict[str, str]
+    scene_id: str | None
+    q: str
+    match_target_key: str
+    forced_sub: str | None
+    seen: set[str] = field(default_factory=set)
+
+
+def _base_score(query: _Query, cur: str, title: str, release_date: str | None) -> float:
+    if query.scene_id:
+        return 100 if query.scene_id == cur else sceneid_distance_score(query.scene_id, cur)
+    if query.search_data.search_date and release_date:
+        return date_distance_score(query.search_data.search_date, release_date)
+    return title_distance_score(query.q, title)
+
+
+def _release_score(query: _Query, cur: str, title: str, release_date: str | None, type_: str, sub_site: str) -> float:
+    score = _base_score(query, cur, title, release_date)
+    if type_ == 'trailer':
+        score -= 10
+    if sub_site and _normalize(sub_site) != query.match_target_key:
+        score -= 10
+    return score
+
+
+def _release_result(query: _Query, release: dict[str, Any], type_: str, url: str) -> SearchResult | None:
+    title = (release.get('title') or '').replace('�', "'")
+    cur = str(release.get('id'))
+    colls = release.get('collections') or []
+    sub_site = (colls[0].get('name') or '').strip() if colls and isinstance(colls[0], dict) else ''
+    release_date = iso_date(release['dateReleased']) if release.get('dateReleased') else None
+    composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
+    if composite in query.seen:
+        return None
+    query.seen.add(composite)
+    site_info = query.search_data.site_info
+    own_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(site_info.name) else None
+    return build_search_result(
+        site=site_info,
+        title=f'[Trailer] {title}' if type_ == 'trailer' else title,
+        scene_url=url,
+        query=query.q,
+        search_date=query.search_data.search_date,
+        display_date=release_date,
+        score=_release_score(query, cur, title, release_date, type_, sub_site),
+        cur_id=pack_cur_id([composite]),
+        thumb_url=_best_image_url(release, _DEFAULT_IMAGE_BASE),
+        subsite=query.forced_sub or own_sub,
+    )
+
+
 class _SceneExtra(TypedDict):
     detail: dict[str, Any]
     headers: dict[str, str]
@@ -127,81 +182,25 @@ class Project1ServiceClient(Client):
             q = q.replace(first_word, '', 1).strip()
 
         match_target_key = _normalize(search_data.search_site or search_data.site_info.name)
-        forced_sub = _FORCED_SUBSITES.get(match_target_key)
-        seen: set[str] = set()
+        query = _Query(search_data, headers, scene_id, q, match_target_key, _FORCED_SUBSITES.get(match_target_key))
 
         if scene_id:
-            await self._search_phase(search_data, headers, f'id={quote(scene_id)}', scene_id, q, match_target_key, forced_sub, results, seen)
+            await self._search_phase(query, f'id={quote(scene_id)}', results)
             if any(r.score == 100 for r in results):
                 return
 
         if q or not scene_id:
-            await self._search_phase(search_data, headers, f'search={quote(q)}', scene_id, q, match_target_key, forced_sub, results, seen)
+            await self._search_phase(query, f'search={quote(q)}', results)
 
-    async def _search_phase(
-        self,
-        search_data: SearchContext,
-        headers: dict[str, str],
-        query_param: str,
-        scene_id: str | None,
-        q: str,
-        match_target_key: str,
-        forced_sub: str | None,
-        results: list[SearchResult],
-        seen: set[str],
-    ) -> None:
+    async def _search_phase(self, query: _Query, query_param: str, results: list[SearchResult]) -> None:
         for type_ in _SEARCH_TYPES:
-            params = f'type={type_}&{query_param}'
-            url = f'{_DEFAULT_API_BASE}/v2/releases?{params}'
-            search_results = await self.fetch_json(url, FetchCtx(capture=search_data.capture), headers=headers, label=f'GET {url}')
+            url = f'{_DEFAULT_API_BASE}/v2/releases?type={type_}&{query_param}'
+            search_results = await self.fetch_json(url, FetchCtx(capture=query.search_data.capture), headers=query.headers, label=f'GET {url}')
             releases = search_results.get('result') or [] if isinstance(search_results, dict) else []
-
-            for r in releases:
-                if not isinstance(r, dict):
-                    continue
-
-                title = (r.get('title') or '').replace('�', "'")
-                cur = str(r.get('id'))
-                colls = r.get('collections') or []
-                sub_site = (colls[0].get('name') or '').strip() if colls and isinstance(colls[0], dict) else ''
-                release_date = iso_date(r['dateReleased']) if r.get('dateReleased') else None
-
-                if scene_id and scene_id == cur:
-                    score: float = 100
-                elif scene_id:
-                    score = sceneid_distance_score(scene_id, cur)
-                elif search_data.search_date and release_date:
-                    score = date_distance_score(search_data.search_date, release_date)
-                else:
-                    score = title_distance_score(q, title)
-
-                if type_ == 'trailer':
-                    score -= 10
-
-                if sub_site and _normalize(sub_site) != match_target_key:
-                    score -= 10
-
-                composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
-                if composite in seen:
-                    continue
-
-                seen.add(composite)
-                result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None)
-
-                results.append(
-                    build_search_result(
-                        site=search_data.site_info,
-                        title=f'[Trailer] {title}' if type_ == 'trailer' else title,
-                        scene_url=url,
-                        query=q,
-                        search_date=search_data.search_date,
-                        display_date=release_date,
-                        score=score,
-                        cur_id=pack_cur_id([composite]),
-                        thumb_url=_best_image_url(r, _DEFAULT_IMAGE_BASE),
-                        subsite=result_sub,
-                    )
-                )
+            for search_result in releases:
+                result = _release_result(query, search_result, type_, url) if isinstance(search_result, dict) else None
+                if result is not None:
+                    results.append(result)
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')

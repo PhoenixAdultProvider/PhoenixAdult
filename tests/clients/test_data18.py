@@ -442,3 +442,44 @@ async def test_a_movie_billing_line_is_read_the_same_way() -> None:
     respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(side_effect=_paged(rows))
     url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 25), kind='movie', actors=['Shyla Stylez'])
     assert url == 'https://www.data18.com/movies/900002'
+
+
+_GALLERY_SCENE = (
+    '<html><div id="galleriesoff"><div id="gallery7"></div><div id="gallery1001"></div><div id="gallery1901"></div><div id="gallery55"></div></div>'
+    '<div id="moviewrap"><img src="https://cdn.example/g7/01.jpg"></div>'
+    '<a data-lightbox="relatedscenecover" href="https://cdn.example/cover.jpg"></a></html>'
+)
+
+
+def _viewer(thumbs: list[str], total: int | None = None) -> str:
+    imgs = ''.join(f'<img src="{u}">' for u in thumbs)
+    count = f'<div id="primaryphoto"><div><b>1 of {total}</b></div></div>' if total is not None else ''
+    return f'<html>{imgs}{count}</html>'
+
+
+@pytest.mark.parametrize(('extra', 'stops_after_photoset'), [('false', True), ('true', False)])
+@respx.mock
+async def test_fetch_images_walks_galleries_in_order(monkeypatch: pytest.MonkeyPatch, extra: str, stops_after_photoset: bool) -> None:
+    monkeypatch.setenv('DATA18_EXTRA', extra)
+    respx.get('https://www.data18.com/scenes/4567-x').mock(return_value=httpx.Response(200, text=_GALLERY_SCENE))
+    viewers = {
+        '7': _viewer(['https://cdn.example/g7/th8/01.jpg', 'https://cdn.example/g7/th8_2/02.jpg']),
+        '1001': _viewer(['https://cdn.example/g1001/th8/03.jpg'], total=2),
+        '1901': _viewer(['https://cdn.example/g1901/x_2th8/01.jpg'], total=1),
+        '55': _viewer(['https://cdn.example/g55/th8/09.jpg']),
+    }
+    for pic, page in viewers.items():
+        respx.get(url__regex=rf'media_photos\.php\?s=4&scene=567&pic={pic}$').mock(return_value=httpx.Response(200, text=page))
+
+    imgs = await Data18Client().fetch_images('https://www.data18.com/scenes/4567-x')
+
+    expected = [
+        'https://cdn.example/g7/01.jpg',
+        'https://cdn.example/g1001/03.jpg',
+        'https://cdn.example/g1001/04.jpg',
+        'https://cdn.example/g1901/x_2th8/01.jpg',
+        'https://cdn.example/g1901/x/t01.jpg',
+    ]
+    if not stops_after_photoset:
+        expected.append('https://cdn.example/g55/09.jpg')
+    assert imgs == [*expected, 'https://cdn.example/cover.jpg']

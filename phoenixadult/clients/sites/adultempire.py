@@ -157,38 +157,33 @@ class AdultEmpireClient(Client):
         return details_page_elements['sel']
 
     async def _candidate_movie_urls(self, search_data: SearchContext, *, name: str, base: str, direct_id: bool, scene_id: str) -> dict[str, str]:
-        movie_urls: dict[str, str] = {}
         if direct_id:
-            movie_urls[f'{base}/{scene_id}'] = ''
-        else:
-            encoded = re.sub(r'\s+', '+', re.sub(r"[&'#,]", '', search_data.title).split('scene')[0].strip())
-            search_url = f'{base}{search_data.site_info.search_path}{encoded}'
-            logger.debug(name, f'on-site search URL: {search_url}')
-            sel = await self._load(search_url, search_data.capture, f'[{name}] search "{search_data.title}"')
-            if sel is not None:
-                hrefs = sel.xpath('//div[contains(@class,"product-details__item-title")]//a/@href').getall()
-                logger.debug(name, f'on-site product-details hrefs: {len(hrefs)}')
-                for href in hrefs:
-                    parts = href.split('/')
-                    url_id = parts[1] if len(parts) > 1 else ''
-                    if not url_id:
-                        continue
+            return {f'{base}/{scene_id}': ''}
+        movie_urls = await self._on_site_movie_urls(search_data, name=name, base=base)
+        with best_effort(name, 'webSearch', level='debug'):
+            web_urls = await web_search_urls(search_data.title, search_data.site_info)
+            before = len(movie_urls)
+            for u in web_urls:
+                if 'movies' in u and '.html' not in u:
+                    movie_urls.setdefault(re.sub(r'/[^/]*$', '', u), '')
+            logger.debug(name, f'web-search returned {len(web_urls)} URL(s); {len(movie_urls) - before} new movie URL(s)')
+        return movie_urls
 
-                    url = f'{base}/{url_id}'
-                    if url not in movie_urls:
-                        movie_urls[url] = _result_type_for(href)
-
-            with best_effort(name, 'webSearch', level='debug'):
-                web_urls = await web_search_urls(search_data.title, search_data.site_info)
-                added = 0
-                for u in web_urls:
-                    if 'movies' in u and '.html' not in u:
-                        url = re.sub(r'/[^/]*$', '', u)
-                        if url not in movie_urls:
-                            movie_urls[url] = ''
-                            added += 1
-
-                logger.debug(name, f'web-search returned {len(web_urls)} URL(s); {added} new movie URL(s)')
+    async def _on_site_movie_urls(self, search_data: SearchContext, *, name: str, base: str) -> dict[str, str]:
+        encoded = re.sub(r'\s+', '+', re.sub(r"[&'#,]", '', search_data.title).split('scene')[0].strip())
+        search_url = f'{base}{search_data.site_info.search_path}{encoded}'
+        logger.debug(name, f'on-site search URL: {search_url}')
+        sel = await self._load(search_url, search_data.capture, f'[{name}] search "{search_data.title}"')
+        if sel is None:
+            return {}
+        hrefs = sel.xpath('//div[contains(@class,"product-details__item-title")]//a/@href').getall()
+        logger.debug(name, f'on-site product-details hrefs: {len(hrefs)}')
+        movie_urls: dict[str, str] = {}
+        for href in hrefs:
+            parts = href.split('/')
+            url_id = parts[1] if len(parts) > 1 else ''
+            if url_id:
+                movie_urls.setdefault(f'{base}/{url_id}', _result_type_for(href))
         return movie_urls
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:

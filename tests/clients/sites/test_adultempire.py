@@ -179,3 +179,34 @@ async def test_detail_split_scene() -> None:
     assert detail is not None
     assert detail.title == 'Big Compilation [Scene 1]'
     assert [a.name for a in detail.actors] == ['Mary Roe']
+
+
+@respx.mock
+async def test_candidate_movie_urls_merge_on_site_and_web_hits(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_age_gate()
+
+    async def web_hits(*_args: object) -> list[str]:
+        return [
+            'https://www.adultempire.com/111/movies/big-movie',
+            'https://www.adultempire.com/222/movies/other',
+            'https://www.adultempire.com/333-scene.html',
+            'https://www.adultempire.com/444/clips/x',
+        ]
+
+    monkeypatch.setattr(ae_module, 'web_search_urls', web_hits)
+    on_site = '<div class="product-details__item-title"><a href="/111/big-movie.html">x</a><a href="noslash">y</a></div>'
+    respx.get(url__startswith='https://www.adultempire.com/allsearch/search').mock(return_value=httpx.Response(200, text=on_site))
+    client = AdultEmpireClient()
+    base = 'https://www.adultempire.com'
+    urls = await client._candidate_movie_urls(_ctx(title='Big Movie'), name=SITE.name, base=base, direct_id=False, scene_id='')
+    assert list(urls) == [f'{base}/111', f'{base}/111/movies', f'{base}/222/movies']
+    assert await client._candidate_movie_urls(_ctx(title='x'), name=SITE.name, base=base, direct_id=True, scene_id='999') == {f'{base}/999': ''}
+
+
+@respx.mock
+async def test_candidate_movie_urls_survive_a_failed_on_site_search(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    _mock_age_gate()
+    monkeypatch.setattr(ae_module, 'web_search_urls', no_web_search)
+    respx.get(url__startswith='https://www.adultempire.com/allsearch/search').mock(return_value=httpx.Response(500))
+    base = 'https://www.adultempire.com'
+    assert await AdultEmpireClient()._candidate_movie_urls(_ctx(title='Big Movie'), name=SITE.name, base=base, direct_id=False, scene_id='') == {}

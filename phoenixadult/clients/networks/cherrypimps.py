@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from parsel import Selector
+
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
@@ -96,24 +98,25 @@ class CherryPimpsClient(Client):
                 continue
 
             seen.add(actor_name)
-            photo = first_attr(actor_link, '(.//img)[1]/@src0_1x')
-            if not photo:
-                href = first_attr(actor_link, '@href')
-                if href:
-                    actor_url = absolute_url(href, scene.site.base_url)
-                    model_page_elements = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {actor_name}')
-                    if model_page_elements:
-                        raw = (
-                            model_page_elements['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src').get()
-                            or model_page_elements['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x').get()
-                            or ''
-                        ).strip()
-                        if raw:
-                            photo = f'https:{raw}' if raw.startswith('//') else raw
-
+            photo = first_attr(actor_link, '(.//img)[1]/@src0_1x') or await self._model_page_photo(scene, actor_link, actor_name)
             actors.append(ActorResult(name=actor_name, photo_url=photo))
 
         metadata.actors = actors
+
+    async def _model_page_photo(self, scene: LoadedScene, actor_link: Selector, actor_name: str) -> str:
+        href = first_attr(actor_link, '@href')
+        if not href:
+            return ''
+        actor_url = absolute_url(href, scene.site.base_url)
+        model_page_elements = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {actor_name}')
+        if not model_page_elements:
+            return ''
+        raw = (
+            model_page_elements['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src').get()
+            or model_page_elements['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x').get()
+            or ''
+        ).strip()
+        return f'https:{raw}' if raw.startswith('//') else raw
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

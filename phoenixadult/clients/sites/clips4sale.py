@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from itertools import product
 from typing import Any
 from urllib.parse import quote
 
@@ -33,15 +34,18 @@ _FORMAT_TEMPLATES = [
 ]
 
 
+_FORMAT_TOKENS = tuple(
+    f.replace('%(quality)s', qf).replace('%(fileType)s', tf)
+    for f, q, file_type in product(_FORMAT_TEMPLATES, _QUALITIES, _FILE_TYPES)
+    for qf in (q.lower(), q.upper())
+    for tf in (file_type.lower(), file_type.upper())
+)
+
+
 def _clean_title(title: str) -> str:
     out = title
-    for f in _FORMAT_TEMPLATES:
-        for q in _QUALITIES:
-            for t in _FILE_TYPES:
-                for qf in (q.lower(), q.upper()):
-                    for tf in (t.lower(), t.upper()):
-                        out = ''.join(out.split(f.replace('%(quality)s', qf).replace('%(fileType)s', tf)))
-
+    for token in _FORMAT_TOKENS:
+        out = out.replace(token, '')
     return out.strip()
 
 

@@ -56,3 +56,23 @@ async def test_detail() -> None:
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
     assert detail.actors[0].photo_url == 'https://cdn/a.jpg'
     assert detail.art == ['https://cdn/t1.jpg']
+
+
+@respx.mock
+async def test_actors_without_a_card_photo_take_it_from_their_model_page() -> None:
+    url = 'https://www.cherrypimps.com/scene/1/cool-scene'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text="""<html><body><div class="trailer-block_title">Cool Scene</div>
+              <div class="info-block_data"><a href="/models/jane.html">Jane Doe</a><a href="/models/gone.html">John Smith</a><a>No Link</a></div>
+            </body></html>""",
+        )
+    )
+    respx.get('https://www.cherrypimps.com/models/jane.html').mock(
+        return_value=httpx.Response(200, text='<img class="model_bio_thumb" src="//cdn.example/jane.jpg" />')
+    )
+    respx.get('https://www.cherrypimps.com/models/gone.html').mock(return_value=httpx.Response(404))
+    detail = await CherryPimpsClient().fetch_scene_detail(url, SITE)
+    assert detail is not None
+    assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.example/jane.jpg'), ('John Smith', ''), ('No Link', '')]

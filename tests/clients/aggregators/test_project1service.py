@@ -168,3 +168,16 @@ async def test_scene_id_near_miss_still_searches_and_dedupes() -> None:
     await Project1ServiceClient().search(results, search_context(SITE, '3940141 cool scene'))
     assert len(results) == 4
     assert all(r.score < 100 for r in results)
+
+
+@respx.mock
+async def test_trailers_and_foreign_subsites_score_ten_lower_each() -> None:
+    from phoenixadult.utils.helpers.scoring import title_distance_score
+
+    _token_head()
+    respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [_RELEASE]}))
+    results: list[SearchResult] = []
+    await Project1ServiceClient().search(results, search_context(SITE, 'cool scene'))
+    scores = {r.title: r.score for r in results}
+    base = title_distance_score('cool scene', 'Cool Scene') - 10
+    assert scores == {'Cool Scene': base, '[Trailer] Cool Scene': base - 10}

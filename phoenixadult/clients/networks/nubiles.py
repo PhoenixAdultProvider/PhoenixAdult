@@ -90,6 +90,21 @@ def _best_variant(candidates: list[str]) -> str | None:
     return max(pool, key=rank) if pool else None
 
 
+def _gallery_images(gallery_page_elements: Selector) -> list[str]:
+    imgs = gallery_page_elements.xpath('//figure[contains(@class,"photo-thumb")]//div[@class="img-wrapper"]//picture/img')
+    if not imgs:
+        srcsets = gallery_page_elements.xpath('//div[@class="img-wrapper"]//picture/source/@srcset').getall()
+        firsts = (srcset.split(',')[0].strip().split(' ')[0] for srcset in srcsets)
+        return [to_https(first) for first in firsts if first and not first.startswith('data:')]
+    out: list[str] = []
+    for img in imgs:
+        srcset = img.attrib.get('srcset') or ''
+        candidates = [img.attrib.get('src') or '', *(c.strip().split(' ')[0] for c in srcset.split(',') if c.strip())]
+        if best := _best_variant(candidates):
+            out.append(to_https(best))
+    return out
+
+
 class NubilesClient(Client):
     default_headers: ClassVar[dict[str, str]] = _SHARED_HEADERS
 
@@ -400,17 +415,6 @@ class NubilesClient(Client):
         if gallery_url:
             gallery_page_elements = await self._get(gallery_url, scene.site, None, f'GET {gallery_url} (gallery)')
             if gallery_page_elements is not None:
-                imgs = gallery_page_elements.xpath('//figure[contains(@class,"photo-thumb")]//div[@class="img-wrapper"]//picture/img')
-                if imgs:
-                    for img in imgs:
-                        srcset = img.attrib.get('srcset') or ''
-                        candidates = [img.attrib.get('src') or '', *(c.strip().split(' ')[0] for c in srcset.split(',') if c.strip())]
-                        if best := _best_variant(candidates):
-                            out.append(to_https(best))
-                else:
-                    for srcset in gallery_page_elements.xpath('//div[@class="img-wrapper"]//picture/source/@srcset').getall():
-                        first = srcset.split(',')[0].strip().split(' ')[0]
-                        if first and not first.startswith('data:'):
-                            out.append(to_https(first))
+                out.extend(_gallery_images(gallery_page_elements))
 
         metadata.art = out
