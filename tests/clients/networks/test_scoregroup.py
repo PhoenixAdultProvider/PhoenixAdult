@@ -762,5 +762,17 @@ async def test_a_scene_found_by_both_the_site_search_and_the_web_search_appears_
     assert not hit.called
 
 
-def test_requests_carry_the_browser_check_cookie() -> None:
-    assert ScoreGroupClient().http.headers['cookie'] == 'tsg_verified=true'
+@respx.mock
+async def test_the_browser_check_cookie_survives_the_search_redirect() -> None:
+    seen: list[str] = []
+
+    def results(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get('cookie', ''))
+        return httpx.Response(200, text='<html>results</html>')
+
+    respx.post('https://www.scoreland.com/search-es').mock(
+        return_value=httpx.Response(303, headers={'Location': 'https://www.scoreland.com/search-es/q/?page=1', 'Set-Cookie': 'cisession=abc; path=/'})
+    )
+    respx.get('https://www.scoreland.com/search-es/q/?page=1').mock(side_effect=results)
+    await ScoreGroupClient().http.post('https://www.scoreland.com/search-es', data={'keywords': 'q'})
+    assert 'tsg_verified=true' in seen[0] and 'cisession=abc' in seen[0]

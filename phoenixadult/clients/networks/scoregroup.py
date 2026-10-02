@@ -194,7 +194,7 @@ def _keywords(search_data: SearchContext) -> str:
 
 
 class ScoreGroupClient(Client):
-    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'tsg_verified=true'}
+    default_cookies: ClassVar[dict[str, str]] = {'tsg_verified': 'true'}
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 

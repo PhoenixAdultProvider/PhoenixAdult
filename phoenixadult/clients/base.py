@@ -147,6 +147,7 @@ class ImageCollector:
 class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks, none are mandatory
     scraper_type: ClassVar[str] = ''
     default_headers: ClassVar[dict[str, str]] = {}
+    default_cookies: ClassVar[dict[str, str]] = {}
     packed_scene_tail: ClassVar[bool] = False
 
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
@@ -158,7 +159,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     @property
     def http(self) -> httpx2.AsyncClient:
         if self._http is None:
-            self._http = make_http(self._extra_headers)
+            self._http = make_http(self._extra_headers, cookies=self.default_cookies or None)
         return self._http
 
     async def aclose(self) -> None:
