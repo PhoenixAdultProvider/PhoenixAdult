@@ -129,12 +129,14 @@ def test_read_only_pages_still_load_for_non_admins(member: TestClient) -> None:
 def test_base_html_is_the_only_place_the_components_are_declared() -> None:
     import re
 
+    base = (Path(__file__).resolve().parents[2] / 'phoenixadult' / 'routes' / 'html' / 'base.html').read_text(encoding='utf-8')
     admin = authed_client()
     for path in ('/metadata', '/people', '/logos', '/queue', '/searches'):
         body = admin.get(path).text
         for component in ('pa-btn', 'pa-card', 'pa-badge', 'pa-input'):
-            hits = re.findall(rf'^\s*\.{component}\s*\{{', body, re.M)
-            assert len(hits) == 1, f'{path} declares .{component} {len(hits)} times; base.html owns it'
+            rule = rf'^\s*\.{component}\s*\{{'
+            hits = re.findall(rule, body, re.M)
+            assert len(hits) == len(re.findall(rule, base, re.M)), f'{path} declares .{component} {len(hits)} times; base.html owns it'
         assert not re.search(r'^\s*button\s*\{', body, re.M), f'{path} styles bare <button>, which every component then has to undo'
         assert not re.search(r'outline:\s*(0|none)', body), f'{path} cancels the keyboard focus ring'
 

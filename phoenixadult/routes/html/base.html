@@ -146,7 +146,8 @@
     @keyframes pa-spin { to { transform: rotate(360deg); } }
 
     @media (max-width: 720px) {
-      .pa-input:not(textarea), .pa-btn { height: 44px; }
+      .pa-input:not(textarea) { height: 44px; }
+      .pa-btn { height: auto; min-height: 44px; padding-block: var(--space-1); white-space: normal; text-align: center; line-height: 1.25; }
       .pa-card--roomy { border: 0; border-radius: 0; padding: var(--space-5) 18px; background: none; }
     }
   </style>
