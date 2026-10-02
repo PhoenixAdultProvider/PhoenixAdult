@@ -241,57 +241,59 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
     return await _coalesce.run(key, lambda: _fetch_image(url, configured_referers, configured_cookies, pinned))
 
 
+@dataclass
+class _Attempts:
+    payload: tuple[bytes, str] | None = None
+    won_referer: str | None = None
+    failed: int = 0
+    last_err: Exception | None = None
+
+
+async def _try_referers(url: str, referers: list[str | None], cookie_header: str | None, pinned: bool) -> _Attempts:
+    attempts = _Attempts()
+    client = None if pinned else _image_client()
+    for referer in referers:
+        try:
+            if client is None:
+                attempts.payload = await _get_once_pinned(url, referer, cookie_header)
+            else:
+                attempts.payload = await _get_once(client, url, referer, cookie_header)
+        except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
+            attempts.last_err = err
+            attempts.failed += 1
+            continue
+        attempts.won_referer = referer
+        break
+    return attempts
+
+
+async def _impersonate_fallback(url: str, referers: list[str | None], cookie_header: str | None) -> tuple[bytes, str] | None:
+    hdrs: dict[str, str] = {}
+    ref = next((r for r in referers if r), None)
+    if ref:
+        hdrs['Referer'] = sanitize_header(ref)
+    if cookie_header:
+        hdrs['Cookie'] = sanitize_header(cookie_header)
+    return await impersonate_get_bytes(url, hdrs or None)
+
+
 async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
     referers = _referers_for(url, configured_referers)
     cookie_header = '; '.join(configured_cookies) if configured_cookies and not _is_data18_host(url) else None
-    last_err: Exception | None = None
-    payload: tuple[bytes, str] | None = None
-    failed_attempts = 0
-    won_referer: str | None = None
+    attempts = await _try_referers(url, referers, cookie_header, pinned)
+    if attempts.payload is None and not pinned:
+        attempts.payload = await _impersonate_fallback(url, referers, cookie_header)
+        attempts.won_referer = 'impersonate' if attempts.payload is not None else attempts.won_referer
+    if attempts.payload is None:
+        raise attempts.last_err or ValueError(f'All Referer attempts failed for {url}')
+    if attempts.failed:
+        logger.debug(f'fetchImage: {url} succeeded via {attempts.won_referer or "(no referer)"} after {attempts.failed} failed attempt(s)')
 
-    if pinned:
-        for referer in referers:
-            try:
-                payload = await _get_once_pinned(url, referer, cookie_header)
-                won_referer = referer
-                break
-            except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
-                last_err = err
-                failed_attempts += 1
-    else:
-        client = _image_client()
-        for referer in referers:
-            try:
-                payload = await _get_once(client, url, referer, cookie_header)
-                won_referer = referer
-                break
-            except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
-                last_err = err
-                failed_attempts += 1
-
-    if payload is None and not pinned:
-        hdrs: dict[str, str] = {}
-        ref = next((r for r in referers if r), None)
-        if ref:
-            hdrs['Referer'] = sanitize_header(ref)
-        if cookie_header:
-            hdrs['Cookie'] = sanitize_header(cookie_header)
-        got = await impersonate_get_bytes(url, hdrs or None)
-        if got is not None:
-            won_referer = 'impersonate'
-            payload = got
-
-    if payload is None:
-        raise last_err or ValueError(f'All Referer attempts failed for {url}')
-    if failed_attempts:
-        logger.debug(f'fetchImage: {url} succeeded via {won_referer or "(no referer)"} after {failed_attempts} failed attempt(s)')
-
-    data, content_type = payload
+    data, content_type = attempts.payload
     try:
         width, height, solid = await run_in('image', _decode_dims, data)
     except Exception:  # noqa: BLE001 - undecodable image still served, just unsized
         width, height, solid = 0, 0, False
-
     entry = ImageEntry(data=data, content_type=content_type, cached_at=time.time(), width=width, height=height, solid=solid)
     _cache[cache_key(url, configured_cookies)] = entry
     return entry

@@ -172,54 +172,60 @@ def _get_adapter(display_name: str) -> FansiteAdapter | None:
 # ── Main Entry ─────────────────────────────────────────────────────────────────
 
 
+async def _candidates(opts: FindFanArtOptions, adapter: FansiteAdapter, override: BadMatchOverride | None, query: str) -> list[str]:
+    if override:
+        return [override.url]
+    try:
+        return list(await opts.web_search(query, adapter.search_domain, 2))
+    except Exception as err:  # noqa: BLE001 - search failure is non-fatal
+        logger.debug('fanart', f'webSearch {adapter.search_domain} failed: {err}')
+        return []
+
+
+def _page_matches(node: Selector, adapter: FansiteAdapter, url: str, site_name: str, title: str, actor_names: list[str]) -> bool:
+    header_actors = _extract_header_actors(node, adapter)
+    if not _actor_matches_header(actor_names, header_actors):
+        logger.debug('fanart', f'{site_name}: actor not in header ({", ".join(header_actors)})')
+        return False
+    fan_title = _extract_title(node, adapter, url)
+    if not _titles_are_close_enough(title, fan_title):
+        logger.debug('fanart', f'{site_name}: title mismatch ("{fan_title}" vs "{title}")')
+        return False
+    return True
+
+
+async def _site_fan_art(
+    opts: FindFanArtOptions, site_name: str, adapter: FansiteAdapter, override: BadMatchOverride | None, actor_names: list[str], query: str
+) -> FindFanArtResult | None:
+    for url in await _candidates(opts, adapter, override, query):
+        node = await opts.fetch_page(url)
+        if not node or (not override and not _page_matches(node, adapter, url, site_name, opts.title, actor_names)):
+            continue
+        images = _extract_gallery_images(node, adapter, url)
+        if not images:
+            logger.debug('fanart', f'{site_name}: matched but no gallery images extracted')
+            continue
+        logger.info('fanart', f'match on {site_name} ({len(images)} image(s)) for "{opts.title}"')
+        return FindFanArtResult(images=images, summary=_extract_summary(node, adapter), source=site_name)
+    return None
+
+
 async def find_fan_art(opts: FindFanArtOptions) -> FindFanArtResult:
     if is_no_match_title(opts.title):
         logger.debug('fanart', f'"{opts.title}" is in the no-match list — skipping')
         return FindFanArtResult()
     override = get_bad_match_override(opts.title)
-
     sites = [override.site] if override else opts.sites
     actor_names = [override.actor_name, *opts.actor_names] if override and override.actor_name else opts.actor_names
     query = f'{opts.actor_names[0] if opts.actor_names else ""} {opts.title}'.strip()
-
     for site_name in sites:
         adapter = _get_adapter(site_name)
         if not adapter:
             logger.warn('fanart', f'no adapter registered for "{site_name}"')
             continue
-
-        if override:
-            candidates = [override.url]
-        else:
-            try:
-                candidates = await opts.web_search(query, adapter.search_domain, 2)
-            except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-                logger.debug('fanart', f'webSearch {adapter.search_domain} failed: {err}')
-                candidates = []
-
-        for url in candidates:
-            node = await opts.fetch_page(url)
-            if not node:
-                continue
-
-            if not override:
-                header_actors = _extract_header_actors(node, adapter)
-                if not _actor_matches_header(actor_names, header_actors):
-                    logger.debug('fanart', f'{site_name}: actor not in header ({", ".join(header_actors)})')
-                    continue
-                fan_title = _extract_title(node, adapter, url)
-                if not _titles_are_close_enough(opts.title, fan_title):
-                    logger.debug('fanart', f'{site_name}: title mismatch ("{fan_title}" vs "{opts.title}")')
-                    continue
-
-            images = _extract_gallery_images(node, adapter, url)
-            if not images:
-                logger.debug('fanart', f'{site_name}: matched but no gallery images extracted')
-                continue
-
-            logger.info('fanart', f'match on {site_name} ({len(images)} image(s)) for "{opts.title}"')
-            return FindFanArtResult(images=images, summary=_extract_summary(node, adapter), source=site_name)
-
+        found = await _site_fan_art(opts, site_name, adapter, override, actor_names, query)
+        if found is not None:
+            return found
     return FindFanArtResult()
 
 
