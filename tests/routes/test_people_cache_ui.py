@@ -85,7 +85,7 @@ def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch,
         cropped=True,
     )
 
-    entries = pcr._list_people(str(root))
+    entries = pcr._list_people()
     by_file = {e['filename']: e for e in entries}
     assert set(by_file) == {'actor.jane-doe_female.jpg', 'director.greg-lansky.png'}
     jane = by_file['actor.jane-doe_female.jpg']
@@ -110,7 +110,7 @@ def test_folder_derived_names_use_title_case_not_naive_title(monkeypatch: pytest
     (d / 'actor.whitney-oc_female.jpg').write_bytes(b'x')
     (d / 'actor.lasirena69_female.jpg').write_bytes(b'x')
 
-    by_file = {e['filename']: e for e in pcr._list_people(str(root))}
+    by_file = {e['filename']: e for e in pcr._list_people()}
     assert by_file['actor.ashley-mccoy_female.jpg']['name'] == 'Ashley McCoy'
     assert by_file['actor.whitney-oc_female.jpg']['name'] == 'Whitney OC'
     assert by_file['actor.lasirena69_female.jpg']['name'] == 'LaSirena69'
@@ -137,25 +137,21 @@ def test_a_stored_crop_log_name_is_recased_for_display(monkeypatch: pytest.Monke
         cropped=False,
     )
 
-    entry = next(e for e in pcr._list_people(str(root)) if e['filename'] == 'actor.whitney-oc_female.jpg')
+    entry = next(e for e in pcr._list_people() if e['filename'] == 'actor.whitney-oc_female.jpg')
     assert entry['name'] == 'Whitney OC'
 
 
-def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+def test_the_first_listing_rebuilds_the_index_from_the_files(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 
     from phoenixadult.routes import people_cache_routes as pcr
-    from phoenixadult.utils import db
-    from phoenixadult.utils.people import cache as pcache
 
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     d = Path(str(tmp_path)) / 'people' / 'actors' / 'male'
     d.mkdir(parents=True)
     (d / 'actor.bob_male.jpg').write_bytes(b'x')
 
-    db.connect()
-    monkeypatch.setattr(pcache._index, '_key', (pcache.env.people_cache_dir, pcache.env.state_db_path))
-    entries = pcr._list_people(str(Path(str(tmp_path)) / 'people'))
+    entries = pcr._list_people()
     assert [e['relpath'] for e in entries] == ['actors/male/actor.bob_male.jpg']
     assert entries[0]['type'] == 'actors-male'
 

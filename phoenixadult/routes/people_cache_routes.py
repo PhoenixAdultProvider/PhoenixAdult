@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -21,10 +21,9 @@ from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import face_crop, face_crop_log
-from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.cache import ORIGINALS_DIR, cache_photo, index_conn, purge, restore_original, set_gender
+from phoenixadult.utils.people.cache import cache_photo, index_conn, purge, restore_original, set_gender
 from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.local_storage import local_storage_source
@@ -84,40 +83,13 @@ def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | 
     }
 
 
-def _list_people(directory: str) -> list[dict[str, Any]]:
+def _list_people() -> list[dict[str, Any]]:
     rows = index_conn().execute('SELECT rel_path, mtime FROM people_images ORDER BY rel_path').fetchall()
-    if not rows:
-        return _list_people_files(directory)
     logs = face_crop_log.entries_by_path()
     out = [_entry(str(r['rel_path']), float(r['mtime']), logs.get(str(r['rel_path']), {})) for r in rows]
     kept = [e for e in out if e is not None]
     kept.sort(key=lambda e: e['mtime'], reverse=True)
     return kept
-
-
-def _list_people_files(directory: str) -> list[dict[str, Any]]:
-    root = Path(directory)
-    if not root.exists():
-        return []
-    subdirs = sorted({f.parent for f in root.rglob('*') if f.is_file() and not f.name.startswith('.') and f.suffix.lower() in IMAGE_EXTS})
-    out: list[dict[str, Any]] = []
-    for sd in subdirs:
-        subpath = sd.relative_to(root).as_posix()
-        if subpath == ORIGINALS_DIR or subpath.startswith(f'{ORIGINALS_DIR}/'):
-            continue
-        by_file = {e.get('filename'): e for e in face_crop_log.recent(str(sd))}
-        for f in sorted(sd.iterdir()):
-            if not f.is_file() or f.name.startswith('.') or f.suffix.lower() not in IMAGE_EXTS:
-                continue
-            try:
-                mtime = f.stat().st_mtime
-            except OSError:
-                mtime = 0.0
-            entry = _entry(f'{subpath}/{f.name}', mtime, by_file.get(f.name) or {})
-            if entry is not None:
-                out.append(entry)
-    out.sort(key=lambda e: e['mtime'], reverse=True)
-    return out
 
 
 def _gender_of(gender: str) -> Gender:
@@ -153,11 +125,11 @@ _NAME_SQL = "coalesce(nullif(trim(json_extract(c.entry, '$.name')), ''), replace
 _SOURCE_SQL = "coalesce(c.source, '')"
 _FROM_SQL = 'FROM people_images p LEFT JOIN crop_log c ON c.rel_path = p.rel_path'
 
-_FLAGS: dict[str, tuple[str, Callable[[dict[str, Any]], bool]]] = {
-    'cropped': ("coalesce(json_extract(c.entry, '$.cropped'), 0)", lambda e: bool(e.get('cropped'))),
-    'noupstream': ("coalesce(json_extract(c.entry, '$.upstream_url'), '') = ''", lambda e: not e.get('upstream_url')),
-    'generic': (f"{_SOURCE_SQL} = 'Generic'", lambda e: e.get('source') == 'Generic'),
-    'single': (f"instr(trim({_NAME_SQL}), ' ') = 0", lambda e: len(str(e.get('name') or '').split()) == 1),
+_FLAGS = {
+    'cropped': "coalesce(json_extract(c.entry, '$.cropped'), 0)",
+    'noupstream': "coalesce(json_extract(c.entry, '$.upstream_url'), '') = ''",
+    'generic': f"{_SOURCE_SQL} = 'Generic'",
+    'single': f"instr(trim({_NAME_SQL}), ' ') = 0",
 }
 
 
@@ -181,15 +153,8 @@ class PeopleFilters:
     def wanted_source(self) -> str:
         return '' if self.source == _BLANK_SOURCE else self.source
 
-    def flags(self) -> list[tuple[str, Callable[[dict[str, Any]], bool]]]:
-        return [flag for name, flag in _FLAGS.items() if getattr(self, name)]
-
-    def matches(self, entry: dict[str, Any]) -> bool:
-        return (
-            (not self.source or str(entry.get('source') or '') == self.wanted_source)
-            and all(test(entry) for _, test in self.flags())
-            and self.needle in str(entry.get('name') or '').casefold()
-        )
+    def flags(self) -> list[str]:
+        return [sql for name, sql in _FLAGS.items() if getattr(self, name)]
 
 
 def _pick_tab(filters: PeopleFilters, counts: dict[str, int], pick_default: bool) -> str:
@@ -199,7 +164,7 @@ def _pick_tab(filters: PeopleFilters, counts: dict[str, int], pick_default: bool
 
 
 def _where(filters: PeopleFilters, tab: str) -> tuple[str, list[Any]]:
-    terms: list[tuple[str, tuple[Any, ...]]] = [(sql, ()) for sql, _ in filters.flags()]
+    terms: list[tuple[str, tuple[Any, ...]]] = [(sql, ()) for sql in filters.flags()]
     if tab:
         terms.append((f'{_TAB_SQL} = ?', (tab,)))
     if filters.source:
@@ -212,8 +177,6 @@ def _where(filters: PeopleFilters, tab: str) -> tuple[str, list[Any]]:
 
 def _listing(filters: PeopleFilters, pick_default: bool = False) -> dict[str, Any]:
     conn = index_conn()
-    if conn.execute('SELECT 1 FROM people_images LIMIT 1').fetchone() is None:
-        return _listing_from(_list_people_files(env.people_cache_dir), filters, pick_default)
     conn.create_function('casefold', 1, lambda s: s.casefold() if isinstance(s, str) else s, deterministic=True)
     counts = dict.fromkeys((t for t, _ in _TABS), 0)
     library = 0
@@ -244,23 +207,6 @@ def _listing(filters: PeopleFilters, pick_default: bool = False) -> dict[str, An
         'sources': sorted((s for s in present if s), key=str.casefold),
         'has_unrecorded': '' in present,
         'library': library,
-        'pageSize': filters.limit,
-    }
-
-
-def _listing_from(everything: list[dict[str, Any]], filters: PeopleFilters, pick_default: bool) -> dict[str, Any]:
-    counts = {t: sum(1 for e in everything if e['type'] == t) for t, _ in _TABS}
-    tab = _pick_tab(filters, counts, pick_default)
-    in_tab = [e for e in everything if not tab or e['type'] == tab]
-    hits = [e for e in in_tab if filters.matches(e)]
-    return {
-        'entries': [_display_entry(e) for e in hits[filters.offset : filters.offset + filters.limit]],
-        'total': len(hits),
-        'counts': counts,
-        'tab': tab,
-        'sources': sorted({str(e['source']) for e in in_tab if e['source']}, key=str.casefold),
-        'has_unrecorded': any(not e['source'] for e in in_tab),
-        'library': len(everything),
         'pageSize': filters.limit,
     }
 
@@ -308,7 +254,7 @@ def _find_entry(filename: str) -> dict[str, Any] | None:
         .fetchone()
     )
     if row is None:
-        return next((e for e in _list_people(env.people_cache_dir) if e['filename'] == filename), None)
+        return next((e for e in _list_people() if e['filename'] == filename), None)
     relpath = str(row['rel_path'])
     log = face_crop_log.entry_for(str(Path(env.people_cache_dir) / relpath.rpartition('/')[0]), filename) or {}
     return _entry(relpath, float(row['mtime']), log)
@@ -316,7 +262,7 @@ def _find_entry(filename: str) -> dict[str, Any] | None:
 
 def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
     wanted = name.casefold()
-    matches = [e for e in _list_people(env.people_cache_dir) if str(e['name']).casefold() == wanted]
+    matches = [e for e in _list_people() if str(e['name']).casefold() == wanted]
     return next((e for e in matches if str(e['role']) == role), None) or (matches[0] if matches else None)
 
 
@@ -400,7 +346,7 @@ async def bulk_fetch(request: Request) -> Response:
         return JSONResponse({'ok': False, 'error': 'no people selected'}, status_code=400)
 
     truncated = max(0, len(filenames) - _BULK_MAX)
-    known = {e['filename']: e for e in await run_in('store', _list_people, env.people_cache_dir)}
+    known = {e['filename']: e for e in await run_in('store', _list_people)}
     stream = _bulk_stream(source, filenames[:_BULK_MAX], known, truncated)
     return StreamingResponse(stream, media_type='application/x-ndjson')
 
