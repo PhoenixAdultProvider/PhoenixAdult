@@ -279,48 +279,44 @@ class MetadataService:
         stored = await run_in('store', metadata_cache.read, u.site.name, u.cur_id)
         return PlexMetadataResponse.model_validate(stored) if stored is not None else fresh
 
-    async def _fetch_metadata(
-        self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False, allow_slow: bool = False
-    ) -> PlexMetadataResponse | None:
-        logger.info(provider.id, f'Update ratingKey={rating_key}')
-
+    def _parse_update(self, rating_key: str, provider: ProviderInfo, language: str | None, allow_slow: bool) -> _Update:
         parsed = parse_rating_key(rating_key)
         if not parsed:
             logger.warn(provider.id, f'Unrecognised ratingKey format: {rating_key}')
             raise MalformedRequestError(f'unrecognised ratingKey format: {rating_key}')
-
         site_name = parsed['site_name']
         cur_id = parsed['cur_id']
         if not (site_name and cur_id):
             logger.warn(provider.id, f'Incomplete ratingKey (missing siteName/curID): {rating_key}')
             raise MalformedRequestError(f'incomplete ratingKey: {rating_key}')
-
         site = find_site(site_name)
         if not site:
             logger.warn(provider.id, f'No site found for siteName "{site_name}" from ratingKey')
             raise MalformedRequestError(f'no registry site for siteName "{site_name}"')
-
         scene_url, subsite = split_subsite(self._scraper.decode(cur_id))
-        update = _Update(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
+        return _Update(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
 
-        cached = None if force else await run_in('store', metadata_cache.read, site.name, cur_id)
+    async def _snapshot(self, u: _Update, force: bool) -> PlexMetadataResponse | None:
+        cached = None if force else await run_in('store', metadata_cache.read, u.site.name, u.cur_id)
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
-        if response is not None and metadata_cache.data18_remap_needed(response, site.name):
-            logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')
-            response = None
+        if response is not None and metadata_cache.data18_remap_needed(response, u.site.name):
+            logger.info(u.provider.id, f'data18 mapping changed for ratingKey={u.rating_key} — re-scraping')
+            return None
+        return response
 
-        pull_attempted = False
-        if response is not None and scene_url and metadata_cache.data18_backfill_needed(response, site.name):
-            pull_attempted = True
-            enriched = await self._pull_data18_enrichment(update)
+    async def _fetch_metadata(
+        self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False, allow_slow: bool = False
+    ) -> PlexMetadataResponse | None:
+        logger.info(provider.id, f'Update ratingKey={rating_key}')
+        update = self._parse_update(rating_key, provider, language, allow_slow)
+        response = await self._snapshot(update, force)
+        if response is not None:
+            pull_attempted = bool(update.scene_url) and metadata_cache.data18_backfill_needed(response, update.site.name)
+            enriched = await self._pull_data18_enrichment(update) if pull_attempted else None
             if enriched is not None:
                 return self._finalize(enriched, provider, rating_key, cached=False)
-
-        if response is not None:
             return await self._serve_cached(response, update, skip_data18=pull_attempted)
-
-        if not scene_url:
+        if not update.scene_url:
             logger.warn(provider.id, f'Could not decode curID from ratingKey={rating_key}')
             raise MalformedRequestError(f'undecodable curID in ratingKey={rating_key}')
-
         return await self._scrape_and_store(update)

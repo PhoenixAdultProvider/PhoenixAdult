@@ -227,39 +227,55 @@ class MatchService:
             raise ProviderUnavailableError('search exceeded the Plex request budget — retry later') from None
 
     async def _match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
+        logger.info(provider.id, 'Match', title=req.title, filename=req.filename)
+        if self._suppressed(req, provider):
+            return self._empty(provider)
+        search_data = self._search_data(req, provider, language)
+        if search_data is None:
+            return self._empty(provider)
+        raw_results = await self._raw_results(search_data, provider)
+        if raw_results is None:
+            return self._empty(provider)
+        results = self._ranked(raw_results, search_data, provider)
+        if req.manual != 1:
+            chosen, why = auto_match(results)
+            logger.info(provider.id, f'Auto match: {why}')
+            if chosen is None:
+                return self._empty(provider)
+            results = [chosen]
+        response = PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
+        if debug_enabled():
+            logger.debug(provider.id, f'match response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
+        return response
+
+    def _suppressed(self, req: MatchRequest, provider: ProviderInfo) -> bool:
         is_manual = req.manual == 1
         include_adult = req.includeAdult == 1
+        if include_adult and not (env.disable_auto_match and not is_manual):
+            return False
+        logger.info(
+            provider.id,
+            f'match suppressed (DISABLE_AUTO_MATCH={env.disable_auto_match_raw}, manual={is_manual}, includeAdult={include_adult})',
+        )
+        return True
 
-        logger.info(provider.id, 'Match', title=req.title, filename=req.filename)
-
+    def _search_data(self, req: MatchRequest, provider: ProviderInfo, language: str | None) -> SearchContext | None:
         parse_source = req.filename or req.title
-
-        if not include_adult or (env.disable_auto_match and not is_manual):
-            logger.info(
-                provider.id,
-                f'match suppressed (DISABLE_AUTO_MATCH={env.disable_auto_match_raw}, manual={is_manual}, includeAdult={include_adult})',
-            )
-            return self._empty(provider)
-
         if not parse_source:
             raise MalformedRequestError('no title or filename to parse')
-
         parsed = get_site_name_from_registry(parse_source, lambda token: find_site(token) is not None)
         if not parsed:
             logger.warn(provider.id, f'Could not parse: "{parse_source}"')
-            return self._empty(provider)
-
+            return None
         site = find_site(parsed.site_token)
         assert site is not None
         if site.provider_id != provider.id:
             logger.warn(provider.id, f'Site "{site.name}" belongs to "{site.provider_id}" — skip')
-            return self._empty(provider)
-
+            return None
         pieces = build_search_pieces(site.content_type, parsed)
         if not pieces.query:
-            return self._empty(provider)
-
-        search_data = SearchContext(
+            return None
+        return SearchContext(
             title=pieces.query,
             encoded=quote(pieces.query, safe=''),
             search_site=parsed.site_token,
@@ -273,53 +289,43 @@ class MatchService:
             full_title=pieces.full_title,
         )
 
+    async def _raw_results(self, search_data: SearchContext, provider: ProviderInfo) -> list[SearchResult] | None:
         try:
             raw_results = await self._search_results(search_data, provider)
         except PacingDeferredError as err:
             self._queue_background_search(search_data, provider, err.wait_seconds)
             raise ProviderUnavailableError('search deferred by pacing — a later scan serves it from the search store') from None
+        site = search_data.site_info
         if raw_results is None:
             logger.warn(provider.id, f'No scraper registered for type "{site.scraper_config.type}"')
-            return self._empty(provider)
+            return None
         if not raw_results and transport_failures() and not await internet_reachable():
             raise ProviderUnavailableError('no network connectivity')
+        logger.info(provider.id, f'Search "{search_data.title}" on {site.name} → {len(raw_results)} result(s)')
+        return raw_results
 
-        logger.info(provider.id, f'Search "{pieces.query}" on {site.name} → {len(raw_results)} result(s)')
-
-        filename_site = canonical_site_display(parsed.site_token)
-        results = []
-        for raw in raw_results:
-            score = raw.score if raw.score is not None else title_distance_score(pieces.query, raw.title)
-            results.append(
-                self._mapper.to_match_result(
-                    raw,
-                    site.name,
-                    score,
-                    provider.plex_identifier,
-                    raw.release_date or None,
-                    scraper_type=site.scraper_config.type,
-                    filename_site=filename_site,
-                )
+    def _ranked(self, raw_results: list[SearchResult], search_data: SearchContext, provider: ProviderInfo) -> list[PlexMatchResult]:
+        site = search_data.site_info
+        filename_site = canonical_site_display(search_data.search_site)
+        results = [
+            self._mapper.to_match_result(
+                raw,
+                site.name,
+                raw.score if raw.score is not None else title_distance_score(search_data.title, raw.title),
+                provider.plex_identifier,
+                raw.release_date or None,
+                scraper_type=site.scraper_config.type,
+                filename_site=filename_site,
             )
+            for raw in raw_results
+        ]
         results.sort(key=lambda r: r.score or 0, reverse=True)
         deduped = list({r.ratingKey: r for r in results}.values())
         if len(deduped) != len(results):
             logger.info(provider.id, f'dropped {len(results) - len(deduped)} duplicate result(s) sharing a ratingKey')
-            results = deduped
-        for r in results:
+        for r in deduped:
             logger.debug(provider.id, f'result score={r.score} ratingKey={r.ratingKey} "{r.title}"')
-
-        if not is_manual:
-            chosen, why = auto_match(results)
-            logger.info(provider.id, f'Auto match: {why}')
-            if chosen is None:
-                return self._empty(provider)
-            results = [chosen]
-
-        response = PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
-        if debug_enabled():
-            logger.debug(provider.id, f'match response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
-        return response
+        return deduped
 
     def _empty(self, provider: ProviderInfo) -> PlexMatchResponse:
         return PlexMatchResponse.model_validate(empty_media_container(provider.plex_identifier))

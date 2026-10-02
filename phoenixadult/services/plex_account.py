@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote, urlsplit
 
@@ -123,52 +124,54 @@ async def _server_update_channel(http: httpx2.AsyncClient, base: str, token: str
     return 'beta' if value == '8' else 'public'
 
 
-async def update_status(connection: Connection, token: str, force: bool = False) -> dict[str, Any]:
-    now = time.monotonic()
-    config = (connection.server_url, connection.update_channel, connection.update_release)
-    cached = _update_cache.get(connection.id)
-    if not force and cached and cached[1] == config and now - cached[0] < _UPDATE_TTL:
-        return cached[2]
+@dataclass
+class _ServerVersion:
+    current: str
+    platform: str
+    channel: str
+    downloads: dict[str, Any]
 
-    if not (connection.server_url and token):
-        return {'error': 'This connection needs a server URL and a token first'}
 
+async def _server_version(connection: Connection, token: str) -> _ServerVersion:
     base = connection.server_url.rstrip('/')
     async with make_http({'Accept': 'application/json'}, timeout=20.0, verify=True) as http:
         res = await http.get(f'{base}/', headers={'X-Plex-Token': token})
         res.raise_for_status()
         container = res.json().get('MediaContainer') or {}
-        current = container.get('version') or ''
-        platform = container.get('platform') or ''
-
         channel = await _server_update_channel(http, base, token, connection.update_channel)
         params = {'channel': 'plexpass'} if channel == 'beta' else {}
         res = await http.get(f'{_PLEX_TV}/api/downloads/5.json', params=params, headers={'X-Plex-Token': token})
         res.raise_for_status()
-        downloads = res.json()
+        return _ServerVersion(container.get('version') or '', container.get('platform') or '', channel, res.json())
 
-    available = {**(downloads.get('computer') or {}), **(downloads.get('nas') or {})}
-    platform_name = _PLATFORM_NAME_OVERRIDES.get(platform, platform)
-    info = next((v for k, v in available.items() if k.lower() == platform_name.lower()), None)
-    if not info:
-        logger.warn('plex-update', f'Could not match server platform: {platform_name}')
-        return {'error': f'Could not match server platform: {platform_name}', 'current': current, 'platform': platform, 'channel': channel}
 
+def _platform_downloads(server: _ServerVersion) -> dict[str, Any] | None:
+    available = {**(server.downloads.get('computer') or {}), **(server.downloads.get('nas') or {})}
+    platform_name = _PLATFORM_NAME_OVERRIDES.get(server.platform, server.platform)
+    return next((v for k, v in available.items() if k.lower() == platform_name.lower()), None)
+
+
+def _chosen_release(releases: list[dict[str, Any]], latest: str, update_release: str) -> dict[str, Any]:
+    wanted = tuple(update_release.split('|', 1)) if '|' in update_release else None
+    if wanted:
+        pinned = next((r for r in releases if r.get('distro') == wanted[0] and r.get('build') == wanted[1]), None)
+        if pinned is not None:
+            return pinned
+    current_builds = [r for r in releases if latest and latest in str(r.get('url') or '')]
+    return current_builds[0] if current_builds else (releases[0] if releases else {})
+
+
+def _update_result(server: _ServerVersion, info: dict[str, Any], update_release: str) -> dict[str, Any]:
     releases = [r for r in (info.get('releases') or []) if isinstance(r, dict)]
     latest = str(info.get('version') or '')
-    wanted = tuple(connection.update_release.split('|', 1)) if '|' in connection.update_release else None
-    current_builds = [r for r in releases if latest and latest in str(r.get('url') or '')]
-    release = next(
-        (r for r in releases if wanted and r.get('distro') == wanted[0] and r.get('build') == wanted[1]),
-        current_builds[0] if current_builds else (releases[0] if releases else {}),
-    )
-    result = {
-        'current': current,
+    release = _chosen_release(releases, latest, update_release)
+    return {
+        'current': server.current,
         'latest': latest,
-        'platform': str(info.get('name') or platform),
-        'serverPlatform': platform,
-        'channel': channel,
-        'updateAvailable': bool(latest and _version_tuple(latest) > _version_tuple(current)),
+        'platform': str(info.get('name') or server.platform),
+        'serverPlatform': server.platform,
+        'channel': server.channel,
+        'updateAvailable': bool(latest and _version_tuple(latest) > _version_tuple(server.current)),
         'releaseDate': info.get('release_date'),
         'requirements': info.get('requirements'),
         'extraInfo': info.get('extra_info'),
@@ -181,6 +184,25 @@ async def update_status(connection: Connection, token: str, force: bool = False)
         'releases': [{'label': r.get('label'), 'distro': r.get('distro'), 'build': r.get('build')} for r in releases],
         'checkedAt': time.time(),
     }
+
+
+async def update_status(connection: Connection, token: str, force: bool = False) -> dict[str, Any]:
+    now = time.monotonic()
+    config = (connection.server_url, connection.update_channel, connection.update_release)
+    cached = _update_cache.get(connection.id)
+    if not force and cached and cached[1] == config and now - cached[0] < _UPDATE_TTL:
+        return cached[2]
+    if not (connection.server_url and token):
+        return {'error': 'This connection needs a server URL and a token first'}
+
+    server = await _server_version(connection, token)
+    info = _platform_downloads(server)
+    if not info:
+        platform_name = _PLATFORM_NAME_OVERRIDES.get(server.platform, server.platform)
+        logger.warn('plex-update', f'Could not match server platform: {platform_name}')
+        return {'error': f'Could not match server platform: {platform_name}', 'current': server.current, 'platform': server.platform, 'channel': server.channel}
+
+    result = _update_result(server, info, connection.update_release)
     _update_cache[connection.id] = (now, config, result)
-    logger.info('plex-update', f'PMS {current} ({platform}, {channel}) vs latest {latest}')
+    logger.info('plex-update', f'PMS {server.current} ({server.platform}, {server.channel}) vs latest {result["latest"]}')
     return result

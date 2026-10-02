@@ -182,3 +182,29 @@ async def test_update_status_reports_unmatched_platform(monkeypatch: pytest.Monk
     respx.get('https://plex.tv/api/downloads/5.json').mock(return_value=httpx.Response(200, json={'computer': {'Windows': {'version': '1.42.0'}}}))
     result = await plex_account.update_status(connection, 'tok', force=True)
     assert result['error'] == 'Could not match server platform: BeOS'
+
+
+_RELEASES = [
+    {'distro': 'debian', 'build': 'linux-x86_64', 'url': 'https://dl/1.41.0/a.deb', 'label': 'Ubuntu'},
+    {'distro': 'redhat', 'build': 'linux-x86_64', 'url': 'https://dl/1.41.0/a.rpm', 'label': 'Fedora'},
+]
+
+
+@pytest.mark.parametrize(
+    ('releases', 'latest', 'pinned', 'label'),
+    [
+        (_RELEASES, '1.41.0', 'redhat|linux-x86_64', 'Fedora'),
+        (_RELEASES, '1.41.0', 'gone|nowhere', 'Ubuntu'),
+        (_RELEASES, '1.41.0', '', 'Ubuntu'),
+        (_RELEASES, '9.9.9', '', 'Ubuntu'),
+        ([], '1.41.0', '', None),
+    ],
+    ids=['pinned', 'pin-missing-falls-back', 'unpinned', 'no-current-build', 'no-releases'],
+)
+def test_the_release_shown_is_the_pinned_one_then_the_current_build(releases: list[dict[str, Any]], latest: str, pinned: str, label: str | None) -> None:
+    assert plex_account._chosen_release(releases, latest, pinned).get('label') == label
+
+
+async def test_a_connection_without_a_token_asks_for_one() -> None:
+    connection = seed_connection()
+    assert await plex_account.update_status(connection, '') == {'error': 'This connection needs a server URL and a token first'}

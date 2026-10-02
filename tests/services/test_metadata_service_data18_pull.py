@@ -109,3 +109,34 @@ async def test_fallback_skips_second_data18_search(_svc: MetadataService, monkey
 
     assert await _svc._fetch_metadata(RATING_KEY, PROVIDER) is not None
     assert seen_skip == [True]
+
+
+async def test_a_changed_data18_mapping_rescrapes_instead_of_serving_the_snapshot(_svc: MetadataService, monkeypatch: pytest.MonkeyPatch) -> None:
+    scraped: list[str] = []
+
+    async def _fake_scrape_and_store(update: object) -> PlexMetadataResponse:
+        scraped.append('live')
+        return _resp('Fresh Scene', data18_id='555')
+
+    monkeypatch.setattr(metadata_cache, 'data18_remap_needed', lambda response, site_name: True)
+    monkeypatch.setattr(_svc, '_scrape_and_store', _fake_scrape_and_store)
+    result = await _svc._fetch_metadata(RATING_KEY, PROVIDER)
+    assert scraped == ['live'] and result is not None and result.MediaContainer.Metadata[0].title == 'Fresh Scene'
+
+
+@pytest.mark.parametrize(('rating_key', 'reason'), [('nonsense', 'unrecognised'), ('scene-nosuchsite-abc', 'no registry site')])
+async def test_an_unusable_rating_key_is_malformed(rating_key: str, reason: str) -> None:
+    from phoenixadult.services.provider_errors import MalformedRequestError
+
+    with pytest.raises(MalformedRequestError, match=reason):
+        await MetadataService()._fetch_metadata(rating_key, PROVIDER)
+
+
+async def test_a_cur_id_without_a_scene_url_is_malformed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.services.provider_errors import MalformedRequestError
+
+    svc = MetadataService()
+    monkeypatch.setattr(metadata_cache, 'read', lambda site_name, cur_id: None)
+    monkeypatch.setattr(svc._scraper, 'decode', lambda cur_id: '')
+    with pytest.raises(MalformedRequestError, match='undecodable curID'):
+        await svc._fetch_metadata(RATING_KEY, PROVIDER)

@@ -75,3 +75,46 @@ async def test_manual_returns_full_sorted_array() -> None:
     assert resp.MediaContainer.totalSize == 2
     scores = [m.score for m in resp.MediaContainer.Metadata]
     assert scores == [100, 95]
+
+
+async def test_an_unparseable_filename_matches_nothing() -> None:
+    svc = _service([_result('a', 100)])
+    resp = await svc.match(MatchRequest(type=1, filename='nothing-recognisable.mp4', manual=1, includeAdult=1), PROVIDER)
+    assert resp.MediaContainer.totalSize == 0
+
+
+async def test_a_site_owned_by_another_provider_is_skipped() -> None:
+    from dataclasses import replace
+
+    svc = _service([_result('a', 100)])
+    resp = await svc.match(_request(manual=1), replace(PROVIDER, id='someone-else'))
+    assert resp.MediaContainer.totalSize == 0
+
+
+async def test_a_site_without_a_scraper_matches_nothing() -> None:
+    svc = MatchService()
+
+    async def no_scraper(_ctx: Any) -> None:
+        return None
+
+    svc._scraper.search = no_scraper  # type: ignore[method-assign]
+    resp = await svc.match(_request(manual=1), PROVIDER)
+    assert resp.MediaContainer.totalSize == 0
+
+
+async def test_a_request_without_title_or_filename_is_malformed() -> None:
+    from phoenixadult.services.provider_errors import MalformedRequestError
+
+    with pytest.raises(MalformedRequestError):
+        await _service([]).match(MatchRequest(type=1, manual=1, includeAdult=1), PROVIDER)
+
+
+async def test_a_non_adult_request_is_never_searched() -> None:
+    svc = MatchService()
+
+    async def must_not_search(_ctx: Any) -> list[SearchResult]:
+        raise AssertionError('a suppressed match must not search')
+
+    svc._scraper.search = must_not_search  # type: ignore[method-assign]
+    resp = await svc.match(MatchRequest(type=1, filename='JoyBear 2021-03-04 Cool Scene.mp4', manual=1, includeAdult=0), PROVIDER)
+    assert resp.MediaContainer.totalSize == 0
