@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 
 import httpx
+import httpx2
+import pytest
 import respx
 
 from phoenixadult.utils.captcha import pow as pow_module
@@ -68,3 +70,44 @@ def test_same_site_pairs() -> None:
     assert pow_module._same_site('CAUGHTMYCOACH.COM', 'www.caughtmycoach.com')
     assert not pow_module._same_site('caughtmycoach.com', 'cheatingsis.com')
     assert not pow_module._same_site('wwwcaughtmycoach.com', 'caughtmycoach.com')
+
+
+def _config_page(**overrides: object) -> str:
+    config = {'challenge': 'test-challenge', 'difficulty': _DIFFICULTY, 'timestamp': 1, 'returnTo': '/', **overrides}
+    return f'<html><script>var turnstileConfig = {json.dumps(config)};</script></html>'
+
+
+@pytest.mark.parametrize(
+    ('gallery', 'verify'),
+    [
+        (httpx2.ConnectError('down'), None),
+        (httpx.Response(429), None),
+        (httpx.Response(200, text='<script>var turnstileConfig = {not json};</script>'), None),
+        (httpx.Response(200, text=_config_page(difficulty=99)), None),
+        (httpx.Response(200, text=_config_page(difficulty='4')), None),
+        (httpx.Response(200, text=_config_page()), httpx2.ConnectError('down')),
+        (httpx.Response(200, text=_config_page()), httpx.Response(500)),
+        (httpx.Response(200, text=_config_page()), httpx.Response(200, text='not json')),
+        (httpx.Response(200, text=_config_page()), httpx.Response(200, json={'success': False})),
+    ],
+    ids=['get-error', 'rate-limited', 'bad-config', 'too-hard', 'non-int-difficulty', 'post-error', 'verify-500', 'verify-not-json', 'verify-refused'],
+)
+@respx.mock
+async def test_every_failed_step_yields_no_cookies(gallery: object, verify: object) -> None:
+    host = 'https://fail-step.test'
+    for route, outcome in ((respx.get(f'{host}/video/gallery'), gallery), (respx.post(f'{host}/turnstile/verify'), verify)):
+        if isinstance(outcome, Exception):
+            route.mock(side_effect=outcome)
+        else:
+            route.mock(return_value=outcome)
+    assert await get_verified_cookies(host) is None
+
+
+@respx.mock
+async def test_a_page_without_a_challenge_hands_back_its_cookies() -> None:
+    respx.get('https://no-challenge.test/video/gallery').mock(return_value=httpx.Response(200, text='<html>ok</html>', headers={'set-cookie': 'a=1; path=/'}))
+    assert await get_verified_cookies('https://no-challenge.test') == {'a': '1'}
+
+
+async def test_a_url_without_a_host_is_refused() -> None:
+    assert await get_verified_cookies('not a url') is None

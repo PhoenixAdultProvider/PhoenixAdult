@@ -6,6 +6,7 @@ import json
 import re
 import time
 from collections.abc import Awaitable, Callable
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import httpx2
@@ -44,104 +45,136 @@ def solve_pow(challenge: str, difficulty: int) -> int:
         nonce += 1
 
 
+_REDIRECTS = (301, 302, 303, 307, 308)
+_MAX_HOPS = 6
+_CONFIG_RE = re.compile(r'var\s+turnstileConfig\s*=\s*(\{.*?\});', re.DOTALL)
+_ENVIRONMENT = {
+    'screenWidth': 1920,
+    'screenHeight': 1080,
+    'hasCanvas': True,
+    'hasWebGL': True,
+    'colorDepth': 24,
+    'timezoneOffset': 300,
+    'languages': 'en-US,en',
+    'platform': 'Win32',
+    'cookieEnabled': True,
+}
+
+_Cached = tuple[dict[str, str], float]
+
+
+def _verify_payload(config: dict[str, Any], nonce: int) -> dict[str, Any]:
+    return {
+        'nonce': str(nonce),
+        'timestamp': config['timestamp'],
+        'difficulty': config['difficulty'],
+        'environmentChecks': _ENVIRONMENT,
+        'returnTo': config['returnTo'],
+    }
+
+
+class _Challenge:
+    def __init__(self, base_url: str, challenge_path: str, pace: Callable[[], Awaitable[None]] | None, host: str) -> None:
+        self.gallery_url = f'{base_url.rstrip("/")}/{challenge_path.strip("/")}'
+        self.pace = pace
+        self.host = host
+        self.cookies: dict[str, str] = {}
+
+    async def _paced(self) -> None:
+        if self.pace is not None:
+            await self.pace()
+
+    async def run(self) -> _Cached | None:
+        page = await self._open_gallery()
+        if page is None:
+            return None
+        match = _CONFIG_RE.search(page.text)
+        if not match:
+            return self.cookies, time.time() + _HOST_CACHE_TTL
+        config = self._config(match.group(1))
+        if config is None:
+            return None
+        nonce = await self._solve(config)
+        verified = await self._verify(_verify_payload(config, nonce))
+        return None if verified is None else ({**self.cookies, **verified}, time.time() + _HOST_CACHE_TTL)
+
+    async def _open_gallery(self) -> httpx2.Response | None:
+        try:
+            async with make_http() as client:
+                resp = await self._follow_same_site(client)
+        except httpx2.HTTPError as err:
+            logger.warn('pow', f'GET {self.gallery_url} failed: {err}')
+            return None
+        if resp.status_code == 429:
+            logger.warn('pow', f'rate-limited on {self.gallery_url}')
+            return None
+        return resp
+
+    async def _follow_same_site(self, client: httpx2.AsyncClient) -> httpx2.Response:
+        for _ in range(_MAX_HOPS):
+            await self._paced()
+            resp = await client.get(self.gallery_url, headers=_BASE_HEADERS, follow_redirects=False)
+            self.cookies = dict(client.cookies)
+            loc = resp.headers.get('location', '')
+            nxt = urljoin(self.gallery_url, loc) if resp.status_code in _REDIRECTS and loc else ''
+            if not nxt or not _same_site(urlsplit(nxt).hostname or '', self.host):
+                return resp
+            self.gallery_url = nxt
+        return resp
+
+    def _config(self, raw: str) -> dict[str, Any] | None:
+        try:
+            config = json.loads(raw)
+        except ValueError as err:
+            logger.warn('pow', f'turnstileConfig JSON parse failed for {self.host}: {err}')
+            return None
+        difficulty = config.get('difficulty')
+        if not isinstance(difficulty, int) or not 0 < difficulty <= _MAX_DIFFICULTY:
+            logger.warn('pow', f'{self.host}: refusing proof-of-work difficulty {difficulty!r} (ceiling {_MAX_DIFFICULTY})')
+            return None
+        return dict(config)
+
+    async def _solve(self, config: dict[str, Any]) -> int:
+        t0 = time.time()
+        nonce = await asyncio.to_thread(solve_pow, config['challenge'], config['difficulty'])
+        logger.info('pow', f'{self.host}: solved difficulty={config["difficulty"]} nonce={nonce} in {round((time.time() - t0) * 1000)}ms')
+        return nonce
+
+    async def _verify(self, payload: dict[str, Any]) -> dict[str, str] | None:
+        final = urlsplit(self.gallery_url)
+        origin = f'{final.scheme}://{final.netloc}'
+        verify_url = f'{origin}/turnstile/verify'
+        headers = {**_BASE_HEADERS, 'Content-Type': 'application/json', 'Referer': self.gallery_url, 'Origin': origin}
+        if self.cookies:
+            headers['Cookie'] = '; '.join(f'{k}={v}' for k, v in self.cookies.items())
+        try:
+            await self._paced()
+            async with make_http() as client:
+                resp = await client.post(verify_url, content=json.dumps(payload), headers=headers)
+                cookies = dict(client.cookies)
+        except httpx2.HTTPError as err:
+            logger.warn('pow', f'POST {verify_url} failed: {err}')
+            return None
+        return cookies if self._verified(resp) else None
+
+    def _verified(self, resp: httpx2.Response) -> bool:
+        if resp.status_code != 200:
+            logger.warn('pow', f'verify returned {resp.status_code} for {self.host}')
+            return False
+        try:
+            body = resp.json()
+        except ValueError:
+            body = None
+        if isinstance(body, dict) and body.get('success'):
+            return True
+        logger.warn('pow', f'verify success=false for {self.host}: {json.dumps(body)}')
+        return False
+
+
 async def get_verified_cookies(
     base_url: str, challenge_path: str = '/video/gallery', pace: Callable[[], Awaitable[None]] | None = None
 ) -> dict[str, str] | None:
     host = urlsplit(base_url).hostname or ''
     if not host:
         return None
-
-    async def _fetch() -> tuple[dict[str, str], float] | None:
-        base = base_url.rstrip('/')
-        gallery_url = f'{base}/{challenge_path.strip("/")}'
-
-        initial: dict[str, str] = {}
-        try:
-            async with make_http() as client:
-                for _ in range(6):
-                    if pace is not None:
-                        await pace()
-                    get_resp = await client.get(gallery_url, headers=_BASE_HEADERS, follow_redirects=False)
-                    initial = dict(client.cookies)
-                    loc = get_resp.headers.get('location', '')
-                    if get_resp.status_code not in (301, 302, 303, 307, 308) or not loc:
-                        break
-                    nxt = urljoin(gallery_url, loc)
-                    if not _same_site(urlsplit(nxt).hostname or '', host):
-                        break
-                    gallery_url = nxt
-        except httpx2.HTTPError as err:
-            logger.warn('pow', f'GET {gallery_url} failed: {err}')
-            return None
-        final = urlsplit(gallery_url)
-        base = f'{final.scheme}://{final.netloc}'
-        if get_resp.status_code == 429:
-            logger.warn('pow', f'rate-limited on {gallery_url}')
-            return None
-
-        m = re.search(r'var\s+turnstileConfig\s*=\s*(\{.*?\});', get_resp.text, re.DOTALL)
-        if not m:
-            return initial, time.time() + _HOST_CACHE_TTL
-
-        try:
-            config = json.loads(m.group(1))
-        except ValueError as err:
-            logger.warn('pow', f'turnstileConfig JSON parse failed for {host}: {err}')
-            return None
-
-        if not isinstance(config.get('difficulty'), int) or not 0 < config['difficulty'] <= _MAX_DIFFICULTY:
-            logger.warn('pow', f'{host}: refusing proof-of-work difficulty {config.get("difficulty")!r} (ceiling {_MAX_DIFFICULTY})')
-            return None
-        t0 = time.time()
-        nonce = await asyncio.to_thread(solve_pow, config['challenge'], config['difficulty'])
-        logger.info('pow', f'{host}: solved difficulty={config["difficulty"]} nonce={nonce} in {round((time.time() - t0) * 1000)}ms')
-
-        verify_url = f'{base}/turnstile/verify'
-        payload = {
-            'nonce': str(nonce),
-            'timestamp': config['timestamp'],
-            'difficulty': config['difficulty'],
-            'environmentChecks': {
-                'screenWidth': 1920,
-                'screenHeight': 1080,
-                'hasCanvas': True,
-                'hasWebGL': True,
-                'colorDepth': 24,
-                'timezoneOffset': 300,
-                'languages': 'en-US,en',
-                'platform': 'Win32',
-                'cookieEnabled': True,
-            },
-            'returnTo': config['returnTo'],
-        }
-        cookie_header = '; '.join(f'{k}={v}' for k, v in initial.items())
-        post_headers = {**_BASE_HEADERS, 'Content-Type': 'application/json', 'Referer': gallery_url, 'Origin': base}
-        if cookie_header:
-            post_headers['Cookie'] = cookie_header
-
-        try:
-            if pace is not None:
-                await pace()
-            async with make_http() as client:
-                post_resp = await client.post(verify_url, content=json.dumps(payload), headers=post_headers)
-                verify_cookies = dict(client.cookies)
-        except httpx2.HTTPError as err:
-            logger.warn('pow', f'POST {verify_url} failed: {err}')
-            return None
-        if post_resp.status_code != 200:
-            logger.warn('pow', f'verify returned {post_resp.status_code} for {host}')
-            return None
-
-        try:
-            success = post_resp.json()
-        except ValueError:
-            success = None
-        ok = success.get('success') if isinstance(success, dict) else False
-        if not ok:
-            logger.warn('pow', f'verify success=false for {host}: {json.dumps(success)}')
-            return None
-
-        merged = {**initial, **verify_cookies}
-        return merged, time.time() + _HOST_CACHE_TTL
-
-    return await _COOKIES.get(host, _fetch)
+    return await _COOKIES.get(host, _Challenge(base_url, challenge_path, pace, host).run)
