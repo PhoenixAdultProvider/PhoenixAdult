@@ -187,3 +187,88 @@ def test_dev_ui_is_a_documented_config_toggle() -> None:
     assert spec.kind == 'boolean'
     assert spec.default_value == 'false'
     assert GROUP_TAB[spec.group] == 'System'
+
+
+def _steps(response: Any) -> dict[str, dict[str, Any]]:
+    assert response.status_code == 200
+    return {s['step']: s for s in response.json()['steps']}
+
+
+def test_dev_test_searches_and_scores_the_results(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.routes.dev_routes as dr
+    from phoenixadult.models.scrape import SearchResult
+
+    async def fake_search(search_data: Any) -> list[SearchResult]:
+        return [SearchResult(title='Cool Scene', scene_url='https://203.0.113.5/scene', cur_id='abc', score=100.0, release_date='2024-01-02')]
+
+    monkeypatch.setattr(dr.scraper, 'search', fake_search)
+    steps = _steps(client.post('/dev/test', json={'filename': 'Brazzers - 2024-01-02 - Cool Scene.mp4', 'yearOverride': '2024'}))
+    assert list(steps) == ['1. Parse filename', '2. Site lookup', '3. Provider lookup', '4. Search query', '5. Search results']
+    assert all(s['ok'] for s in steps.values())
+    assert steps['2. Site lookup']['data']['name'] == 'Brazzers'
+    assert steps['4. Search query']['data']['query']
+    found = steps['5. Search results']['data']
+    assert found['count'] == 1 and found['results'][0]['title'] == 'Cool Scene' and found['searchDate'] == '2024-01-02'
+
+
+@pytest.mark.parametrize(
+    ('outcome', 'error'),
+    [(None, 'No scraper registered'), (RuntimeError('boom'), 'Internal error'), ([], 'No results returned from upstream')],
+)
+def test_dev_test_reports_a_failed_search(client: TestClient, monkeypatch: pytest.MonkeyPatch, outcome: Any, error: str) -> None:
+    import phoenixadult.routes.dev_routes as dr
+
+    async def fake_search(search_data: Any) -> Any:
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(dr.scraper, 'search', fake_search)
+    step5 = _steps(client.post('/dev/test', json={'filename': 'Brazzers - 2024-01-02 - Cool Scene.mp4'}))['5. Search results']
+    assert step5['ok'] is False and error in step5['error']
+
+
+@pytest.mark.parametrize(
+    ('rating_key', 'failed_step', 'error'),
+    [
+        ('garbage', '1. Parse ratingKey', 'Could not parse ratingKey'),
+        (to_rating_key(b64url_encode('https://203.0.113.5/scene'), 'No Such Site', '2024-01-02'), '2. Site lookup', 'No site found'),
+        (to_rating_key(b64url_encode('http://127.0.0.1/scene'), 'Brazzers', '2024-01-02'), '4. Decode identifier', 'sceneURL blocked'),
+    ],
+)
+def test_dev_metadata_stops_at_the_first_failed_step(client: TestClient, rating_key: str, failed_step: str, error: str) -> None:
+    response = client.post('/dev/metadata', json={'ratingKey': rating_key, 'providerId': 'phoenixadult'})
+    last = response.json()['steps'][-1]
+    assert last['step'] == failed_step and last['ok'] is False and error in last['error']
+
+
+def test_dev_metadata_reports_an_unknown_provider(client: TestClient) -> None:
+    steps = _steps(client.post('/dev/metadata', json={'ratingKey': _rating_key(), 'providerId': 'nope'}))
+    assert steps['3. Provider lookup']['ok'] is False and 'Provider "nope" not found' in steps['3. Provider lookup']['error']
+
+
+@pytest.mark.parametrize(('outcome', 'error'), [(None, 'Scraper returned no SceneDetail'), (RuntimeError('boom'), 'Internal error')])
+def test_dev_metadata_reports_a_failed_live_fetch(client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, outcome: Any, error: str) -> None:
+    import phoenixadult.routes.dev_routes as dr
+
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    async def fake_fetch(scene_url: str, site: Any, ctx: Any = None) -> Any:
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(dr.scraper, 'fetch_scene_detail', fake_fetch)
+    step5 = _steps(client.post('/dev/metadata', json={'ratingKey': _rating_key(), 'providerId': 'phoenixadult'}))['5. Fetch metadata']
+    assert step5['ok'] is False and error in step5['error']
+
+
+def test_dev_metadata_live_summary_lists_the_mapped_fields(client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'false')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    _stub_live_scrape(monkeypatch)
+    data = _steps(client.post('/dev/metadata', json={'ratingKey': _rating_key(), 'providerId': 'phoenixadult', 'filename': 'x.mp4', 'resultScore': 91}))[
+        '5. Fetch metadata'
+    ]['data']
+    assert data['servedFrom'] == 'live' and data['title'] == 'Cool Scene' and data['studio'] == 'Brazzers'
+    assert data['fixture']['site'] == 'Brazzers' and data['fixture']['filename'] == 'x.mp4' and data['fixture']['expect']['score'] == 91

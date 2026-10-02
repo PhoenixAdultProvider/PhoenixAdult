@@ -156,148 +156,202 @@ def _score_results(raw_results: list[Any], *, site: Any, parsed: Any, query: str
     return scored
 
 
+class _Steps:
+    def __init__(self) -> None:
+        self.items: list[dict[str, Any]] = []
+        self._capture = begin_capture()
+        self.lap = _lap_timer()
+
+    def add(self, step: str, ok: bool, data: Any = None, error: str | None = None) -> None:
+        self.items.append({'step': step, 'ok': ok, 'data': data, 'error': error, 'durationMs': self.lap()})
+
+    def fail(self, step: str, error: str, data: Any = None) -> None:
+        self.add(step, False, data, error)
+
+    def extend(self, items: list[dict[str, Any]]) -> None:
+        self.items.extend(items)
+
+    def send(self, **payload: Any) -> JSONResponse:
+        return JSONResponse({**payload, 'steps': self.items, 'logs': self._capture.end()})
+
+
+@dataclasses.dataclass
+class _SearchPlan:
+    filename: str
+    parsed: Any
+    site: ResolvedSiteInfo
+    provider: ProviderInfo
+    pieces: Any
+    query_data: dict[str, Any]
+
+
+def _site_data(site: ResolvedSiteInfo) -> dict[str, Any]:
+    return {
+        'name': site.name,
+        'providerId': site.provider_id,
+        'baseUrl': site.base_url,
+        'contentType': site.content_type,
+        'scraperType': site.scraper_config.type,
+        'aliases': site.aliases,
+    }
+
+
+def _plan_search(steps: _Steps, filename: str) -> _SearchPlan | None:
+    parsed = get_site_name_from_registry(filename, lambda token: find_site(token) is not None)
+    if parsed is None:
+        steps.fail('1. Parse filename', 'Could not parse filename — check format')
+        return None
+    steps.add('1. Parse filename', True, dataclasses.asdict(parsed))
+    site = find_site(parsed.site_token)
+    assert site is not None
+    steps.add('2. Site lookup', True, _site_data(site))
+    provider = next((p for p in get_all_providers() if p.id == site.provider_id), None)
+    if provider is None:
+        steps.fail('3. Provider lookup', f'Provider "{site.provider_id}" not found')
+        return None
+    steps.add('3. Provider lookup', True, {'id': provider.id, 'title': provider.title, 'plexIdentifier': provider.plex_identifier})
+    pieces = build_search_pieces(site.content_type, parsed)
+    query_data: dict[str, Any] = {'query': pieces.query, 'searchURL': ''}
+    if not pieces.query:
+        steps.fail('4. Search query', 'Could not build search query from parsed filename', query_data)
+        return None
+    steps.add('4. Search query', True, query_data)
+    return _SearchPlan(filename, parsed, site, provider, pieces, query_data)
+
+
+def _year(year_override: Any) -> int | None:
+    trimmed = (year_override or '').strip()
+    return int(trimmed) if len(trimmed) == 4 and trimmed.isdigit() else None
+
+
+async def _run_search(plan: _SearchPlan, year: int | None, captures: list[RawCaptureEntry]) -> list[Any] | None:
+    bodies = begin_body_capture(captures)
+    try:
+        return await scraper.search(
+            SearchContext(
+                title=plan.pieces.query,
+                encoded=plan.pieces.query,
+                search_site=plan.parsed.site_token,
+                site_info=plan.site,
+                search_date=plan.parsed.date,
+                year=year,
+                capture=captures,
+                scene_id=plan.pieces.scene_id,
+                full_title=plan.pieces.full_title,
+            )
+        )
+    finally:
+        bodies.end()
+
+
+async def _search_step(steps: _Steps, plan: _SearchPlan, year: int | None) -> None:
+    site, provider, query = plan.site, plan.provider, plan.pieces.query
+    log_search_data(
+        provider.id,
+        source=plan.filename,
+        query=query,
+        date=plan.parsed.date,
+        filename=plan.filename,
+        site_name=site.name,
+        scraper_type=site.scraper_config.type,
+    )
+    steps.lap()
+    captures: list[RawCaptureEntry] = []
+    try:
+        raw_results = await _run_search(plan, year, captures)
+        plan.query_data['searchURL'] = _searched_url(raw_results, captures)
+        if raw_results is None:
+            steps.add('5. Search results', False, {'captures': _serialize_captures(captures)}, f'No scraper registered for type "{site.scraper_config.type}"')
+            return
+        log_search_count(provider.id, site.name, query, len(raw_results))
+        scored = _score_results(raw_results, site=site, parsed=plan.parsed, query=query, provider_id=provider.id)
+        data = {'searchDate': plan.parsed.date, 'count': len(scored), 'results': scored, 'captures': _serialize_captures(captures)}
+        steps.add('5. Search results', len(scored) > 0, data, None if scored else 'No results returned from upstream')
+    except Exception:  # noqa: BLE001
+        logger.error('dev', 'search step failed', exc_info=True)
+        steps.add('5. Search results', False, error='Internal error — see the server log')
+
+
 @router.post('/test')
 async def dev_test(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     filename = body.get('filename')
-    year_override = body.get('yearOverride')
-    steps: list[dict[str, Any]] = []
-
     if not filename:
         return JSONResponse({'error': 'filename is required'}, status_code=400)
-
-    cap = begin_capture()
-    lap = _lap_timer()
-
-    def send(payload: dict[str, Any]) -> JSONResponse:
-        return JSONResponse({**payload, 'logs': cap.end()})
-
-    parsed = get_site_name_from_registry(filename, lambda token: find_site(token) is not None)
-    year_trimmed = (year_override or '').strip()
-    year_num = int(year_trimmed) if len(year_trimmed) == 4 and year_trimmed.isdigit() else None
-    steps.append(
-        {
-            'step': '1. Parse filename',
-            'ok': bool(parsed),
-            'data': dataclasses.asdict(parsed) if parsed else None,
-            'error': None if parsed else 'Could not parse filename — check format',
-            'durationMs': lap(),
-        }
-    )
-    if not parsed:
-        return send({'filename': filename, 'steps': steps})
-
-    site = find_site(parsed.site_token)
-    assert site is not None
-    steps.append(
-        {
-            'step': '2. Site lookup',
-            'ok': True,
-            'data': {
-                'name': site.name,
-                'providerId': site.provider_id,
-                'baseUrl': site.base_url,
-                'contentType': site.content_type,
-                'scraperType': site.scraper_config.type,
-                'aliases': site.aliases,
-            },
-            'durationMs': lap(),
-        }
-    )
-
-    provider = next((p for p in get_all_providers() if p.id == site.provider_id), None)
-    steps.append(
-        {
-            'step': '3. Provider lookup',
-            'ok': bool(provider),
-            'data': {'id': provider.id, 'title': provider.title, 'plexIdentifier': provider.plex_identifier} if provider else None,
-            'error': None if provider else f'Provider "{site.provider_id}" not found',
-            'durationMs': lap(),
-        }
-    )
-    if not provider:
-        return send({'filename': filename, 'steps': steps})
-
-    pieces = build_search_pieces(site.content_type, parsed)
-    step4_data: dict[str, Any] = {'query': pieces.query, 'searchURL': ''}
-    steps.append(
-        {
-            'step': '4. Search query',
-            'ok': bool(pieces.query),
-            'data': step4_data,
-            'error': None if pieces.query else 'Could not build search query from parsed filename',
-            'durationMs': lap(),
-        }
-    )
-    if not pieces.query:
-        return send({'filename': filename, 'steps': steps})
-
-    log_search_data(
-        provider.id,
-        source=filename,
-        query=pieces.query,
-        date=parsed.date,
-        filename=filename,
-        site_name=site.name,
-        scraper_type=site.scraper_config.type,
-    )
-
-    lap()
-    try:
-        captures: list[RawCaptureEntry] = []
-        bodies = begin_body_capture(captures)
-        try:
-            raw_results = await scraper.search(
-                SearchContext(
-                    title=pieces.query,
-                    encoded=pieces.query,
-                    search_site=parsed.site_token,
-                    site_info=site,
-                    search_date=parsed.date,
-                    year=year_num,
-                    capture=captures,
-                    scene_id=pieces.scene_id,
-                    full_title=pieces.full_title,
-                )
-            )
-        finally:
-            bodies.end()
-
-        step4_data['searchURL'] = _searched_url(raw_results, captures)
-
-        if raw_results is None:
-            steps.append(
-                {
-                    'step': '5. Search results',
-                    'ok': False,
-                    'error': f'No scraper registered for type "{site.scraper_config.type}"',
-                    'data': {'captures': _serialize_captures(captures)},
-                    'durationMs': lap(),
-                }
-            )
-            return send({'filename': filename, 'steps': steps})
-
-        log_search_count(provider.id, site.name, pieces.query, len(raw_results))
-
-        scored = _score_results(raw_results, site=site, parsed=parsed, query=pieces.query, provider_id=provider.id)
-
-        steps.append(
-            {
-                'step': '5. Search results',
-                'ok': len(scored) > 0,
-                'data': {'searchDate': parsed.date, 'count': len(scored), 'results': scored, 'captures': _serialize_captures(captures)},
-                'error': None if scored else 'No results returned from upstream',
-                'durationMs': lap(),
-            }
-        )
-    except Exception:  # noqa: BLE001
-        logger.error('dev', 'search step failed', exc_info=True)
-        steps.append({'step': '5. Search results', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()})
-
-    return send({'filename': filename, 'steps': steps})
+    steps = _Steps()
+    plan = _plan_search(steps, filename)
+    if plan is not None:
+        await _search_step(steps, plan, _year(body.get('yearOverride')))
+    return steps.send(filename=filename)
 
 
 # ── POST /Dev/Metadata ────────────────────────────────────────────────────────
+
+
+@dataclasses.dataclass
+class _MetadataTarget:
+    rating_key: str
+    parsed: dict[str, Any]
+    site: ResolvedSiteInfo
+    provider: ProviderInfo
+    cur_id: str
+    scene_url: str
+    subsite: str | None
+
+
+@dataclasses.dataclass
+class _MetadataOptions:
+    filename: str | None
+    result_score: Any
+    force: bool
+    full_pipeline: bool
+
+
+def _resolve_lookups(steps: _Steps, rating_key: str, provider_id: str) -> tuple[dict[str, Any], ResolvedSiteInfo, ProviderInfo] | None:
+    parsed = parse_rating_key(rating_key)
+    if not parsed:
+        steps.fail('1. Parse ratingKey', f'Could not parse ratingKey: "{rating_key}"', parsed)
+        return None
+    steps.add('1. Parse ratingKey', True, parsed)
+    site = find_site(parsed['site_name'] or '')
+    if site is None:
+        steps.fail('2. Site lookup', f'No site found for "{parsed["site_name"]}"')
+        return None
+    steps.add('2. Site lookup', True, {'name': site.name, 'scraperType': site.scraper_config.type})
+    provider = next((p for p in get_all_providers() if p.id == provider_id), None)
+    if provider is None:
+        steps.fail('3. Provider lookup', f'Provider "{provider_id}" not found')
+        return None
+    steps.add('3. Provider lookup', True, {'id': provider.id, 'title': provider.title})
+    return parsed, site, provider
+
+
+async def _resolve_target(steps: _Steps, rating_key: str, provider_id: str) -> _MetadataTarget | None:
+    lookups = _resolve_lookups(steps, rating_key, provider_id)
+    if lookups is None:
+        return None
+    parsed, site, provider = lookups
+    log_update_provider(provider.id, site.name, site.scraper_config.type)
+    cur_id = parsed['cur_id'] or ''
+    scene_url, subsite = split_subsite(scraper.decode(cur_id))
+    steps.add('4. Decode identifier', bool(scene_url), {'curID': cur_id, 'sceneURL': scene_url})
+    if not scene_url:
+        return None
+    try:
+        await ensure_fetchable_url(scene_url)
+    except ValueError as err:
+        steps.add('4. Decode identifier', False, error=f'sceneURL blocked: {err}')
+        return None
+    return _MetadataTarget(rating_key, parsed, site, provider, cur_id, scene_url, subsite)
+
+
+async def _usable_snapshot(target: _MetadataTarget, force: bool) -> PlexMetadataResponse | None:
+    cached = None if force else await run_in('store', metadata_cache.read, target.site.name, target.cur_id)
+    response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
+    if response is None:
+        return None
+    stale = metadata_cache.data18_remap_needed(response, target.site.name) or metadata_cache.data18_backfill_needed(response, target.site.name)
+    return None if stale else response
 
 
 @router.post('/metadata')
@@ -305,140 +359,60 @@ async def dev_metadata(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     rating_key = body.get('ratingKey')
     provider_id = body.get('providerId')
-    filename = body.get('filename')
-    result_score = body.get('resultScore')
-    force = bool(body.get('force'))
-    full_pipeline = bool(body.get('fullPipeline'))
-    steps: list[dict[str, Any]] = []
-
     if not rating_key or not provider_id:
         return JSONResponse({'error': 'ratingKey and providerId are required'}, status_code=400)
-
-    cap = begin_capture()
-    lap = _lap_timer()
-
-    def send(payload: dict[str, Any]) -> JSONResponse:
-        return JSONResponse({**payload, 'logs': cap.end()})
-
+    steps = _Steps()
     log_update_header(provider_id, rating_key)
-
-    parsed = parse_rating_key(rating_key)
-    steps.append(
-        {
-            'step': '1. Parse ratingKey',
-            'ok': bool(parsed),
-            'data': parsed,
-            'error': None if parsed else f'Could not parse ratingKey: "{rating_key}"',
-            'durationMs': lap(),
-        }
-    )
-    if not parsed:
-        return send({'ratingKey': rating_key, 'steps': steps})
-
-    site = find_site(parsed['site_name'] or '')
-    steps.append(
-        {
-            'step': '2. Site lookup',
-            'ok': bool(site),
-            'data': {'name': site.name, 'scraperType': site.scraper_config.type} if site else None,
-            'error': None if site else f'No site found for "{parsed["site_name"]}"',
-            'durationMs': lap(),
-        }
-    )
-    if not site:
-        return send({'ratingKey': rating_key, 'steps': steps})
-
-    provider = next((p for p in get_all_providers() if p.id == provider_id), None)
-    steps.append(
-        {
-            'step': '3. Provider lookup',
-            'ok': bool(provider),
-            'data': {'id': provider.id, 'title': provider.title} if provider else None,
-            'error': None if provider else f'Provider "{provider_id}" not found',
-            'durationMs': lap(),
-        }
-    )
-    if not provider:
-        return send({'ratingKey': rating_key, 'steps': steps})
-
-    log_update_provider(provider.id, site.name, site.scraper_config.type)
-
-    cur_id = parsed['cur_id'] or ''
-    scene_url, subsite = split_subsite(scraper.decode(cur_id))
-    steps.append({'step': '4. Decode identifier', 'ok': bool(scene_url), 'data': {'curID': cur_id, 'sceneURL': scene_url}, 'durationMs': lap()})
-    if not scene_url:
-        return send({'ratingKey': rating_key, 'steps': steps})
-    try:
-        await ensure_fetchable_url(scene_url)
-    except ValueError as err:
-        steps.append({'step': '4. Decode identifier', 'ok': False, 'error': f'sceneURL blocked: {err}', 'durationMs': lap()})
-        return send({'ratingKey': rating_key, 'steps': steps})
-
-    cached = None if force else await run_in('store', metadata_cache.read, site.name, cur_id)
-    response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
-    if response is not None and metadata_cache.data18_remap_needed(response, site.name):
-        response = None
-    if response is not None and metadata_cache.data18_backfill_needed(response, site.name):
-        response = None
+    target = await _resolve_target(steps, rating_key, provider_id)
+    if target is None:
+        return steps.send(ratingKey=rating_key)
+    options = _MetadataOptions(body.get('filename'), body.get('resultScore'), bool(body.get('force')), bool(body.get('fullPipeline')))
+    response = await _usable_snapshot(target, options.force)
     if response is not None:
-        steps.extend(await _cached_metadata_steps(response, site, cur_id, scene_url, subsite, full_pipeline, lap))
+        steps.extend(await _cached_metadata_steps(response, target, options.full_pipeline, steps.lap))
     else:
-        steps.extend(await _live_metadata_steps(rating_key, provider, site, cur_id, scene_url, subsite, parsed, filename, result_score, full_pipeline, lap))
-    return send({'ratingKey': rating_key, 'steps': steps})
+        steps.extend(await _live_metadata_steps(target, options, steps.lap))
+    return steps.send(ratingKey=rating_key)
 
 
-async def _cached_metadata_steps(
-    response: PlexMetadataResponse,
-    site: ResolvedSiteInfo,
-    cur_id: str,
-    scene_url: str,
-    subsite: str | None,
-    full_pipeline: bool,
-    lap: Callable[[], int],
-) -> list[dict[str, Any]]:
+def _people(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in rows]
 
+
+def _snapshot_summary(md: dict[str, Any], refreshed: Any) -> dict[str, Any]:
+    return {
+        'servedFrom': 'snapshot',
+        'refreshed': refreshed,
+        'title': md.get('title'),
+        'summary': md.get('summary'),
+        'tagline': md.get('tagline'),
+        'studio': md.get('studio'),
+        'contentRating': md.get('contentRating'),
+        'releaseDate': md.get('originallyAvailableAt'),
+        'year': md.get('year'),
+        'genres': [g.get('tag') for g in md.get('Genre', [])],
+        'actors': _people(md.get('Role', [])),
+        'directors': _people(md.get('Director', [])),
+        'producers': _people(md.get('Producer', [])),
+        'collections': [c.get('tag') for c in md.get('Collection', [])],
+        'thumb': md.get('thumb'),
+        'art': md.get('art'),
+        'images': [{'url': i.get('url'), 'type': i.get('type')} for i in md.get('Image', [])],
+        'captures': [],
+    }
+
+
+async def _cached_metadata_steps(response: PlexMetadataResponse, target: _MetadataTarget, full_pipeline: bool, lap: Callable[[], int]) -> list[dict[str, Any]]:
     async def _fetch_detail() -> SceneDetail | None:
-        return await scraper.fetch_scene_detail(scene_url, site, SceneContext(subsite=subsite)) if scene_url else None
+        return await scraper.fetch_scene_detail(target.scene_url, target.site, SceneContext(subsite=target.subsite)) if target.scene_url else None
 
-    refreshed = await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail)
+    refreshed = await refresh_cached_snapshot(response, target.site, target.cur_id, fetch_detail=_fetch_detail)
     filter_male_actors(response)
     md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
-    steps: list[dict[str, Any]] = [
-        {
-            'step': '5. Fetch metadata',
-            'ok': True,
-            'data': {
-                'servedFrom': 'snapshot',
-                'refreshed': refreshed,
-                'title': md.get('title'),
-                'summary': md.get('summary'),
-                'tagline': md.get('tagline'),
-                'studio': md.get('studio'),
-                'contentRating': md.get('contentRating'),
-                'releaseDate': md.get('originallyAvailableAt'),
-                'year': md.get('year'),
-                'genres': [g.get('tag') for g in md.get('Genre', [])],
-                'actors': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Role', [])],
-                'directors': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Director', [])],
-                'producers': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Producer', [])],
-                'collections': [c.get('tag') for c in md.get('Collection', [])],
-                'thumb': md.get('thumb'),
-                'art': md.get('art'),
-                'images': [{'url': i.get('url'), 'type': i.get('type')} for i in md.get('Image', [])],
-                'captures': [],
-            },
-            'durationMs': lap(),
-        }
-    ]
+    steps: list[dict[str, Any]] = [{'step': '5. Fetch metadata', 'ok': True, 'data': _snapshot_summary(md, refreshed), 'durationMs': lap()}]
     if full_pipeline:
-        steps.append(
-            {
-                'step': '6. DB round-trip',
-                'ok': True,
-                'data': {'cacheEnabled': True, 'note': 'Served from snapshot — this response already came through the DB reassembly path'},
-                'durationMs': lap(),
-            }
-        )
+        note = 'Served from snapshot — this response already came through the DB reassembly path'
+        steps.append({'step': '6. DB round-trip', 'ok': True, 'data': {'cacheEnabled': True, 'note': note}, 'durationMs': lap()})
     return steps
 
 
@@ -463,85 +437,71 @@ def _live_fixture(metadata: PlexMetadata, site: ResolvedSiteInfo, filename: str 
     }
 
 
-async def _live_metadata_steps(
-    rating_key: str,
-    provider: ProviderInfo,
-    site: ResolvedSiteInfo,
-    cur_id: str,
-    scene_url: str,
-    subsite: str | None,
-    parsed: dict[str, Any],
-    filename: str | None,
-    result_score: Any,
-    full_pipeline: bool,
-    lap: Callable[[], int],
-) -> list[dict[str, Any]]:
-    steps: list[dict[str, Any]] = []
-    lap()
+def _live_summary(metadata: PlexMetadata, roles: list[PlexRole], snapshot_saved: bool, raw_image_count: int) -> dict[str, Any]:
+    return {
+        'servedFrom': 'live',
+        'snapshotEnabled': env.metadata_cache_enabled,
+        'snapshotSaved': snapshot_saved,
+        'title': metadata.title,
+        'summary': metadata.summary,
+        'tagline': metadata.tagline,
+        'studio': metadata.studio,
+        'contentRating': metadata.contentRating,
+        'releaseDate': metadata.originallyAvailableAt,
+        'year': metadata.year,
+        'genres': [g.tag for g in metadata.Genre or []],
+        'actors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in roles],
+        'directors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in metadata.Director or []],
+        'producers': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in metadata.Producer or []],
+        'collections': [c.tag for c in metadata.Collection or []],
+        'thumb': metadata.thumb,
+        'art': metadata.art,
+        'images': [{'url': img.url, 'type': img.type} for img in metadata.Image or []],
+        'rawImageCount': raw_image_count,
+    }
+
+
+async def _fetch_live_detail(target: _MetadataTarget, captures: list[RawCaptureEntry]) -> SceneDetail | None:
+    bodies = begin_body_capture(captures)
     try:
-        captures: list[RawCaptureEntry] = []
-        bodies = begin_body_capture(captures)
-        try:
-            detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=subsite))
-        finally:
-            bodies.end()
+        return await scraper.fetch_scene_detail(target.scene_url, target.site, SceneContext(capture=captures, subsite=target.subsite))
+    finally:
+        bodies.end()
+
+
+async def _live_metadata_steps(target: _MetadataTarget, options: _MetadataOptions, lap: Callable[[], int]) -> list[dict[str, Any]]:
+    lap()
+    captures: list[RawCaptureEntry] = []
+    try:
+        detail = await _fetch_live_detail(target, captures)
         if not detail:
-            steps.append(
-                {
-                    'step': '5. Fetch metadata',
-                    'ok': False,
-                    'error': 'Scraper returned no SceneDetail (transport error or unsupported flow). See captures for upstream responses.',
-                    'data': {'captures': _serialize_captures(captures)},
-                    'durationMs': lap(),
-                }
-            )
-            return steps
-
-        log_detail_summary(provider.id, site.name, detail)
-        metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=subsite)
-
-        response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
-        direct_payload = response.model_dump(by_alias=True, exclude_none=True) if full_pipeline else None
-        snapshot_saved = await metadata_cache.write(site.name, cur_id, response)
-        filter_male_actors(response)
-
-        roles = response.MediaContainer.Metadata[0].Role or []
-        steps.append(
-            {
-                'step': '5. Fetch metadata',
-                'ok': True,
-                'data': {
-                    'servedFrom': 'live',
-                    'snapshotEnabled': env.metadata_cache_enabled,
-                    'snapshotSaved': snapshot_saved,
-                    'title': metadata.title,
-                    'summary': metadata.summary,
-                    'tagline': metadata.tagline,
-                    'studio': metadata.studio,
-                    'contentRating': metadata.contentRating,
-                    'releaseDate': metadata.originallyAvailableAt,
-                    'year': metadata.year,
-                    'genres': [g.tag for g in metadata.Genre or []],
-                    'actors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in roles],
-                    'directors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in metadata.Director or []],
-                    'producers': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in metadata.Producer or []],
-                    'collections': [c.tag for c in metadata.Collection or []],
-                    'thumb': metadata.thumb,
-                    'art': metadata.art,
-                    'images': [{'url': img.url, 'type': img.type} for img in metadata.Image or []],
-                    'rawImageCount': len(detail.art),
-                    'captures': _serialize_captures(captures),
-                    'fixture': _live_fixture(metadata, site, filename, result_score, roles),
-                },
-                'durationMs': lap(),
-            }
-        )
-        if full_pipeline:
-            steps.append(await _db_roundtrip_step(site.name, cur_id, direct_payload or {}, snapshot_saved, lap))
+            error = 'Scraper returned no SceneDetail (transport error or unsupported flow). See captures for upstream responses.'
+            return [{'step': '5. Fetch metadata', 'ok': False, 'error': error, 'data': {'captures': _serialize_captures(captures)}, 'durationMs': lap()}]
+        return await _live_steps_for(detail, target, options, captures, lap)
     except Exception:  # noqa: BLE001
         logger.error('dev', 'metadata step failed', exc_info=True)
-        steps.append({'step': '5. Fetch metadata', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()})
+        return [{'step': '5. Fetch metadata', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()}]
 
+
+async def _live_steps_for(
+    detail: SceneDetail, target: _MetadataTarget, options: _MetadataOptions, captures: list[RawCaptureEntry], lap: Callable[[], int]
+) -> list[dict[str, Any]]:
+    site, provider = target.site, target.provider
+    log_detail_summary(provider.id, site.name, detail)
+    metadata = await mapper.to_metadata(detail, target.rating_key, provider.plex_identifier, target.parsed['release_date'], site, filename_site=target.subsite)
+    response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
+    direct_payload = response.model_dump(by_alias=True, exclude_none=True) if options.full_pipeline else None
+    snapshot_saved = await metadata_cache.write(site.name, target.cur_id, response)
+    filter_male_actors(response)
+    roles = response.MediaContainer.Metadata[0].Role or []
+    data = {
+        **_live_summary(metadata, roles, snapshot_saved, len(detail.art)),
+        'captures': _serialize_captures(captures),
+        'fixture': _live_fixture(metadata, site, options.filename, options.result_score, roles),
+    }
+    steps = [{'step': '5. Fetch metadata', 'ok': True, 'data': data, 'durationMs': lap()}]
+    if options.full_pipeline:
+        steps.append(await _db_roundtrip_step(site.name, target.cur_id, direct_payload or {}, snapshot_saved, lap))
     return steps
 
 
