@@ -57,7 +57,7 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
     (d / 'actor.voodoo-child_male.jpg').write_bytes(b'x')
 
     page = authed_client().get('/people')
-    assert 'display:none}' in page.text.split('.card{')[1].split('.card.gf')[0]
+    assert 'display: none; }' in page.text.split('.card {')[1].split('.card.gf')[0]
 
 
 def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
@@ -229,8 +229,8 @@ def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) 
     assert 'id="resetBtn"' in page.text
     assert "const SFW_KEY = 'metadata-sfw';" in page.text
     assert 'function resetFilters()' in page.text
-    assert 'body.sfw .imgs{display:none}' in page.text
-    page_css = next(block for block in page.text.split('<style>') if '.card{' in block)
+    assert 'body.sfw .imgs { display: none; }' in page.text
+    page_css = next(block for block in page.text.split('<style>') if '.card {' in block)
     assert '::after' not in page_css
 
 
@@ -326,9 +326,9 @@ def test_the_scene_list_is_skipped_when_the_cache_is_off(_person_cache: None, mo
 
 def test_cards_are_wide_enough_that_names_never_break(_person_cache: None) -> None:
     body = authed_client().get('/people').text
-    assert 'minmax(460px,1fr)' in body
-    assert '.hd b{white-space:nowrap}' in body
-    assert 'flex-wrap:wrap' in body
+    assert 'minmax(460px, 1fr)' in body
+    assert '.hd b { white-space: nowrap; }' in body
+    assert 'flex-wrap: wrap' in body
 
 
 def test_the_list_can_be_filtered_by_recorded_source(_person_cache: None) -> None:

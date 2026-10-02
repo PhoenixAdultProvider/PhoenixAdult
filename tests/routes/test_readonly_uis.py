@@ -194,7 +194,7 @@ def test_a_lone_view_button_is_centered(member: TestClient) -> None:
     metadata = member.get('/metadata').text
     assert '.c-actions:has(> button:only-child)' in metadata
     people = member.get('/people').text
-    assert '.actions:has(> button:only-child){justify-content:center}' in people
+    assert '.actions:has(> button:only-child) { justify-content: center; }' in people
 
 
 def test_duplicate_toggles_are_admin_only(member: TestClient) -> None:
