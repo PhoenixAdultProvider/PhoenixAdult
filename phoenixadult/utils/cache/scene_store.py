@@ -4,6 +4,7 @@ import itertools
 import json
 import sqlite3
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any, TypedDict
 
@@ -80,6 +81,82 @@ def _person_id(conn: sqlite3.Connection, name: str, studio_id: int | None, gende
     return person_id
 
 
+def _scene_row(
+    container: dict[str, Any], md: dict[str, Any], keys: tuple[str, str, str, str], dims: tuple[int | None, int | None], updated_at: float | None
+) -> tuple[Any, ...]:
+    scene_hash, site, cur_id, rel_path = keys
+    studio_id, tagline_id = dims
+    d18 = md.get('data18') or {}
+    src = md.get('sourceRef') or {}
+    is_adult = md.get('isAdult')
+    return (
+        scene_hash,
+        site,
+        cur_id,
+        rel_path,
+        str(container.get('identifier') or ''),
+        str(md.get('ratingKey') or ''),
+        str(md.get('guid') or ''),
+        str(md.get('title') or ''),
+        md.get('titleSort'),
+        md.get('originalTitle'),
+        md.get('summary'),
+        md.get('originallyAvailableAt'),
+        md.get('year'),
+        md.get('duration'),
+        md.get('rating'),
+        md.get('audienceRating'),
+        md.get('contentRating'),
+        None if is_adult is None else int(bool(is_adult)),
+        d18.get('type'),
+        d18.get('id'),
+        int(bool(d18.get('manual'))),
+        ','.join(d18.get('also') or []),
+        src.get('url'),
+        src.get('kind'),
+        json.dumps(src['data']) if src.get('data') is not None else None,
+        md.get('thumb'),
+        md.get('art'),
+        studio_id,
+        tagline_id,
+        time.time() if updated_at is None else updated_at,
+    )
+
+
+def _write_tags(conn: sqlite3.Connection, scene_id: int, md: dict[str, Any]) -> None:
+    for field, table, dim_table, dim_col in _TAG_FIELDS:
+        tags = [t for t in ((entry or {}).get('tag') for entry in md.get(field) or []) if t]
+        conn.executemany(
+            f'INSERT OR IGNORE INTO {table}(scene_id, {dim_col}, pos) VALUES(?, ?, ?)',
+            [(scene_id, db.dim_id(conn, dim_table, str(tag)), pos) for pos, tag in enumerate(tags)],
+        )
+
+
+def _write_people(conn: sqlite3.Connection, scene_id: int, md: dict[str, Any], studio_id: int | None) -> None:
+    for field, role in _ROLE_FIELDS:
+        for pos, entry in enumerate(md.get(field) or []):
+            name = str((entry or {}).get('tag') or '')
+            if not name:
+                continue
+            person_id = _person_id(conn, name, studio_id, str(entry.get('gender') or ''))
+            conn.execute(
+                'INSERT OR IGNORE INTO scene_people(scene_id, person_id, role, part, pos, photo_rel_path) VALUES(?, ?, ?, ?, ?, ?)',
+                (scene_id, person_id, role, entry.get('role'), pos, entry.get('thumb')),
+            )
+
+
+def _write_images(conn: sqlite3.Connection, scene_id: int, md: dict[str, Any], dims: dict[str, tuple[int, int, int]]) -> None:
+    for pos, img in enumerate(md.get('Image') or []):
+        url = str((img or {}).get('url') or '')
+        if not url:
+            continue
+        width, height, size = dims.get(url, (None, None, None))
+        conn.execute(
+            'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos, priority, locked) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (scene_id, str(img.get('type') or ''), url, width, height, size, pos, int(bool(img.get('priority'))), int(bool(img.get('locked')))),
+        )
+
+
 def upsert(
     site: str,
     cur_id: str,
@@ -92,77 +169,17 @@ def upsert(
     container = data.get('MediaContainer') or {}
     metadata = container.get('Metadata') or [{}]
     md: dict[str, Any] = metadata[0] if isinstance(metadata[0], dict) else {}
-    dims = image_meta or {}
     conn = db.connect()
     with conn:
         studio_id = db.dim_id(conn, 'studios', str(md.get('studio') or ''))
         tagline_id = db.dim_id(conn, 'taglines', str(md.get('tagline') or ''))
-        d18 = md.get('data18') or {}
-        src = md.get('sourceRef') or {}
-        is_adult = md.get('isAdult')
-        conn.execute(
-            _UPSERT,
-            (
-                scene_hash,
-                site,
-                cur_id,
-                rel_path,
-                str(container.get('identifier') or ''),
-                str(md.get('ratingKey') or ''),
-                str(md.get('guid') or ''),
-                str(md.get('title') or ''),
-                md.get('titleSort'),
-                md.get('originalTitle'),
-                md.get('summary'),
-                md.get('originallyAvailableAt'),
-                md.get('year'),
-                md.get('duration'),
-                md.get('rating'),
-                md.get('audienceRating'),
-                md.get('contentRating'),
-                None if is_adult is None else int(bool(is_adult)),
-                d18.get('type'),
-                d18.get('id'),
-                int(bool(d18.get('manual'))),
-                ','.join(d18.get('also') or []),
-                src.get('url'),
-                src.get('kind'),
-                json.dumps(src['data']) if src.get('data') is not None else None,
-                md.get('thumb'),
-                md.get('art'),
-                studio_id,
-                tagline_id,
-                time.time() if updated_at is None else updated_at,
-            ),
-        )
+        conn.execute(_UPSERT, _scene_row(container, md, (scene_hash, site, cur_id, rel_path), (studio_id, tagline_id), updated_at))
         scene_id = int(conn.execute('SELECT id FROM scenes WHERE hash = ?', (scene_hash,)).fetchone()['id'])
         for table in _JUNCTIONS:
             conn.execute(f'DELETE FROM {table} WHERE scene_id = ?', (scene_id,))
-        for field, table, dim_table, dim_col in _TAG_FIELDS:
-            tags = [t for t in ((entry or {}).get('tag') for entry in md.get(field) or []) if t]
-            conn.executemany(
-                f'INSERT OR IGNORE INTO {table}(scene_id, {dim_col}, pos) VALUES(?, ?, ?)',
-                [(scene_id, db.dim_id(conn, dim_table, str(tag)), pos) for pos, tag in enumerate(tags)],
-            )
-        for field, role in _ROLE_FIELDS:
-            for pos, entry in enumerate(md.get(field) or []):
-                name = str((entry or {}).get('tag') or '')
-                if not name:
-                    continue
-                person_id = _person_id(conn, name, studio_id, str(entry.get('gender') or ''))
-                conn.execute(
-                    'INSERT OR IGNORE INTO scene_people(scene_id, person_id, role, part, pos, photo_rel_path) VALUES(?, ?, ?, ?, ?, ?)',
-                    (scene_id, person_id, role, entry.get('role'), pos, entry.get('thumb')),
-                )
-        for pos, img in enumerate(md.get('Image') or []):
-            url = str((img or {}).get('url') or '')
-            if not url:
-                continue
-            width, height, size = dims.get(url, (None, None, None))
-            conn.execute(
-                'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos, priority, locked) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (scene_id, str(img.get('type') or ''), url, width, height, size, pos, int(bool(img.get('priority'))), int(bool(img.get('locked')))),
-            )
+        _write_tags(conn, scene_id, md)
+        _write_people(conn, scene_id, md, studio_id)
+        _write_images(conn, scene_id, md, image_meta or {})
     _touch()
 
 
@@ -209,28 +226,29 @@ def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, Any]]
     return out
 
 
-def load(scene_hash: str) -> dict[str, Any] | None:
-    conn = db.connect()
-    row = conn.execute(
-        'SELECT s.*, st.name AS studio_name, tl.name AS tagline_name FROM scenes s '
-        'LEFT JOIN studios st ON st.id = s.studio_id LEFT JOIN taglines tl ON tl.id = s.tagline_id WHERE s.hash = ?',
-        (scene_hash,),
-    ).fetchone()
-    if row is None:
+_LEAD_COLUMNS = (('titleSort', 'title_sort'), ('originalTitle', 'original_title'), ('year', 'year'), ('summary', 'summary'))
+_TRAIL_COLUMNS = (
+    ('audienceRating', 'audience_rating'),
+    ('rating', 'rating'),
+    ('duration', 'duration'),
+    ('originallyAvailableAt', 'release_date'),
+    ('thumb', 'thumb'),
+    ('art', 'art'),
+)
+
+
+def _data18_ref(row: sqlite3.Row) -> dict[str, Any] | None:
+    if not row['data18_type']:
         return None
-    scene_id = int(row['id'])
-    md: dict[str, Any] = {'type': 'movie', 'ratingKey': row['rating_key'], 'guid': row['guid'], 'title': row['title']}
-    for key, col in (('titleSort', 'title_sort'), ('originalTitle', 'original_title'), ('year', 'year'), ('summary', 'summary')):
-        if row[col] is not None:
-            md[key] = row[col]
-    if row['tagline_name']:
-        md['tagline'] = row['tagline_name']
-    if row['data18_type']:
-        md['data18'] = {'type': row['data18_type'], 'id': row['data18_id']}
-        if row['data18_also']:
-            md['data18']['also'] = str(row['data18_also']).split(',')
-        if row['data18_manual']:
-            md['data18']['manual'] = True
+    ref: dict[str, Any] = {'type': row['data18_type'], 'id': row['data18_id']}
+    if row['data18_also']:
+        ref['also'] = str(row['data18_also']).split(',')
+    if row['data18_manual']:
+        ref['manual'] = True
+    return ref
+
+
+def _source_ref(row: sqlite3.Row) -> dict[str, Any]:
     source: dict[str, Any] = {}
     if row['source_url']:
         source['url'] = row['source_url']
@@ -241,35 +259,50 @@ def load(scene_hash: str) -> dict[str, Any] | None:
             source['data'] = json.loads(str(row['source_json']))
         except ValueError:
             pass
-    if source:
+    return source
+
+
+def _scene_fields(row: sqlite3.Row) -> dict[str, Any]:
+    md: dict[str, Any] = {'type': 'movie', 'ratingKey': row['rating_key'], 'guid': row['guid'], 'title': row['title']}
+    md.update({key: row[col] for key, col in _LEAD_COLUMNS if row[col] is not None})
+    if row['tagline_name']:
+        md['tagline'] = row['tagline_name']
+    if data18 := _data18_ref(row):
+        md['data18'] = data18
+    if source := _source_ref(row):
         md['sourceRef'] = source
     if row['content_rating'] is not None:
         md['contentRating'] = row['content_rating']
     if row['is_adult'] is not None:
         md['isAdult'] = bool(row['is_adult'])
-    for key, col in (
-        ('audienceRating', 'audience_rating'),
-        ('rating', 'rating'),
-        ('duration', 'duration'),
-        ('originallyAvailableAt', 'release_date'),
-        ('thumb', 'thumb'),
-        ('art', 'art'),
-    ):
-        if row[col] is not None:
-            md[key] = row[col]
+    md.update({key: row[col] for key, col in _TRAIL_COLUMNS if row[col] is not None})
     if row['studio_name']:
         md['studio'] = row['studio_name']
+    return md
+
+
+def _scene_lists(conn: sqlite3.Connection, scene_id: int) -> dict[str, Any]:
     tags = {field: _tag_list(conn, scene_id, table, dim_table, dim_col) for field, table, dim_table, dim_col in _TAG_FIELDS}
-    md['Genre'] = [{'tag': t} for t in tags['Genre']]
     people = _people_lists(conn, scene_id)
-    md['Role'] = people['actor']
-    for field, role in (('Director', 'director'), ('Writer', 'writer'), ('Producer', 'producer')):
-        if people[role]:
-            md[field] = people[role]
-    md['Image'] = _image_list(conn, scene_id)
-    md['Collection'] = [{'tag': t} for t in tags['Collection']]
+    lists: dict[str, Any] = {'Genre': [{'tag': t} for t in tags['Genre']], 'Role': people['actor']}
+    lists.update({field: people[role] for field, role in (('Director', 'director'), ('Writer', 'writer'), ('Producer', 'producer')) if people[role]})
+    lists['Image'] = _image_list(conn, scene_id)
+    lists['Collection'] = [{'tag': t} for t in tags['Collection']]
     if tags['Country']:
-        md['Country'] = [{'tag': t} for t in tags['Country']]
+        lists['Country'] = [{'tag': t} for t in tags['Country']]
+    return lists
+
+
+def load(scene_hash: str) -> dict[str, Any] | None:
+    conn = db.connect()
+    row = conn.execute(
+        'SELECT s.*, st.name AS studio_name, tl.name AS tagline_name FROM scenes s '
+        'LEFT JOIN studios st ON st.id = s.studio_id LEFT JOIN taglines tl ON tl.id = s.tagline_id WHERE s.hash = ?',
+        (scene_hash,),
+    ).fetchone()
+    if row is None:
+        return None
+    md = {**_scene_fields(row), **_scene_lists(conn, int(row['id']))}
     return {'MediaContainer': {'identifier': row['identifier'], 'size': 1, 'Metadata': [md]}}
 
 
@@ -588,71 +621,79 @@ _ROLE_EXISTS = 'SELECT 1 FROM scene_people sp WHERE sp.scene_id = s.id AND sp.ro
 _GENRE_EXISTS = 'SELECT 1 FROM scene_genres sg WHERE sg.scene_id = s.id'
 
 
+_Clause = tuple[str, list[Any]]
+_ClauseFor = Callable[[Any], _Clause | None]
+_QUERY_SQL = "(s.title LIKE ? ESCAPE '\\' OR COALESCE(st.name, '') LIKE ? ESCAPE '\\' OR COALESCE(tl.name, '') LIKE ? ESCAPE '\\')"
+
+
+def _equals(sql: str) -> _ClauseFor:
+    return lambda value: (sql, [value]) if value else None
+
+
+def _blank_or(blank_sql: str, value_sql: str, arg: Callable[[str], Any] = str) -> _ClauseFor:
+    def clause(value: str) -> _Clause | None:
+        if value == _BLANK:
+            return blank_sql, []
+        return (value_sql, [arg(value)]) if value else None
+
+    return clause
+
+
+def _choice(options: dict[str, str], *params: Any) -> _ClauseFor:
+    return lambda value: (options[value], list(params)) if value in options else None
+
+
+def _in_list(column: str) -> _ClauseFor:
+    def clause(values: list[str] | None) -> _Clause | None:
+        if values is None:
+            return None
+        return (f'{column} IN ({",".join("?" * len(values))})', list(values)) if values else ('1 = 0', [])
+
+    return clause
+
+
+def _role_choice(role: str) -> _ClauseFor:
+    return _choice({_BLANK: f'NOT EXISTS ({_ROLE_EXISTS})', _SET: f'EXISTS ({_ROLE_EXISTS})'}, role)
+
+
+_FILTERS: tuple[tuple[str, _ClauseFor], ...] = (
+    ('studio', _equals('st.name = ?')),
+    ('provider_sites', _in_list('s.site')),
+    ('query', lambda query: (_QUERY_SQL, [db.like_contains(query)] * 3) if query else None),
+    ('year', _blank_or("COALESCE(s.release_date, '') = ''", 'substr(s.release_date, 1, 4) = ?')),
+    ('month', _equals('substr(s.release_date, 6, 2) = ?')),
+    ('day', _equals('substr(s.release_date, 9, 2) = ?')),
+    ('tagline', _blank_or('s.tagline_id IS NULL', 'tl.name = ?')),
+    (
+        'collection',
+        _blank_or(
+            'NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)',
+            'EXISTS (SELECT 1 FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id WHERE sc.scene_id = s.id AND c.name = ?)',
+        ),
+    ),
+    ('actor', _blank_or(f'NOT EXISTS ({_ACTOR_EXISTS})', f"EXISTS ({_ACTOR_EXISTS} AND p.name LIKE ? ESCAPE '\\')", db.like_contains)),
+    ('genre', _choice({_BLANK: f'NOT EXISTS ({_GENRE_EXISTS})', _SET: f'EXISTS ({_GENRE_EXISTS})'})),
+    ('cast', _role_choice('actor')),
+    ('director', _role_choice('director')),
+    ('producer', _role_choice('producer')),
+    (
+        'data18',
+        _choice(
+            {
+                _SET: "COALESCE(s.data18_id, '') != ''",
+                _MANUAL: "COALESCE(s.data18_id, '') != '' AND s.data18_manual = 1",
+                _BLANK: "COALESCE(s.data18_id, '') = ''",
+            }
+        ),
+    ),
+    ('dup_paths', _in_list('s.rel_path')),
+)
+
+
 def _entry_filters(f: SceneFilter) -> tuple[str, list[Any]]:
-    where: list[str] = []
-    params: list[Any] = []
-    if f.studio:
-        where.append('st.name = ?')
-        params.append(f.studio)
-    if f.provider_sites is not None:
-        if f.provider_sites:
-            where.append(f's.site IN ({",".join("?" * len(f.provider_sites))})')
-            params.extend(f.provider_sites)
-        else:
-            where.append('1 = 0')
-    if f.query:
-        where.append("(s.title LIKE ? ESCAPE '\\' OR COALESCE(st.name, '') LIKE ? ESCAPE '\\' OR COALESCE(tl.name, '') LIKE ? ESCAPE '\\')")
-        params.extend([db.like_contains(f.query)] * 3)
-    if f.year == _BLANK:
-        where.append("COALESCE(s.release_date, '') = ''")
-    elif f.year:
-        where.append('substr(s.release_date, 1, 4) = ?')
-        params.append(f.year)
-    if f.month:
-        where.append('substr(s.release_date, 6, 2) = ?')
-        params.append(f.month)
-    if f.day:
-        where.append('substr(s.release_date, 9, 2) = ?')
-        params.append(f.day)
-    if f.tagline == _BLANK:
-        where.append('s.tagline_id IS NULL')
-    elif f.tagline:
-        where.append('tl.name = ?')
-        params.append(f.tagline)
-    if f.collection == _BLANK:
-        where.append('NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)')
-    elif f.collection:
-        where.append('EXISTS (SELECT 1 FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id WHERE sc.scene_id = s.id AND c.name = ?)')
-        params.append(f.collection)
-    if f.actor == _BLANK:
-        where.append(f'NOT EXISTS ({_ACTOR_EXISTS})')
-    elif f.actor:
-        where.append(f"EXISTS ({_ACTOR_EXISTS} AND p.name LIKE ? ESCAPE '\\')")
-        params.append(db.like_contains(f.actor))
-    if f.genre == _BLANK:
-        where.append(f'NOT EXISTS ({_GENRE_EXISTS})')
-    elif f.genre == _SET:
-        where.append(f'EXISTS ({_GENRE_EXISTS})')
-    for role, choice in (('actor', f.cast), ('director', f.director), ('producer', f.producer)):
-        if choice == _BLANK:
-            where.append(f'NOT EXISTS ({_ROLE_EXISTS})')
-            params.append(role)
-        elif choice == _SET:
-            where.append(f'EXISTS ({_ROLE_EXISTS})')
-            params.append(role)
-    if f.data18 == _SET:
-        where.append("COALESCE(s.data18_id, '') != ''")
-    elif f.data18 == _MANUAL:
-        where.append("COALESCE(s.data18_id, '') != '' AND s.data18_manual = 1")
-    elif f.data18 == _BLANK:
-        where.append("COALESCE(s.data18_id, '') = ''")
-    if f.dup_paths is not None:
-        if f.dup_paths:
-            where.append(f's.rel_path IN ({",".join("?" * len(f.dup_paths))})')
-            params.extend(f.dup_paths)
-        else:
-            where.append('1 = 0')
-    return (f' WHERE {" AND ".join(where)}' if where else ''), params
+    clauses = [clause for name, build in _FILTERS if (clause := build(getattr(f, name))) is not None]
+    where = ' AND '.join(sql for sql, _ in clauses)
+    return (f' WHERE {where}' if where else ''), [param for _, params in clauses for param in params]
 
 
 def _where_for(f: SceneFilter, drop: str = '') -> tuple[str, list[Any]]:

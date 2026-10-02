@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import time
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any
@@ -166,56 +168,76 @@ def purge_all() -> int:
     return int(cur.rowcount or 0)
 
 
+_SEARCH_COLUMNS = 'key_hash, site, title, date, scene_id, language, saved_at'
+_RESULT_COLUMNS = 'key_hash, pos, cur_id, title, subsite, payload'
+
+
+def _search_row(r: Mapping[str, Any], ttl: float | None, now: float) -> dict[str, Any]:
+    saved_at = float(r['saved_at'])
+    return {
+        'keyHash': str(r['key_hash']),
+        'site': str(r['site']),
+        'title': str(r['title']),
+        'date': str(r['date'] or ''),
+        'sceneId': str(r['scene_id'] or ''),
+        'language': str(r['language'] or ''),
+        'savedAt': saved_at,
+        'expiresAt': saved_at + ttl if ttl is not None else None,
+        'expired': ttl is not None and now - saved_at > ttl,
+    }
+
+
+def _result_row(r: Mapping[str, Any], snapshot_keys: Mapping[str, str]) -> dict[str, object]:
+    payload = json.loads(str(r['payload']))
+    return {
+        'pos': int(r['pos']),
+        'curId': str(r['cur_id']),
+        'title': str(r['title']),
+        'subsite': str(r['subsite'] or ''),
+        'score': payload.get('score'),
+        'releaseDate': payload.get('release_date'),
+        'sceneUrl': payload.get('scene_url'),
+        'snapshotKey': snapshot_keys.get(str(r['cur_id'])),
+    }
+
+
+def _by_key(rows: list[Any], snapshot_keys: Mapping[str, str]) -> dict[str, list[dict[str, object]]]:
+    out: dict[str, list[dict[str, object]]] = {}
+    for r in rows:
+        out.setdefault(str(r['key_hash']), []).append(_result_row(r, snapshot_keys))
+    return out
+
+
+def _all_results(conn: sqlite3.Connection) -> dict[str, list[dict[str, object]]]:
+    snapshot_keys = {str(r['cur_id']): str(r['rel_path']) for r in conn.execute('SELECT cur_id, rel_path FROM scenes')}
+    rows = conn.execute(f'SELECT {_RESULT_COLUMNS} FROM search_results ORDER BY key_hash, pos').fetchall()
+    return _by_key(rows, snapshot_keys)
+
+
+def _results_for(conn: sqlite3.Connection, key_hashes: list[str]) -> dict[str, list[dict[str, object]]]:
+    if not key_hashes:
+        return {}
+    marks = ','.join('?' * len(key_hashes))
+    rows = conn.execute(f'SELECT {_RESULT_COLUMNS} FROM search_results WHERE key_hash IN ({marks}) ORDER BY key_hash, pos', key_hashes).fetchall()
+    cur_ids = list({str(r['cur_id']) for r in rows})
+    id_marks = ','.join('?' * len(cur_ids))
+    scenes = conn.execute(f'SELECT cur_id, rel_path FROM scenes WHERE cur_id IN ({id_marks})', cur_ids) if cur_ids else []
+    return _by_key(rows, {str(r['cur_id']): str(r['rel_path']) for r in scenes})
+
+
 def dump() -> dict[str, object]:
     conn = db.connect()
     ttl = _ttl_seconds()
     now = time.time()
-    snapshot_keys = {str(r['cur_id']): str(r['rel_path']) for r in conn.execute('SELECT cur_id, rel_path FROM scenes')}
-    entries: list[dict[str, object]] = []
-    by_site: dict[str, int] = {}
-    total_results = 0
-    expired = 0
-    result_rows = conn.execute('SELECT key_hash, pos, cur_id, title, subsite, payload FROM search_results ORDER BY key_hash, pos').fetchall()
-    results_by_key: dict[str, list[dict[str, object]]] = {}
-    for r in result_rows:
-        payload = json.loads(str(r['payload']))
-        results_by_key.setdefault(str(r['key_hash']), []).append(
-            {
-                'pos': int(r['pos']),
-                'curId': str(r['cur_id']),
-                'title': str(r['title']),
-                'subsite': str(r['subsite'] or ''),
-                'score': payload.get('score'),
-                'releaseDate': payload.get('release_date'),
-                'sceneUrl': payload.get('scene_url'),
-                'snapshotKey': snapshot_keys.get(str(r['cur_id'])),
-            }
-        )
-    for row in conn.execute('SELECT key_hash, site, title, date, scene_id, language, saved_at FROM searches ORDER BY saved_at DESC'):
-        saved_at = float(row['saved_at'])
-        is_expired = ttl is not None and now - saved_at > ttl
-        expired += 1 if is_expired else 0
-        results = results_by_key.get(str(row['key_hash']), [])
-        total_results += len(results)
-        by_site[str(row['site'])] = by_site.get(str(row['site']), 0) + 1
-        entries.append(
-            {
-                'keyHash': str(row['key_hash']),
-                'site': str(row['site']),
-                'title': str(row['title']),
-                'date': str(row['date'] or ''),
-                'sceneId': str(row['scene_id'] or ''),
-                'language': str(row['language'] or ''),
-                'savedAt': saved_at,
-                'expiresAt': saved_at + ttl if ttl is not None else None,
-                'expired': is_expired,
-                'results': results,
-            }
-        )
+    results_by_key = _all_results(conn)
+    entries = [
+        {**_search_row(row, ttl, now), 'results': results_by_key.get(str(row['key_hash']), [])}
+        for row in conn.execute(f'SELECT {_SEARCH_COLUMNS} FROM searches ORDER BY saved_at DESC')
+    ]
     return {
         'entries': entries,
-        'totals': {'searches': len(entries), 'results': total_results, 'expired': expired},
-        'sites': dict(sorted(by_site.items())),
+        'totals': {'searches': len(entries), 'results': sum(len(e['results']) for e in entries), 'expired': sum(1 for e in entries if e['expired'])},
+        'sites': dict(sorted(Counter(str(e['site']) for e in entries).items())),
         'ttlDays': env.search_store_ttl_days,
     }
 
@@ -225,19 +247,7 @@ def _group_key(row: Mapping[str, Any]) -> str:
     return f'{row["site"]}|{date}|{row["sceneId"]}' if date else f'solo|{row["keyHash"]}'
 
 
-def dump_page(site: str = '', needle: str = '', dupes_only: bool = False, offset: int = 0, limit: int = 50) -> dict[str, object]:
-    conn = db.connect()
-    ttl = _ttl_seconds()
-    now = time.time()
-
-    totals_row = conn.execute('SELECT COUNT(*) AS n FROM searches').fetchone()
-    results_row = conn.execute('SELECT COUNT(*) AS n FROM search_results').fetchone()
-    by_site = {str(r['site']): int(r['n']) for r in conn.execute('SELECT site, COUNT(*) AS n FROM searches GROUP BY site ORDER BY site')}
-    expired_total = 0
-    if ttl is not None:
-        cut = now - ttl
-        expired_total = int(conn.execute('SELECT COUNT(*) AS n FROM searches WHERE saved_at < ?', (cut,)).fetchone()['n'])
-
+def _search_filter(site: str, needle: str) -> tuple[str, list[object]]:
     where: list[str] = []
     params: list[object] = []
     if site:
@@ -247,68 +257,41 @@ def dump_page(site: str = '', needle: str = '', dupes_only: bool = False, offset
         like = db.like_contains(needle)
         where.append("(LOWER(title) LIKE ? ESCAPE '\\' OR key_hash IN (SELECT key_hash FROM search_results WHERE LOWER(title) LIKE ? ESCAPE '\\'))")
         params.extend([like, like])
-    clause = f' WHERE {" AND ".join(where)}' if where else ''
+    return (f' WHERE {" AND ".join(where)}' if where else ''), params
 
-    light: list[dict[str, Any]] = [
-        {
-            'keyHash': str(r['key_hash']),
-            'site': str(r['site']),
-            'title': str(r['title']),
-            'date': str(r['date'] or ''),
-            'sceneId': str(r['scene_id'] or ''),
-            'language': str(r['language'] or ''),
-            'savedAt': float(r['saved_at']),
-            'expiresAt': float(r['saved_at']) + ttl if ttl is not None else None,
-            'expired': ttl is not None and now - float(r['saved_at']) > ttl,
-        }
-        for r in conn.execute(f'SELECT key_hash, site, title, date, scene_id, language, saved_at FROM searches{clause} ORDER BY saved_at DESC', params)
-    ]
 
+def _store_totals(conn: sqlite3.Connection, ttl: float | None, now: float) -> dict[str, int]:
+    searches = int(conn.execute('SELECT COUNT(*) AS n FROM searches').fetchone()['n'])
+    results = int(conn.execute('SELECT COUNT(*) AS n FROM search_results').fetchone()['n'])
+    expired = int(conn.execute('SELECT COUNT(*) AS n FROM searches WHERE saved_at < ?', (now - ttl,)).fetchone()['n']) if ttl is not None else 0
+    return {'searches': searches, 'results': results, 'expired': expired}
+
+
+def _groups(conn: sqlite3.Connection, site: str, needle: str, dupes_only: bool, ttl: float | None, now: float) -> list[list[dict[str, Any]]]:
+    clause, params = _search_filter(site, needle)
     grouped: dict[str, list[dict[str, Any]]] = {}
-    for row in light:
+    for r in conn.execute(f'SELECT {_SEARCH_COLUMNS} FROM searches{clause} ORDER BY saved_at DESC', params):
+        row = _search_row(r, ttl, now)
         grouped.setdefault(_group_key(row), []).append(row)
-    groups = [members for members in grouped.values() if not dupes_only or len(members) > 1]
-    matched = sum(len(m) for m in groups)
-    page = groups[offset : offset + limit]
+    return [members for members in grouped.values() if not dupes_only or len(members) > 1]
 
-    wanted = [str(row['keyHash']) for members in page for row in members]
-    by_key: dict[str, list[dict[str, Any]]] = {}
-    if wanted:
-        marks = ','.join('?' * len(wanted))
-        rows = conn.execute(
-            f'SELECT key_hash, pos, cur_id, title, subsite, payload FROM search_results WHERE key_hash IN ({marks}) ORDER BY key_hash, pos', wanted
-        ).fetchall()
-        cur_ids = {str(r['cur_id']) for r in rows}
-        snapshot_keys: dict[str, str] = {}
-        if cur_ids:
-            id_marks = ','.join('?' * len(cur_ids))
-            snapshot_keys = {
-                str(r['cur_id']): str(r['rel_path']) for r in conn.execute(f'SELECT cur_id, rel_path FROM scenes WHERE cur_id IN ({id_marks})', list(cur_ids))
-            }
-        for r in rows:
-            payload = json.loads(str(r['payload']))
-            by_key.setdefault(str(r['key_hash']), []).append(
-                {
-                    'pos': int(r['pos']),
-                    'curId': str(r['cur_id']),
-                    'title': str(r['title']),
-                    'subsite': str(r['subsite'] or ''),
-                    'score': payload.get('score'),
-                    'releaseDate': payload.get('release_date'),
-                    'sceneUrl': payload.get('scene_url'),
-                    'snapshotKey': snapshot_keys.get(str(r['cur_id'])),
-                }
-            )
+
+def dump_page(site: str = '', needle: str = '', dupes_only: bool = False, offset: int = 0, limit: int = 50) -> dict[str, object]:
+    conn = db.connect()
+    ttl = _ttl_seconds()
+    now = time.time()
+    groups = _groups(conn, site, needle, dupes_only, ttl, now)
+    page = groups[offset : offset + limit]
+    by_key = _results_for(conn, [str(row['keyHash']) for members in page for row in members])
     for members in page:
         for row in members:
             row['results'] = by_key.get(str(row['keyHash']), [])
-
     return {
         'groups': page,
-        'matched': matched,
+        'matched': sum(len(m) for m in groups),
         'groupTotal': len(groups),
-        'totals': {'searches': int(totals_row['n']), 'results': int(results_row['n']), 'expired': expired_total},
-        'sites': by_site,
+        'totals': _store_totals(conn, ttl, now),
+        'sites': {str(r['site']): int(r['n']) for r in conn.execute('SELECT site, COUNT(*) AS n FROM searches GROUP BY site ORDER BY site')},
         'ttlDays': env.search_store_ttl_days,
         'pageSize': limit,
     }

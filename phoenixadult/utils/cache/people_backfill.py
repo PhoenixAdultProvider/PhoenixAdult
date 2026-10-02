@@ -54,23 +54,16 @@ async def _resolve_and_fill(
     return changed
 
 
-async def backfill_people_images(
-    response: PlexMetadataResponse,
-    site_name: str,
-    *,
-    fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
-) -> bool:
-    try:
-        md = response.MediaContainer.Metadata[0]
-    except (AttributeError, IndexError):
-        return False
+_Group = tuple[list[PlexRole], str, str]
 
-    groups: list[tuple[list[PlexRole], str, str]] = [
-        (md.Role or [], 'actor', 'actors'),
-        (md.Director or [], 'director', 'directors'),
-        (md.Producer or [], 'producer', 'producers'),
-    ]
+_ENQUEUE: dict[str, Callable[[PeopleResolver, PlexRole], None]] = {
+    'actor': lambda people, r: people.add_actor(r.tag, '', r.gender or ''),  # type: ignore[arg-type]
+    'director': lambda people, r: people.add_director(r.tag, ''),
+    'producer': lambda people, r: people.add_producer(r.tag, ''),
+}
 
+
+def _clear_stale_thumbs(groups: list[_Group]) -> tuple[list[str], bool]:
     missing: list[str] = []
     stale_cleared = False
     for entries, _role, key in groups:
@@ -82,44 +75,57 @@ async def backfill_people_images(
                 stale_cleared = True
             if not r.thumb:
                 missing.append(f'{key}:{r.tag}')
+    return missing, stale_cleared
+
+
+async def _fill_from_scene(
+    fetch_detail: Callable[[], Awaitable[SceneDetail | None]], fill_groups: list[tuple[list[PlexRole], str]], studio: str, site_name: str
+) -> bool:
+    try:
+        detail = await fetch_detail()
+    except Exception as err:  # noqa: BLE001 — a failed re-fetch just means sources-only
+        logger.warn('meta-cache', f'backfill scene re-fetch failed: {err}')
+        return False
+    if detail is None:
+        return False
+    scene = PeopleResolver()
+    scene.add_detail(detail)
+    refs = [detail.art_referer] if detail.art_referer else []
+    cks = [detail.art_cookie] if detail.art_cookie else []
+    return await _resolve_and_fill(scene, fill_groups, studio=detail.studio or studio, site_name=site_name, referers=refs, cookies=cks)
+
+
+async def _fill_from_sources(groups: list[_Group], fill_groups: list[tuple[list[PlexRole], str]], studio: str, site_name: str) -> bool:
+    sources = PeopleResolver()
+    imageless = [(role, r) for entries, role, _key in groups for r in entries if r.tag and not r.thumb]
+    for role, r in imageless:
+        _ENQUEUE[role](sources, r)
+    return bool(imageless) and await _resolve_and_fill(sources, fill_groups, studio=studio, site_name=site_name)
+
+
+async def backfill_people_images(
+    response: PlexMetadataResponse,
+    site_name: str,
+    *,
+    fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
+) -> bool:
+    try:
+        md = response.MediaContainer.Metadata[0]
+    except (AttributeError, IndexError):
+        return False
+
+    groups: list[_Group] = [(md.Role or [], 'actor', 'actors'), (md.Director or [], 'director', 'directors'), (md.Producer or [], 'producer', 'producers')]
+    missing, changed = _clear_stale_thumbs(groups)
     if not missing:
         logger.debug('meta-cache', f'backfill skip "{md.title}": all cast/crew already have thumbs')
         return False
     logger.debug('meta-cache', f'backfill "{md.title}" ({site_name}): {len(missing)} imageless -> {", ".join(missing)}')
 
     fill_groups = [(entries, key) for entries, _role, key in groups]
-    changed = stale_cleared
-
-    if fetch_detail is not None:
-        try:
-            detail = await fetch_detail()
-        except Exception as err:  # noqa: BLE001 — a failed re-fetch just means sources-only
-            logger.warn('meta-cache', f'backfill scene re-fetch failed: {err}')
-            detail = None
-        if detail is not None:
-            scene = PeopleResolver()
-            scene.add_detail(detail)
-            refs = [detail.art_referer] if detail.art_referer else []
-            cks = [detail.art_cookie] if detail.art_cookie else []
-            if await _resolve_and_fill(scene, fill_groups, studio=detail.studio or md.studio or '', site_name=site_name, referers=refs, cookies=cks):
-                changed = True
-
-    sources = PeopleResolver()
-    enqueued = False
-    for entries, role, _key in groups:
-        for r in entries:
-            if r.thumb or not r.tag:
-                continue
-            if role == 'actor':
-                sources.add_actor(r.tag, '', r.gender or '')  # type: ignore[arg-type]
-            elif role == 'director':
-                sources.add_director(r.tag, '')
-            else:
-                sources.add_producer(r.tag, '')
-            enqueued = True
-    if enqueued and await _resolve_and_fill(sources, fill_groups, studio=md.studio or '', site_name=site_name):
+    if fetch_detail is not None and await _fill_from_scene(fetch_detail, fill_groups, md.studio or '', site_name):
         changed = True
-
+    if await _fill_from_sources(groups, fill_groups, md.studio or '', site_name):
+        changed = True
     logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
     return changed
 

@@ -8,12 +8,19 @@ from phoenixadult.utils.logging.logger import logger
 _CARRY_FIELDS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer', 'Writer', 'Image')
 
 
-def carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
+def _prior(previous: dict[str, Any] | None) -> dict[str, Any] | None:
     if not previous:
-        return []
+        return None
     try:
-        prior = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
+        prior: dict[str, Any] = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
     except (AttributeError, IndexError):
+        return None
+    return prior
+
+
+def carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
+    prior = _prior(previous)
+    if prior is None:
         return []
     carried: list[str] = []
     for field in _CARRY_FIELDS:
@@ -24,60 +31,49 @@ def carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) 
     return carried
 
 
-_LOCK_SCALARS = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt')
+_LOCK_SCALARS = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt', 'data18')
 
 
 _LOCK_LISTS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 
 
-def apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: dict[str, Any]) -> list[str]:
-    if not previous:
-        return []
-    try:
-        prior = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
-    except (AttributeError, IndexError):
-        return []
-    held: list[str] = []
-    fields = set(locks.get('fields') or [])
-    for field in _LOCK_SCALARS:
-        if field not in fields:
-            continue
-        if field in prior:
-            meta[field] = prior[field]
-        else:
-            meta.pop(field, None)
-        held.append(field)
-    if 'data18' in fields:
-        if 'data18' in prior:
-            meta['data18'] = prior['data18']
-        else:
-            meta.pop('data18', None)
-        held.append('data18')
-    for field in _LOCK_LISTS:
-        if field not in fields:
-            continue
-        if prior.get(field):
-            meta[field] = prior[field]
-        else:
-            meta.pop(field, None)
-        held.append(field)
+def _restore(meta: dict[str, Any], prior: dict[str, Any], field: str, keep: bool) -> None:
+    if keep:
+        meta[field] = prior[field]
+    else:
+        meta.pop(field, None)
+
+
+def _hold_fields(meta: dict[str, Any], prior: dict[str, Any], fields: set[str]) -> list[str]:
+    scalars = [field for field in _LOCK_SCALARS if field in fields]
+    lists = [field for field in _LOCK_LISTS if field in fields]
+    for field in scalars:
+        _restore(meta, prior, field, field in prior)
+    for field in lists:
+        _restore(meta, prior, field, bool(prior.get(field)))
+    return scalars + lists
+
+
+def _hold_images(meta: dict[str, Any], prior: dict[str, Any], images_locked: bool) -> list[str]:
     prior_images = prior.get('Image') or []
-    if locks.get('imagesLocked'):
+    if images_locked:
         meta['Image'] = prior_images
         for key in ('thumb', 'art'):
-            if key in prior:
-                meta[key] = prior[key]
-            else:
-                meta.pop(key, None)
-        held.append('Image(set)')
-    else:
-        pinned = [img for img in prior_images if img.get('locked')]
-        if pinned:
-            pinned_urls = {str(img.get('url')) for img in pinned}
-            fresh = [img for img in meta.get('Image') or [] if str(img.get('url')) not in pinned_urls]
-            meta['Image'] = pinned + fresh
-            held.append(f'Image({len(pinned)})')
-    return held
+            _restore(meta, prior, key, key in prior)
+        return ['Image(set)']
+    pinned = [img for img in prior_images if img.get('locked')]
+    if not pinned:
+        return []
+    pinned_urls = {str(img.get('url')) for img in pinned}
+    meta['Image'] = pinned + [img for img in meta.get('Image') or [] if str(img.get('url')) not in pinned_urls]
+    return [f'Image({len(pinned)})']
+
+
+def apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: dict[str, Any]) -> list[str]:
+    prior = _prior(previous)
+    if prior is None:
+        return []
+    return _hold_fields(meta, prior, set(locks.get('fields') or [])) + _hold_images(meta, prior, bool(locks.get('imagesLocked')))
 
 
 _PROMOTABLE = (('thumb', 'coverPoster'), ('art', 'background'))
