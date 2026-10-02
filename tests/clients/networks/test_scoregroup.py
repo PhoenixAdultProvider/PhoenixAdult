@@ -760,3 +760,7 @@ async def test_a_scene_found_by_both_the_site_search_and_the_web_search_appears_
 
     assert [b64url_decode(r.cur_id) for r in results] == ['49309']
     assert not hit.called
+
+
+def test_requests_carry_the_browser_check_cookie() -> None:
+    assert ScoreGroupClient().http.headers['cookie'] == 'tsg_verified=true'

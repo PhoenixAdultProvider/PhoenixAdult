@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx2
 from parsel import Selector
@@ -194,6 +194,8 @@ def _keywords(search_data: SearchContext) -> str:
 
 
 class ScoreGroupClient(Client):
+    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'tsg_verified=true'}
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
