@@ -22,6 +22,18 @@ async def test_202_and_empty_body_are_not_ok() -> None:
     assert await client.fetch_and_load('https://x.test/empty') is None
 
 
+@respx.mock
+async def test_a_small_challenge_page_is_not_ok_but_a_scene_mentioning_one_is() -> None:
+    challenge = '<html><head><title>Verifying Browser...</title></head><body>Please wait</body></html>'
+    scene = '<html><body>' + 'x' * 20_000 + ' just a moment </body></html>'
+    respx.get('https://x.test/gate').mock(return_value=httpx.Response(200, text=challenge))
+    respx.get('https://x.test/scene').mock(return_value=httpx.Response(200, text=scene))
+
+    client = _C()
+    assert await client.fetch_and_load('https://x.test/gate') is None
+    assert await client.fetch_and_load('https://x.test/scene') is not None
+
+
 def test_group_genre_for_scale() -> None:
     c = _C()
     assert c.group_genre_for(0) is None

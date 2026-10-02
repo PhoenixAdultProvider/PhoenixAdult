@@ -19,7 +19,7 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_
 from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode, pack_cur_id, same_scene
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
-from phoenixadult.utils.http.bypass import bypass_get, bypass_post
+from phoenixadult.utils.http.bypass import bypass_get, bypass_post, is_challenge
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, ScenePacer
 from phoenixadult.utils.logging.logger import logger
@@ -113,6 +113,13 @@ class FetchCtx:
     capture: list[RawCaptureEntry] | None = None
     use_bypass: bool = False
     headers: dict[str, str] | None = None
+
+
+_CHALLENGE_PAGE_MAX = 16_000
+
+
+def _challenge_page(body: str) -> bool:
+    return len(body) <= _CHALLENGE_PAGE_MAX and is_challenge(body)
 
 
 def _bypass_enabled(ctx: FetchCtx | None) -> bool:
@@ -231,7 +238,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         try:
             r = await (self.http.post(url, data=form, headers=headers) if form is not None else self.http.get(url, headers=headers))
             trace_response(r)
-            ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip())
+            ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip()) and not _challenge_page(r.text)
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
         except httpx2.HTTPError as err:
             logger.debug(f'{verb} {url} never returned a response: {type(err).__name__}: {err}')

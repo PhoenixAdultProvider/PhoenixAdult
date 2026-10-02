@@ -18,10 +18,11 @@ _CHALLENGE_MARKERS = (
     'just a moment',
     'cf-chl-',
     'turnstile',
+    'verifying browser',
 )
 
 
-def _is_challenge(body: str | None) -> bool:
+def is_challenge(body: str | None) -> bool:
     if not body:
         return False
     low = body.lower()
@@ -53,7 +54,7 @@ async def http_bypass(req: BypassRequest) -> BypassResponse | None:
             logger.warn('bypass', f'{backend.name} threw: {err}')
             continue
         if resp and 200 <= resp.status < 300:
-            if _is_challenge(resp.body):
+            if is_challenge(resp.body):
                 logger.info('bypass', f'{backend.name} returned an unsolved challenge for {req.url} ({len(resp.body)}B); trying next')
                 continue
             logger.info('bypass', f'{backend.name} served {req.method} {req.url} ({resp.status}, {len(resp.body)}B)')
