@@ -56,35 +56,21 @@ def test_log_roundtrip(tmp_path: pytest.TempPathFactory) -> None:
     face_crop_log.record(
         d, name='Jane Doe', filename='actor.jane-doe_female.jpg', base='actor.jane-doe_female', orig_ext='.webp', upstream_url='https://x/j.webp', cropped=True
     )
-    entries = face_crop_log.recent(d)
-    assert len(entries) == 1
-    assert entries[0]['name'] == 'Jane Doe' and entries[0]['cropped'] is True and entries[0]['orig_ext'] == '.webp'
+    entry = face_crop_log.entry_for(d, 'actor.jane-doe_female.jpg')
+    assert entry is not None
+    assert entry['name'] == 'Jane Doe' and entry['cropped'] is True and entry['orig_ext'] == '.webp'
 
     face_crop_log.update(d, 'actor.jane-doe_female.jpg', filename='actor.jane-doe_female.webp', cropped=False)
-    updated = face_crop_log.recent(d)
-    assert updated[0]['filename'] == 'actor.jane-doe_female.webp' and updated[0]['cropped'] is False
+    updated = face_crop_log.entry_for(d, 'actor.jane-doe_female.webp')
+    assert updated is not None and updated['filename'] == 'actor.jane-doe_female.webp' and updated['cropped'] is False
+    assert face_crop_log.entry_for(d, 'actor.jane-doe_female.jpg') is None
 
 
-def test_log_keeps_all_and_orders(tmp_path: pytest.TempPathFactory) -> None:
+def test_log_keeps_every_entry(tmp_path: pytest.TempPathFactory) -> None:
     d = str(tmp_path)
     for i in range(30):
         face_crop_log.record(d, name=f'A{i}', filename=f'f{i}.jpg', base=f'f{i}', orig_ext='.jpg', upstream_url=f'u{i}', cropped=False)
-    entries = face_crop_log.recent(d)
-    assert len(entries) == 30
-    assert entries[0]['filename'] == 'f29.jpg'
-
-
-def test_recent_filters_by_exact_folder_with_wildcard_chars(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory) -> None:
-    from pathlib import Path
-
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
-    root = Path(str(tmp_path))
-    for sub, fn in (('a%b', 'f1.jpg'), ('axb', 'f2.jpg'), ('a_b', 'f3.jpg'), ('avb', 'f4.jpg'), ('a', 'f5.jpg'), ('a/b', 'f6.jpg')):
-        face_crop_log.record(str(root / sub), name=sub, filename=fn, base='b', orig_ext='.jpg', upstream_url='u', cropped=False)
-    assert [e['filename'] for e in face_crop_log.recent(str(root / 'a%b'))] == ['f1.jpg']
-    assert [e['filename'] for e in face_crop_log.recent(str(root / 'a_b'))] == ['f3.jpg']
-    assert [e['filename'] for e in face_crop_log.recent(str(root / 'a'))] == ['f5.jpg']
-    assert [e['filename'] for e in face_crop_log.recent(str(root / 'a' / 'b'))] == ['f6.jpg']
+    assert all(face_crop_log.entry_for(d, f'f{i}.jpg') for i in range(30))
 
 
 def test_entry_for_is_a_keyed_lookup(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory) -> None:

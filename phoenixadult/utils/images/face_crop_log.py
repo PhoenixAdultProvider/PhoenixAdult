@@ -53,26 +53,6 @@ def parse_entry(raw: str, source: str = '') -> dict[str, Any] | None:
     return entry
 
 
-def recent(directory: str) -> list[dict[str, Any]]:
-    rel_dir = _rel_dir(directory)
-    rows = (
-        _conn()
-        .execute(
-            "SELECT rel_path, entry, source FROM crop_log WHERE rel_path LIKE ? ESCAPE '\\' ORDER BY cropped_at DESC, rel_path",
-            (db.like_prefix(f'{rel_dir}/'),),
-        )
-        .fetchall()
-    )
-    out: list[dict[str, Any]] = []
-    for row in rows:
-        if str(row['rel_path']).rpartition('/')[0] != rel_dir:
-            continue
-        entry = parse_entry(str(row['entry']), str(row['source'] or ''))
-        if entry is not None:
-            out.append(entry)
-    return out
-
-
 def entry_for(directory: str, filename: str) -> dict[str, Any] | None:
     row = _conn().execute('SELECT entry, source FROM crop_log WHERE rel_path = ?', (f'{_rel_dir(directory)}/{filename}',)).fetchone()
     return None if row is None else parse_entry(str(row['entry']), str(row['source'] or ''))

@@ -33,8 +33,8 @@ async def test_crop_applied_logged_and_original_preserved(people_dir: pytest.Tem
     f = sub / 'actor.jane-doe_female.jpg'
     assert f.exists() and f.read_bytes() == b'CROPPEDJPEGBYTES'
     assert (people_dir / 'originals' / 'actor.jane-doe_female.webp').read_bytes() == b'origwebp'  # type: ignore[operator]
-    log = face_crop_log.recent(str(sub))
-    assert log and log[0]['cropped'] is True and log[0]['orig_ext'] == '.webp'
+    log = face_crop_log.entry_for(str(sub), 'actor.jane-doe_female.jpg')
+    assert log and log['cropped'] is True and log['orig_ext'] == '.webp'
 
 
 @respx.mock
@@ -98,8 +98,8 @@ async def test_restore_uses_preserved_original(people_dir: pytest.TempPathFactor
     assert ok is True
     assert (sub / 'actor.jane-doe_female.webp').read_bytes() == b'ORIGINALWEBP'
     assert not (sub / 'actor.jane-doe_female.jpg').exists()
-    log = face_crop_log.recent(str(sub))
-    assert log[0]['filename'] == 'actor.jane-doe_female.webp' and log[0]['cropped'] is False
+    log = face_crop_log.entry_for(str(sub), 'actor.jane-doe_female.webp')
+    assert log and log['filename'] == 'actor.jane-doe_female.webp' and log['cropped'] is False
 
 
 def test_set_gender_moves_folders_and_relogs(people_dir: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -122,8 +122,8 @@ def test_set_gender_moves_folders_and_relogs(people_dir: pytest.TempPathFactory,
     msub = people_dir / 'actors' / 'male'  # type: ignore[operator]
     assert (msub / 'actor.jane-doe_male.jpg').read_bytes() == b'IMG'
     assert not (fsub / 'actor.jane-doe_female.jpg').exists()
-    assert face_crop_log.recent(str(msub))[0]['filename'] == 'actor.jane-doe_male.jpg'
-    assert face_crop_log.recent(str(fsub)) == []
+    assert face_crop_log.entry_for(str(msub), 'actor.jane-doe_male.jpg') is not None
+    assert face_crop_log.entry_for(str(fsub), 'actor.jane-doe_female.jpg') is None
     assert cache.lookup_cached('Jane Doe', 'actor')['gender'] == 'male'  # type: ignore[index]
 
     new2 = cache.set_gender('actor.jane-doe_male.jpg', '')
@@ -151,7 +151,7 @@ def test_purge_deletes_file_original_and_log(people_dir: pytest.TempPathFactory,
     assert cache.purge('actor.jane-doe_female.jpg') is True
     assert not (fsub / 'actor.jane-doe_female.jpg').exists()
     assert not (people_dir / 'originals' / 'actor.jane-doe_female.jpg').exists()  # type: ignore[operator]
-    assert face_crop_log.recent(str(fsub)) == []
+    assert face_crop_log.entry_for(str(fsub), 'actor.jane-doe_female.jpg') is None
     assert cache.purge('actor.jane-doe_female.jpg') is False
 
 

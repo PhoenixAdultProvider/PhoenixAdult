@@ -80,5 +80,5 @@ def test_crop_log_round_trip(_cache_dir: Path) -> None:
         cropped=True,
     )
 
-    entries = face_crop_log.recent(str(sub))
-    assert entries and entries[0]['filename'] == 'actor.jane-doe_female.jpg' and entries[0]['cropped'] is True
+    entry = face_crop_log.entry_for(str(sub), 'actor.jane-doe_female.jpg')
+    assert entry and entry['filename'] == 'actor.jane-doe_female.jpg' and entry['cropped'] is True
