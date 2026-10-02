@@ -11,13 +11,14 @@ from parsel import Selector
 from phoenixadult.utils.helpers.ids import pad_jav_id
 from phoenixadult.utils.logging.logger import logger
 
-_JAVBUS_BASE = 'https://www.javbus.com'
-_JAVBUS_COOKIE = 'existmag=all; dv=1'
+_JAVBUS_HOST = 'www.javbus.com'
+_JAVBUS_BASE = f'https://{_JAVBUS_HOST}'
+_JAVBUS_COOKIES = {'existmag': 'all', 'dv': '1'}
 
 
 async def _get(http: httpx2.AsyncClient, url: str) -> str | None:
     try:
-        r = await http.get(url, headers={'Cookie': _JAVBUS_COOKIE})
+        r = await http.get(url)
         return None if r.status_code >= 400 else r.text
     except httpx2.HTTPError as err:
         logger.debug(f'javbusImages GET {url}: {err}')
@@ -25,6 +26,8 @@ async def _get(http: httpx2.AsyncClient, url: str) -> str | None:
 
 
 async def fetch_javbus_images(http: httpx2.AsyncClient, jav_id: str, date_iso: str | None = None) -> list[str]:
+    for name, value in _JAVBUS_COOKIES.items():
+        http.cookies.set(name, value, domain=_JAVBUS_HOST)
     html = await _get(http, f'{_JAVBUS_BASE}/en/{jav_id}')
     if (html is None or '404 Page' in html) and date_iso:
         retry = await _get(http, f'{_JAVBUS_BASE}/en/{jav_id}_{date_iso}')

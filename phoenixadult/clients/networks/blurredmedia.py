@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext
@@ -27,9 +28,8 @@ class BlurredMediaClient(Client):
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         slug = re.sub(r'\s+', '+', search_data.title.strip())
         url = search_data.search_url(slug)
-        cookie = await self._session_cookie(search_data.site_info)
-        headers = {'Cookie': cookie} if cookie else None
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture, headers=headers), f'[{search_data.site_info.name}] search {url}')
+        await self._session_cookie(search_data.site_info)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         if not search_results:
             return None
 
@@ -54,7 +54,7 @@ class BlurredMediaClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
         details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, headers={'Cookie': cookie}, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
         )
         if not details_page_elements:
             return None
@@ -77,7 +77,10 @@ class BlurredMediaClient(Client):
             return None
 
         jar = await get_site_cookies(site.base_url)
-        return f'{name}={jar[name]}' if jar.get(name) else None
+        if not jar.get(name):
+            return None
+        self.http.cookies.set(name, jar[name], domain=urlsplit(site.base_url).hostname or '')
+        return f'{name}={jar[name]}'
 
     # ── Update Field Hooks ──────────────────────────────────────────────────────
 

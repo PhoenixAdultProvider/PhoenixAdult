@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import urlsplit
 
 from parsel import Selector
@@ -21,7 +21,6 @@ from phoenixadult.utils.logging.best_effort import best_effort
 
 _SCENE_GRID_XP = '//div[contains(@class,"item-grid") and contains(@class,"item-grid-scene")]'
 _GRID_ITEM_XP = f'{_SCENE_GRID_XP}//div[contains(@class,"grid-item")]'
-_AGE_HEADERS = {'Cookie': 'ageConfirmed=true'}
 
 
 def _movie_id(url: str) -> str:
@@ -62,6 +61,8 @@ def _release_date(sel: Any) -> str | None:
 
 
 class Data18EmpireClient(Client):
+    default_cookies: ClassVar[dict[str, str]] = {'ageConfirmed': 'true'}
+
     summary_xpath = '(//div[contains(@class,"synopsis")])[1]'
     genres_xpath = '//div[contains(@class,"categories")]//a'
 
@@ -81,7 +82,7 @@ class Data18EmpireClient(Client):
             encoded = re.sub(r'\s+', '+', search_data.title.strip())
             search_results = await self.fetch_and_load(
                 f'{base}{search_data.site_info.search_path}{encoded}',
-                FetchCtx(capture=search_data.capture, headers=_AGE_HEADERS),
+                FetchCtx(capture=search_data.capture),
                 f'[{search_data.site_info.name}] search "{search_data.title}"',
             )
             if search_results:
@@ -95,7 +96,7 @@ class Data18EmpireClient(Client):
                         add_movie(u)
 
         for movie_url, movie_page_elements in await self.fetch_candidate_pages(
-            movie_urls, FetchCtx(capture=search_data.capture, headers=_AGE_HEADERS), lambda movie_url: f'[{search_data.site_info.name}] movie {movie_url}'
+            movie_urls, FetchCtx(capture=search_data.capture), lambda movie_url: f'[{search_data.site_info.name}] movie {movie_url}'
         ):
             if not movie_page_elements:
                 continue
@@ -147,7 +148,7 @@ class Data18EmpireClient(Client):
 
         movie_url = packed.get('movieURL', '')
         movie_page_elements = await self.fetch_and_load(
-            movie_url, FetchCtx(capture=ctx.capture if ctx else None, headers=_AGE_HEADERS, use_bypass=site.use_bypass), f'[{site.name}] detail {movie_url}'
+            movie_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {movie_url}'
         )
         if not movie_page_elements:
             return None
@@ -282,9 +283,7 @@ class Data18EmpireClient(Client):
         gallery_href = first_attr(details_page_elements, '(//div[@id="video-container-details"]//a[@data-label="Gallery"]/@href)[1]')
         if gallery_href:
             gallery_url = gallery_href if gallery_href.startswith('http') else base + gallery_href
-            gallery_page_elements = await self.fetch_and_load(
-                gallery_url, FetchCtx(capture=scene.capture, headers=_AGE_HEADERS), f'[{scene.site.name}] gallery'
-            )
+            gallery_page_elements = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')
             if gallery_page_elements:
                 for src in (
                     gallery_page_elements['sel']
