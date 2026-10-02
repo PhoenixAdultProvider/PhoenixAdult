@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import 'toolbar.html' as toolbar %}
 {% block title %}Stored Searches{% endblock %}
 {% block page %}searches{% endblock %}
 {% block head %}
@@ -8,12 +9,6 @@
     .stat { font-size: var(--text-sm); }
     .stat b { font-variant-numeric: tabular-nums; }
     .stat.warn b { color: var(--status-warn-text); }
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-    input[type=text].pa-input { flex: 1 1 220px; }
-    select.pa-input { width: auto; }
-    .count-line { color: var(--label-text); font-size: 12px; margin-bottom: 10px; }
-    .dup-only { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-text); white-space: nowrap; cursor: pointer; }
-    .dup-only input { accent-color: var(--button-primary-bg); width: 16px; height: 16px; }
     .group { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
     .group-head { font-size: 12px; color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
     .search-card { margin-bottom: var(--space-2); }
@@ -35,40 +30,43 @@
 
     @media (max-width: 720px) {
       body { padding: 14px; }
-      .toolbar .pa-input { flex: 1 1 100%; }
-      .dup-only { flex: 1 1 100%; font-size: 15px; min-height: 40px; }
-      .toolbar .pa-btn { flex: 1 1 auto; height: 40px; }
       .stats { gap: 6px; }
       .card-actions { margin-left: 0; width: 100%; }
       .card-actions .pa-btn { flex: 1 1 auto; }
     }
   </style>
+{{ toolbar.styles() }}
 {% endblock %}
 {% block content %}
   <h1>Stored Searches</h1>
   <div class="sub">search results cached for paced sites — reused for repeat matches and renamed files, rescored live at every replay</div>
 
   <div class="stats" id="stats"></div>
-  <div class="toolbar">
-    <select class="pa-input" id="site-filter" onchange="reloadFirst()"></select>
-    <input class="pa-input" type="text" id="text-filter" placeholder="filter query and result titles" oninput="reloadFirst()">
-    <label class="dup-only"><input type="checkbox" id="dup-filter" onchange="reloadFirst()"> Duplicates only</label>
-    <button type="button" class="pa-btn" onclick="sweepExpired()">Purge Expired</button>
-    <button type="button" class="pa-btn" onclick="purgeSite()">Purge Site</button>
-    <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>
+  {% call toolbar.search_row('text-filter', 'filter query and result titles') %}
+    <div class="filter-group sr-aux">
+      <label class="pa-label" for="site-filter">Site</label>
+      <select class="pa-input pa-input--lg" id="site-filter" onchange="reloadFirst()"></select>
+    </div>
+  {% endcall %}
+
+  <div class="controls" id="controls">
+    <div class="filters"></div>
+    {% call toolbar.bar('count-line', sfw=False) %}
+    <button type="button" class="pa-btn pa-btn--lg tb-filter-toggle" id="dup-filter" aria-pressed="false" onclick="toggleDupes()">Duplicates Only</button>
+    <div class="tb-actions">
+      <button type="button" class="pa-btn pa-btn--lg" onclick="sweepExpired()">Purge Expired</button>
+      <button type="button" class="pa-btn pa-btn--lg" onclick="purgeSite()">Purge Site</button>
+      <button type="button" class="pa-btn pa-btn--lg pa-btn--danger" onclick="purgeAll()">Purge All</button>
+    </div>
+    {% endcall %}
   </div>
-  <div class="count-line" id="count-line"></div>
-  <span id="pager" style="display:none;gap:8px;align-items:center;margin-bottom:10px">
-    <button type="button" class="pa-btn pa-btn--lg" id="prevBtn" onclick="prevPage()">Previous</button>
-    <span class="pa-page" id="pageInfo" style="font-size:12px;color:var(--label-text)"></span>
-    <button type="button" class="pa-btn pa-btn--lg" id="nextBtn" onclick="nextPage()">Next</button>
-  </span>
   <div id="list"></div>
   <div class="pa-empty" id="empty" style="display:none">no stored searches match</div>
 
   
 {% endblock %}
 {% block scripts %}
+{{ toolbar.script() }}
   <script>
     var STATE = {{ state|tojson }};
 
@@ -104,9 +102,25 @@
         offset: String(offset),
         limit: String(PAGE_SIZE),
       });
-      if (document.getElementById('dup-filter').checked) params.set('dupes', '1');
+      if (dupesOnly()) params.set('dupes', '1');
       STATE = await (await fetch('/searches/api/entries?' + params.toString())).json();
       render();
+    }
+
+    function dupesOnly() { return document.getElementById('dup-filter').classList.contains('on'); }
+
+    function toggleDupes() {
+      const on = document.getElementById('dup-filter').classList.toggle('on');
+      document.getElementById('dup-filter').setAttribute('aria-pressed', on ? 'true' : 'false');
+      reloadFirst();
+    }
+
+    function resetFilters() {
+      document.getElementById('text-filter').value = '';
+      document.getElementById('site-filter').value = '';
+      document.getElementById('dup-filter').classList.remove('on');
+      document.getElementById('dup-filter').setAttribute('aria-pressed', 'false');
+      reloadFirst();
     }
 
     function reloadFirst() {
@@ -178,7 +192,7 @@
         <span class="pa-card pa-card--tight stat">TTL: <b>${STATE.ttlDays ? STATE.ttlDays + 'd' : 'off'}</b></span>`;
 
       const groups = STATE.groups || [];
-      const dupOnly = document.getElementById('dup-filter').checked;
+      const dupOnly = dupesOnly();
       const shown = groups.reduce((n, m) => n + m.length, 0);
       document.getElementById('count-line').textContent =
         `${shown} of ${STATE.matched || 0} matching searches shown` + (dupOnly ? ' — duplicate groups only' : '');
@@ -229,6 +243,7 @@
       post('/searches/api/purge-all');
     }
 
+    document.getElementById('text-filter').addEventListener('input', reloadFirst);
     render();
   </script>
 {% endblock %}

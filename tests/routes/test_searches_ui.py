@@ -99,7 +99,7 @@ def test_the_page_offers_a_duplicates_only_filter() -> None:
     _seed()
     client = authed_client()
     body = client.get('/searches').text
-    assert 'id="dup-filter"' in body and 'Duplicates only' in body
+    assert 'id="dup-filter"' in body and 'Duplicates Only' in body
     assert "params.set('dupes', '1')" in body, 'the filter is applied server-side so totals stay right'
 
     everything = client.get('/searches/api/entries').json()

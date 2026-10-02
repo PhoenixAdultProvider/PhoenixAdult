@@ -46,15 +46,15 @@
       }
     </style>
 {% endmacro %}
-{% macro controls() %}<button class="pa-btn pa-btn--lg" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
-    <button class="pa-btn pa-btn--lg" id="sfwToggle" onclick="toggleSfw()"></button>{% endmacro %}
+{% macro controls(sfw=True) %}<button class="pa-btn pa-btn--lg" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
+{% if sfw %}    <button class="pa-btn pa-btn--lg" id="sfwToggle" onclick="toggleSfw()"></button>{% endif %}{% endmacro %}
 {% macro pager() %}<span id="pager">
       <button class="pa-btn pa-btn--lg" id="prevBtn" onclick="prevPage()">Previous</button>
       <span class="pa-page" id="pageInfo"></span>
       <button class="pa-btn pa-btn--lg" id="nextBtn" onclick="nextPage()">Next</button>
     </span>{% endmacro %}
-{% macro bar(count_id='') %}<div class="toolbar">
-    {{ controls() }}
+{% macro bar(count_id='', sfw=True) %}<div class="toolbar">
+    {{ controls(sfw) }}
 {% if caller %}{{ caller() }}{% endif %}    <span class="spacer"></span>
 {% if count_id %}    <span class="count-badge" id="{{ count_id }}"></span>
 {% endif %}    {{ pager() }}

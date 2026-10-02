@@ -189,7 +189,7 @@ def test_only_the_current_page_of_people_images_is_hydrated() -> None:
 
 def test_paging_reset_and_sfw_stay_visible_on_mobile_on_both_pages() -> None:
     client = authed_client()
-    for path in ('/people', '/metadata'):
+    for path in ('/people', '/metadata', '/logos', '/searches'):
         shared = client.get(path).text.split('Shared top-of-page skeleton')[1]
         assert '.controls { display: block; }' in shared
         assert '.filters { display: none; grid-template-columns: 1fr; }' in shared
@@ -474,7 +474,7 @@ def test_source_filter_is_narrowed_to_the_visible_tab(monkeypatch: pytest.Monkey
 
 
 def test_mobile_shows_four_controls_with_the_rest_behind_two_disclosures() -> None:
-    for path in ('/people', '/metadata'):
+    for path in ('/people', '/metadata', '/logos', '/searches'):
         page = authed_client().get(path).text
         assert 'id="filtersToggle"' in page and 'id="actionsToggle"' in page
         assert '<div class="tb-actions">' in page, f'{path} does not group its bulk actions'
