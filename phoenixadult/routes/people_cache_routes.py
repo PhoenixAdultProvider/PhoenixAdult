@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -146,6 +146,19 @@ def _display_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 PAGE_SIZE = 200
+_BLANK_SOURCE = '__blank__'
+
+_TAB_SQL = "replace(rtrim(rtrim(p.rel_path, replace(p.rel_path, '/', '')), '/'), '/', '-')"
+_NAME_SQL = "coalesce(nullif(trim(json_extract(c.entry, '$.name')), ''), replace(p.slug, '-', ' '))"
+_SOURCE_SQL = "coalesce(c.source, '')"
+_FROM_SQL = 'FROM people_images p LEFT JOIN crop_log c ON c.rel_path = p.rel_path'
+
+_FLAGS: dict[str, tuple[str, Callable[[dict[str, Any]], bool]]] = {
+    'cropped': ("coalesce(json_extract(c.entry, '$.cropped'), 0)", lambda e: bool(e.get('cropped'))),
+    'noupstream': ("coalesce(json_extract(c.entry, '$.upstream_url'), '') = ''", lambda e: not e.get('upstream_url')),
+    'generic': (f"{_SOURCE_SQL} = 'Generic'", lambda e: e.get('source') == 'Generic'),
+    'single': (f"instr(trim({_NAME_SQL}), ' ') = 0", lambda e: len(str(e.get('name') or '').split()) == 1),
+}
 
 
 @dataclass
@@ -160,29 +173,23 @@ class PeopleFilters:
     offset: Annotated[int, Query(ge=0)] = 0
     limit: Annotated[int, Query(ge=1, le=500)] = PAGE_SIZE
 
+    @property
+    def needle(self) -> str:
+        return self.q.strip().casefold()
+
+    @property
+    def wanted_source(self) -> str:
+        return '' if self.source == _BLANK_SOURCE else self.source
+
+    def flags(self) -> list[tuple[str, Callable[[dict[str, Any]], bool]]]:
+        return [flag for name, flag in _FLAGS.items() if getattr(self, name)]
+
     def matches(self, entry: dict[str, Any]) -> bool:
-        have = str(entry.get('source') or '')
-        if self.source == '__blank__' and have:
-            return False
-        if self.source and self.source != '__blank__' and have != self.source:
-            return False
-        if self.cropped and not entry.get('cropped'):
-            return False
-        if self.noupstream and entry.get('upstream_url'):
-            return False
-        if self.generic and have != 'Generic':
-            return False
-        name = str(entry.get('name') or '')
-        if self.single and len(name.split()) != 1:
-            return False
-        needle = self.q.strip().casefold()
-        return not needle or needle in name.casefold()
-
-
-_TAB_SQL = "replace(rtrim(rtrim(p.rel_path, replace(p.rel_path, '/', '')), '/'), '/', '-')"
-_NAME_SQL = "coalesce(nullif(trim(json_extract(c.entry, '$.name')), ''), replace(p.slug, '-', ' '))"
-_SOURCE_SQL = "coalesce(c.source, '')"
-_FROM_SQL = 'FROM people_images p LEFT JOIN crop_log c ON c.rel_path = p.rel_path'
+        return (
+            (not self.source or str(entry.get('source') or '') == self.wanted_source)
+            and all(test(entry) for _, test in self.flags())
+            and self.needle in str(entry.get('name') or '').casefold()
+        )
 
 
 def _pick_tab(filters: PeopleFilters, counts: dict[str, int], pick_default: bool) -> str:
@@ -192,29 +199,15 @@ def _pick_tab(filters: PeopleFilters, counts: dict[str, int], pick_default: bool
 
 
 def _where(filters: PeopleFilters, tab: str) -> tuple[str, list[Any]]:
-    clauses: list[str] = []
-    args: list[Any] = []
+    terms: list[tuple[str, tuple[Any, ...]]] = [(sql, ()) for sql, _ in filters.flags()]
     if tab:
-        clauses.append(f'{_TAB_SQL} = ?')
-        args.append(tab)
-    if filters.source == '__blank__':
-        clauses.append(f"{_SOURCE_SQL} = ''")
-    elif filters.source:
-        clauses.append(f'{_SOURCE_SQL} = ?')
-        args.append(filters.source)
-    if filters.cropped:
-        clauses.append("coalesce(json_extract(c.entry, '$.cropped'), 0)")
-    if filters.noupstream:
-        clauses.append("coalesce(json_extract(c.entry, '$.upstream_url'), '') = ''")
-    if filters.generic:
-        clauses.append(f"{_SOURCE_SQL} = 'Generic'")
-    if filters.single:
-        clauses.append(f"instr(trim({_NAME_SQL}), ' ') = 0")
-    needle = filters.q.strip().casefold()
-    if needle:
-        clauses.append(f"casefold({_NAME_SQL}) LIKE ? ESCAPE '\\'")
-        args.append(db.like_contains(needle))
-    return ('WHERE ' + ' AND '.join(clauses)) if clauses else '', args
+        terms.append((f'{_TAB_SQL} = ?', (tab,)))
+    if filters.source:
+        terms.append((f'{_SOURCE_SQL} = ?', (filters.wanted_source,)))
+    if filters.needle:
+        terms.append((f"casefold({_NAME_SQL}) LIKE ? ESCAPE '\\'", (db.like_contains(filters.needle),)))
+    where = ' AND '.join(sql for sql, _ in terms)
+    return (f'WHERE {where}' if where else ''), [arg for _, args in terms for arg in args]
 
 
 def _listing(filters: PeopleFilters, pick_default: bool = False) -> dict[str, Any]:
