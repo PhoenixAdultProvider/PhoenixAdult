@@ -12,6 +12,28 @@ from phoenixadult.utils.people.types import Gender, PersonLookupContext, PhotoHi
 _BASE = 'https://www.iafd.com'
 
 
+def _row_score(tr: Selector, name: str, want: str, studio_key: str) -> float:
+    alias_text = (tr.xpath('normalize-space(.//td[contains(@class,"text-left")])').get() or '').lower()
+    if studio_key and studio_key in re.sub(r'\s+', '', alias_text):
+        return 0
+    score = float(levenshtein(want, name))
+    return score - 1 if score != 0 and want in alias_text else score
+
+
+def _best_href(sel: Selector, actor_name: str, studio: str) -> tuple[str, float]:
+    want = actor_name.lower()
+    studio_key = re.sub(r'\s+', '', studio or '').lower()
+    best_score = float('inf')
+    best_href = ''
+    for tr in sel.xpath('//table[@id="tblFem"]/tbody/tr | //table[@id="tblMal"]/tbody/tr'):
+        link = tr.xpath('./td[2]//a[1]')
+        name = (link.xpath('normalize-space(.)').get() or '').lower()
+        score = _row_score(tr, name, want, studio_key) if name else best_score
+        if score < best_score:
+            best_score, best_href = score, link.xpath('./@href').get() or ''
+    return best_href, best_score
+
+
 async def iafd_best_match(actor_name: str, studio: str = '') -> tuple[str, Gender] | None:
     try:
         enc = fix_iafd_encoding(encode_name(actor_name))
@@ -22,34 +44,12 @@ async def iafd_best_match(actor_name: str, studio: str = '') -> tuple[str, Gende
             logger.debug('iafd', f'search failed for "{actor_name}": {resp.status if resp else "no response"}')
             return None
         sel = Selector(text=resp.body)
-
-        rows = sel.xpath('//table[@id="tblFem"]/tbody/tr | //table[@id="tblMal"]/tbody/tr')
-        males = set(sel.xpath('//table[@id="tblMal"]/tbody/tr/td[2]//a/@href').getall())
-
-        want = actor_name.lower()
-        studio_key = re.sub(r'\s+', '', studio or '').lower()
-        best_score = float('inf')
-        best_href = ''
-        for tr in rows:
-            link = tr.xpath('./td[2]//a[1]')
-            name = (link.xpath('normalize-space(.)').get() or '').lower()
-            if not name:
-                continue
-            alias_text = (tr.xpath('normalize-space(.//td[contains(@class,"text-left")])').get() or '').lower()
-            score = float(levenshtein(want, name))
-            if score != 0 and want in alias_text:
-                score -= 1
-            if studio_key and studio_key in re.sub(r'\s+', '', alias_text):
-                score = 0
-            if score < best_score:
-                best_score = score
-                best_href = link.xpath('./@href').get() or ''
-
+        best_href, best_score = _best_href(sel, actor_name, studio)
         if not best_href:
             logger.debug('iafd', f'no row matched "{actor_name}" (bestScore={best_score})')
             return None
-        gender: Gender = 'male' if best_href in males else 'female'
-        return best_href, gender
+        males = set(sel.xpath('//table[@id="tblMal"]/tbody/tr/td[2]//a/@href').getall())
+        return best_href, 'male' if best_href in males else 'female'
     except Exception as err:  # noqa: BLE001 - any failure → no match
         logger.debug('iafd', f'IAFD search failed for "{actor_name}": {err}')
         return None

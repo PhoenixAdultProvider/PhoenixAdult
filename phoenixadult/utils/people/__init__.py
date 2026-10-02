@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -170,46 +171,47 @@ class PeopleResolver:
             return cached['served_url'], gender or cached['gender']  # type: ignore[return-value]
         return '', gender
 
+    async def _cached_or_raw(self, url: str, name: str, type: PersonType, gender: Gender, source: str) -> str:
+        if not env.people_cache_enabled:
+            return url
+        cached = await cache_photo(url, name, type, gender, source=source)
+        return cached['served_url'] if cached else url
+
+    async def _cache_step(self, name: str, entry: PersonInput, type: PersonType, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
+        if not env.people_cache_enabled or env.people_cache_replace_enabled:
+            return '', gender
+        cached = await run_in('store', lookup_cached, name, type)
+        if not cached:
+            return '', gender
+        return cached['served_url'], gender or cached['gender']  # type: ignore[return-value]
+
+    async def _source_step(self, name: str, entry: PersonInput, type: PersonType, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
+        found = await find_photo(name, PersonLookupContext(type=type, studio=ctx.studio, site_name=ctx.site_name))
+        gender = gender or found.gender
+        if not found.url:
+            return '', gender
+        gender = await self._detect_gender(name, type, gender)
+        return await self._cached_or_raw(found.url, name, type, gender, found.source), gender
+
+    async def _generic_step(self, name: str, entry: PersonInput, type: PersonType, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
+        if not env.generic_image_enabled or gender not in ('male', 'female'):
+            return '', gender
+        return await self._cached_or_raw(generic_image_url(gender), name, type, gender, GENERIC_SOURCE), gender
+
+    def _photo_steps(self) -> list[Callable[[str, PersonInput, PersonType, Gender, _ResolveCtx], Awaitable[tuple[str, Gender]]]]:
+        use_scene, scene_first = scene_image_pref()
+        scene = [self._resolve_scene_photo] if use_scene else []
+        return [self._cache_step, *(scene if scene_first else []), self._source_step, *([] if scene_first else scene), self._generic_step]
+
     async def _resolve_photo(self, name: str, entry: PersonInput, type: PersonType, ctx: _ResolveCtx) -> ResolvedPerson:
-        lookup_ctx = PersonLookupContext(type=type, studio=ctx.studio, site_name=ctx.site_name)
         photo = ''
         gender: Gender = entry.gender or ''
-        use_scene, scene_first = scene_image_pref()
-
-        if env.people_cache_enabled and not env.people_cache_replace_enabled:
-            cached = await run_in('store', lookup_cached, name, type)
-            if cached:
-                photo = cached['served_url']
-                gender = gender or cached['gender']  # type: ignore[assignment]
-
-        if not photo and use_scene and scene_first:
-            photo, gender = await self._resolve_scene_photo(name, entry, type, gender, ctx)
-
-        if not photo:
-            found = await find_photo(name, lookup_ctx)
-            gender = gender or found.gender
-            if found.url:
-                gender = await self._detect_gender(name, type, gender)
-                if env.people_cache_enabled:
-                    cached = await cache_photo(found.url, name, type, gender, source=found.source)
-                    photo = cached['served_url'] if cached else found.url
-                else:
-                    photo = found.url
-
-        if not photo and use_scene and not scene_first:
-            photo, gender = await self._resolve_scene_photo(name, entry, type, gender, ctx)
-
-        if not photo and env.generic_image_enabled and gender in ('male', 'female'):
-            generic_url = generic_image_url(gender)
-            if env.people_cache_enabled:
-                cached = await cache_photo(generic_url, name, type, gender, source=GENERIC_SOURCE)
-                photo = cached['served_url'] if cached else generic_url
-            else:
-                photo = generic_url
-
-        label = type.capitalize()
+        for step in self._photo_steps():
+            photo, gender = await step(name, entry, type, gender, ctx)
+            if photo:
+                break
         if photo:
-            logger.info(f'{label}: {name} {photo}')
+            logger.info(f'{type.capitalize()}: {name} {photo}')
             if gender:
                 logger.info(f'Gender: {gender}')
         else:

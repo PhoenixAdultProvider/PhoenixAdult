@@ -4,8 +4,9 @@ import hashlib
 import re
 import sqlite3
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
-from typing import get_args
+from typing import Any, get_args
 from urllib.parse import quote
 
 import httpx2
@@ -224,6 +225,45 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
     return None
 
 
+@dataclass
+class _Headshot:
+    data: bytes
+    ext: str
+    original: bytes
+    orig_ext: str
+    cropped: bool = False
+
+
+async def _fetch_headshot(upstream_url: str, headers: dict[str, str] | None) -> _Headshot | None:
+    fetched = await _download_image(upstream_url, headers)
+    if not fetched:
+        return None
+    data, content_type = fetched
+    if len(data) > max_image_bytes():
+        logger.warn('people-cache', f'image too large {upstream_url}')
+        return None
+    ext = ext_from(content_type, upstream_url, default='')
+    if not ext:
+        logger.warn('people-cache', f'invalid extension for {upstream_url} (content-type={content_type})')
+        return None
+    return _Headshot(data, ext, data, ext)
+
+
+async def _crop(shot: _Headshot) -> None:
+    out = await run_in('image', face_crop.crop_to_headshot, shot.data)
+    if out is not None:
+        shot.data, shot.ext, shot.cropped = out, '.jpg', True
+
+
+def _write_headshot(filepath: Path, orig_path: Path | None, shot: _Headshot, log: dict[str, Any]) -> None:
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    filepath.write_bytes(shot.data)
+    if orig_path is not None:
+        orig_path.parent.mkdir(parents=True, exist_ok=True)
+        orig_path.write_bytes(shot.original)
+    face_crop_log.record(str(filepath.parent), orig_ext=shot.orig_ext, cropped=shot.cropped, **log)
+
+
 async def cache_photo(
     upstream_url: str,
     name: str,
@@ -248,72 +288,35 @@ async def cache_photo(
     existing = await run_in('fs', _prepare)
     if existing:
         return existing
-
-    fetched = await _download_image(upstream_url, headers)
-    if not fetched:
+    shot = await _fetch_headshot(upstream_url, headers)
+    if shot is None:
         return None
-    data, content_type = fetched
-
-    if len(data) > max_image_bytes():
-        logger.warn('people-cache', f'image too large {upstream_url}')
-        return None
-
-    ext = ext_from(content_type, upstream_url, default='')
-    if not ext:
-        logger.warn('people-cache', f'invalid extension for {upstream_url} (content-type={content_type})')
-        return None
-
-    orig_ext = ext
-    original = data
     face_on = crop if crop is not None else (env.people_cache_face_enabled and source not in _NO_CROP_SOURCES)
-    cropped = False
     if face_on:
-        out = await run_in('image', face_crop.crop_to_headshot, data)
-        if out is not None:
-            data, ext, cropped = out, '.jpg', True
+        await _crop(shot)
 
     base = _base_name(name, type)
     name_base = f'{base}_{gender}' if gender else base
-    filename = f'{name_base}{ext}'
+    filename = f'{name_base}{shot.ext}'
     subdir = _subdir(type, gender)
     relpath = f'{subdir}/{filename}'
     filepath = safe_join(directory, subdir, filename)
     if filepath is None:
         logger.warn('people-cache', f'refusing to write outside cache dir: {relpath}')
         return None
-    orig_path = safe_join(directory, ORIGINALS_DIR, f'{name_base}{orig_ext}') if cropped else None
-
-    def _write() -> None:
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-        filepath.write_bytes(data)
-        if orig_path is not None:
-            orig_path.parent.mkdir(parents=True, exist_ok=True)
-            orig_path.write_bytes(original)
-        face_crop_log.record(
-            str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped, source=source
-        )
-
-    await run_in('fs', _write)
+    orig_path = safe_join(directory, ORIGINALS_DIR, f'{name_base}{shot.orig_ext}') if shot.cropped else None
+    log = {'name': name, 'filename': filename, 'base': name_base, 'upstream_url': upstream_url, 'source': source}
+    await run_in('fs', _write_headshot, filepath, orig_path, shot, log)
     await run_in('store', _index_file, relpath)
-    logger.info('people-cache', f'cached {relpath} from {source or "an unrecorded source"}{" (face-cropped)" if cropped else ""}')
-    return {'served_url': _local_url(relpath, data), 'gender': gender}
+    logger.info('people-cache', f'cached {relpath} from {source or "an unrecorded source"}{" (face-cropped)" if shot.cropped else ""}')
+    return {'served_url': _local_url(relpath, shot.data), 'gender': gender}
 
 
 _NO_CROP_SOURCES = {'IAFD', GENERIC_SOURCE}
 
 
-async def restore_original(filename: str) -> bool:
-    directory = env.people_cache_dir
-    subdir = _subdir_for(filename)
-    subdir_path = safe_join(directory, subdir)
-    if subdir_path is None:
-        return False
-    entry = face_crop_log.entry_for(str(subdir_path), filename)
-    if not entry:
-        return False
-    orig_ext = entry.get('orig_ext') or '.jpg'
-
-    local = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
+async def _original_bytes(directory: str, entry: dict[str, Any]) -> bytes | None:
+    local = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
 
     def _read_local() -> bytes | None:
         return local.read_bytes() if local is not None and local.exists() else None
@@ -322,28 +325,37 @@ async def restore_original(filename: str) -> bool:
     if data is None and entry.get('upstream_url'):
         fetched = await _download_image(entry['upstream_url'], None)
         data = fetched[0] if fetched else None
+    return data
+
+
+def _swap_in_original(directory: str, subdir: str, filename: str, target: Path, target_name: str, payload: bytes, log_dir: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+    if target_name != filename:
+        stale = safe_join(directory, subdir, filename)
+        if stale is not None and stale != target and stale.exists():
+            stale.unlink()
+        _drop_index_row(f'{subdir}/{filename}')
+    _index_file(f'{subdir}/{target_name}')
+    face_crop_log.update(log_dir, filename, filename=target_name, cropped=False)
+
+
+async def restore_original(filename: str) -> bool:
+    directory = env.people_cache_dir
+    subdir = _subdir_for(filename)
+    subdir_path = safe_join(directory, subdir)
+    entry = face_crop_log.entry_for(str(subdir_path), filename) if subdir_path is not None else None
+    if not entry:
+        return False
+    data = await _original_bytes(directory, entry)
     if data is None:
         logger.warn('people-cache', f'restore failed for {filename} (no local original or upstream)')
         return False
-
-    target_name = f'{entry["base"]}{orig_ext}'
+    target_name = f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}'
     target = safe_join(directory, subdir, target_name)
     if target is None:
         return False
-    payload = data
-
-    def _swap() -> None:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(payload)
-        if target_name != filename:
-            stale = safe_join(directory, subdir, filename)
-            if stale is not None and stale != target and stale.exists():
-                stale.unlink()
-            _drop_index_row(f'{subdir}/{filename}')
-        _index_file(f'{subdir}/{target_name}')
-        face_crop_log.update(str(subdir_path), filename, filename=target_name, cropped=False)
-
-    await run_in('fs', _swap)
+    await run_in('fs', _swap_in_original, directory, subdir, filename, target, target_name, data, str(subdir_path))
     logger.info('people-cache', f'restored original for {subdir}/{target_name}')
     return True
 
@@ -370,6 +382,47 @@ def purge(filename: str) -> bool:
     return True
 
 
+def _replace_file(src: Path, dst: Path) -> bool:
+    if dst == src:
+        return True
+    if not src.exists():
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        dst.unlink()
+    src.rename(dst)
+    return True
+
+
+def _rename_original(directory: str, entry: dict[str, Any], new_base: str) -> None:
+    orig_ext = entry.get('orig_ext') or '.jpg'
+    old_orig = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
+    new_orig = safe_join(directory, ORIGINALS_DIR, f'{new_base}{orig_ext}')
+    if old_orig is None or new_orig is None or old_orig == new_orig or not old_orig.exists():
+        return
+    if new_orig.exists():
+        new_orig.unlink()
+    old_orig.rename(new_orig)
+
+
+def _relog(entry: dict[str, Any] | None, old_log: str, new_log: str, filename: str, new_filename: str, new_base: str, *, moved: bool) -> None:
+    if not moved:
+        face_crop_log.update(old_log, filename, filename=new_filename, base=new_base)
+        return
+    face_crop_log.remove(old_log, filename)
+    if entry:
+        face_crop_log.record(
+            new_log,
+            name=entry.get('name', ''),
+            filename=new_filename,
+            base=new_base,
+            orig_ext=entry.get('orig_ext') or '.jpg',
+            upstream_url=entry.get('upstream_url', ''),
+            cropped=bool(entry.get('cropped')),
+            source=entry.get('source', ''),
+        )
+
+
 def set_gender(filename: str, new_gender: str) -> str | None:
     if new_gender not in get_args(Gender):
         return None
@@ -378,48 +431,17 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     root = f'{type}.{slug}' if type else slug
     if not root:
         return None
-    ext = Path(filename).suffix
     new_base = f'{root}_{new_gender}' if new_gender else root
-    new_filename = f'{new_base}{ext}'
+    new_filename = f'{new_base}{Path(filename).suffix}'
     old_subdir, new_subdir = _subdir(type, old_gender), _subdir(type, new_gender)  # type: ignore[arg-type]
-
     src = safe_join(directory, old_subdir, filename)
     dst = safe_join(directory, new_subdir, new_filename)
-    if src is None or dst is None:
+    if src is None or dst is None or not _replace_file(src, dst):
         return None
-    if dst != src:
-        if not src.exists():
-            return None
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if dst.exists():
-            dst.unlink()
-        src.rename(dst)
-
-    old_log, new_log = str(src.parent), str(dst.parent)
-    entry = face_crop_log.entry_for(old_log, filename)
+    entry = face_crop_log.entry_for(str(src.parent), filename)
     if entry:
-        orig_ext = entry.get('orig_ext') or '.jpg'
-        old_orig = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
-        new_orig = safe_join(directory, ORIGINALS_DIR, f'{new_base}{orig_ext}')
-        if old_orig is not None and new_orig is not None and old_orig != new_orig and old_orig.exists():
-            if new_orig.exists():
-                new_orig.unlink()
-            old_orig.rename(new_orig)
-    if old_subdir != new_subdir:
-        face_crop_log.remove(old_log, filename)
-        if entry:
-            face_crop_log.record(
-                new_log,
-                name=entry.get('name', ''),
-                filename=new_filename,
-                base=new_base,
-                orig_ext=entry.get('orig_ext') or '.jpg',
-                upstream_url=entry.get('upstream_url', ''),
-                cropped=bool(entry.get('cropped')),
-                source=entry.get('source', ''),
-            )
-    else:
-        face_crop_log.update(old_log, filename, filename=new_filename, base=new_base)
+        _rename_original(directory, entry, new_base)
+    _relog(entry, str(src.parent), str(dst.parent), filename, new_filename, new_base, moved=old_subdir != new_subdir)
     _drop_index_row(f'{old_subdir}/{filename}')
     _index_file(f'{new_subdir}/{new_filename}')
     logger.info('people-cache', f'gender set to "{new_gender or "none"}" -> {new_subdir}/{new_filename}')
