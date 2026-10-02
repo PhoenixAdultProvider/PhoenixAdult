@@ -14,7 +14,7 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-_VIEWING_COOKIE = 'viewing-preferences=straight%2Cgay'
+_VIEWING_COOKIE = {'viewing-preferences': 'straight%2Cgay'}
 _BR_RE = re.compile(r'<br\s*/?>', re.IGNORECASE)
 _WS_RE = re.compile(r'\s+')
 
@@ -36,7 +36,7 @@ def _kink_tagline(channel_text: str, fallback: str) -> str:
 class KinkClient(Client):
     title_xpath = '(//h1[contains(@class,"fs-0")])[1]'
 
-    default_headers: ClassVar[dict[str, str]] = {'Cookie': _VIEWING_COOKIE}
+    default_cookies: ClassVar[dict[str, str]] = _VIEWING_COOKIE
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

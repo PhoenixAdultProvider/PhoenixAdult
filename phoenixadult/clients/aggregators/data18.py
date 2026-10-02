@@ -192,7 +192,8 @@ def _clean_thumb(u: str) -> str:
 
 
 class Data18Client(Client):
-    default_headers: ClassVar[dict[str, str]] = {'Referer': DATA18_BASE, 'Cookie': 'data_user_captcha=1'}
+    default_headers: ClassVar[dict[str, str]] = {'Referer': DATA18_BASE}
+    default_cookies: ClassVar[dict[str, str]] = {'data_user_captcha': '1'}
 
     async def data18_search(
         self,

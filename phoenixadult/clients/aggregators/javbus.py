@@ -36,7 +36,7 @@ def _derive_cover_thumb(cover_url: str) -> str:
 
 
 class JavBusClient(Client):
-    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'existmag=all; dv=1'}
+    default_cookies: ClassVar[dict[str, str]] = {'existmag': 'all', 'dv': '1'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

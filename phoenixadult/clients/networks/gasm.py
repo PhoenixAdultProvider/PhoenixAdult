@@ -21,7 +21,7 @@ _CHANNELS: dict[str, str] = load_data(__file__, 'gasm_channels')
 class GasmClient(Client):
     title_xpath = '(//h1[contains(@class,"post_title")]//span)[1]'
 
-    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'WarningModal=true'}
+    default_cookies: ClassVar[dict[str, str]] = {'WarningModal': 'true'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

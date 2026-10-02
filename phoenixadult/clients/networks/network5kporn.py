@@ -17,7 +17,7 @@ from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.processors.actor_strip import enabled_for, split_actor_prefix
 
 STUDIO = '5Kporn'
-_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w; ageConfirmed=true'
+_COOKIES = {'nats': 'MC4wLjMuNTguMC4wLjAuMC4w', 'ageConfirmed': 'true'}
 _MAX_PHOTOSET_PAGES = 20
 
 
@@ -28,7 +28,8 @@ def _cls(name: str) -> str:
 class Network5KPClient(Client):
     scraper_type: ClassVar[str] = '5kporn'
 
-    default_headers: ClassVar[dict[str, str]] = {'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE}
+    default_headers: ClassVar[dict[str, str]] = {'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8'}
+    default_cookies: ClassVar[dict[str, str]] = _COOKIES
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         actor_query = split_actor_prefix(search_data.title)[0] if enabled_for(search_data.site_info) else search_data.title

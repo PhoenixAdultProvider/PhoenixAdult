@@ -20,7 +20,7 @@ class CouplesCinemaClient(Client):
     packed_scene_tail = True
     summary_xpath = '(//span[contains(@class,"description")])[1]'
 
-    default_headers: ClassVar[dict[str, str]] = {'Cookie': 'WarningModal=true'}
+    default_cookies: ClassVar[dict[str, str]] = {'WarningModal': 'true'}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

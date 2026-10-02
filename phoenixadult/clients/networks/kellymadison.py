@@ -13,7 +13,7 @@ from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_a
 from phoenixadult.utils.helpers.urls import absolute_url
 
 STUDIO = 'Kelly Madison Productions'
-_NATS_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w'
+_NATS_COOKIE = {'nats': 'MC4wLjMuNTguMC4wLjAuMC4w'}
 
 _POSTER_TEMPLATES: list[str] = [
     'https://tour-content-cdn.kellymadisonmedia.com/episode/poster_image/{slug}/poster.jpg',
@@ -37,7 +37,7 @@ class KellyMadisonClient(Client):
     title_xpath = '(//h1[contains(@class,"title")])[1]'
     summary_xpath = '(//div[contains(.,"Episode Summary")]/p)[1]'
 
-    default_headers: ClassVar[dict[str, str]] = {'Cookie': _NATS_COOKIE}
+    default_cookies: ClassVar[dict[str, str]] = _NATS_COOKIE
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
