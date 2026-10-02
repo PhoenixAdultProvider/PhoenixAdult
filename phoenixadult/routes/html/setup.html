@@ -5,56 +5,36 @@
 <style>
   body { min-height: 100svh; display: flex; align-items: center; justify-content: center;
          padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-  .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 28px 26px;
-          width: 100%; max-width: 380px; }
-  h1 { font-size: 20px; margin: 0 0 4px; color: var(--heading-text); }
-  .sub { color: var(--muted-text); font-size: 13px; margin: 0 0 20px; }
-  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 12px 0 4px; }
-  .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-  .field-head label { margin-bottom: 4px; }
-  .pa-input { height: 44px; border-radius: 7px; font-size: 16px; }
-  input[type=password].pa-input, input.revealed { padding-right: 44px; }
-  input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
-  .reveal { width: auto; min-height: 32px; margin: 0; padding: 0 4px; background: none; border: 0; color: var(--link-text); font-size: 12px;
-            text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
-  .reveal:hover { background: none; text-decoration: underline; }
-  .hint { font-size: 11px; color: var(--hint-text); margin-top: 4px; }
-  .meter { height: 5px; margin-top: 6px; background: var(--progress-track); border-radius: 3px; overflow: hidden; }
-  .meter-fill { height: 100%; width: 0; border-radius: 3px; transition: width .2s ease, background .2s ease; }
-  .meter-fill[data-score='0'], .meter-fill[data-score='1'] { background: var(--button-danger-bg); }
-  .meter-fill[data-score='2'] { background: var(--badge-warning-text); }
-  .meter-fill[data-score='3'] { background: var(--progress-fill); }
-  .meter-fill[data-score='4'] { background: var(--button-success-bg); }
-  .submit { width: 100%; margin-top: 20px; height: 46px; border-radius: 7px; font-size: 16px; }
+  .auth-card { width: 100%; max-width: 380px; }
+  .submit { width: 100%; margin-top: 20px; height: 46px; font-size: var(--text-lg); }
   .submit:disabled { opacity: .6; }
-  .err { margin-top: 14px; font-size: 13px; color: var(--status-danger-text); min-height: 1em; }
-  @media (max-width: 420px) {
-    .card { border: 0; border-radius: 0; padding: 24px 18px; background: none; }
+  .err { margin-top: 14px; font-size: var(--text-sm); color: var(--status-danger-text); min-height: 1em; }
+  @media (max-width: 720px) {
     body { align-items: flex-start; padding-top: max(32px, env(safe-area-inset-top)); }
   }
 </style>
 {% endblock %}
 {% block chrome %}{% endblock %}
 {% block content %}
-  <form class="card" id="setupForm" method="post" action="/setup" autocomplete="on">
+  <form class="pa-card pa-card--roomy auth-card" id="setupForm" method="post" action="/setup" autocomplete="on">
     <h1>Create Admin Account</h1>
     <div class="sub">First run — this account manages users and Plex connections.</div>
-    <label for="username">Username</label>
+    <label class="pa-label" for="username">Username</label>
     <input class="pa-input" id="username" name="username" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" required autofocus>
-    <div class="field-head">
-      <label for="password">Password</label>
-      <button type="button" class="pa-btn pa-btn--sm reveal" data-for="password">Show</button>
+    <div class="pa-field-head">
+      <label class="pa-label" for="password">Password</label>
+      <button type="button" class="pa-reveal" data-for="password">Show</button>
     </div>
     <input class="pa-input" id="password" name="password" type="password" autocomplete="new-password" enterkeyhint="next" required>
-    <div class="hint">8+ characters with an uppercase letter, a number, and a special character.</div>
-    <div class="meter" id="pwMeter" hidden><div class="meter-fill" id="pwMeterFill"></div></div>
-    <div class="hint" id="pwMeterText"></div>
-    <div class="field-head">
-      <label for="confirm">Confirm Password</label>
-      <button type="button" class="pa-btn pa-btn--sm reveal" data-for="confirm">Show</button>
+    <div class="pa-hint">8+ characters with an uppercase letter, a number, and a special character.</div>
+    <div class="pa-meter" id="pwMeter" hidden><div class="pa-meter-fill" id="pwMeterFill"></div></div>
+    <div class="pa-hint" id="pwMeterText"></div>
+    <div class="pa-field-head">
+      <label class="pa-label" for="confirm">Confirm Password</label>
+      <button type="button" class="pa-reveal" data-for="confirm">Show</button>
     </div>
     <input class="pa-input" id="confirm" name="confirm" type="password" autocomplete="new-password" enterkeyhint="go" required>
-    <div class="hint">Store this somewhere safe — recovery requires shell access to the server.</div>
+    <div class="pa-hint">Store this somewhere safe — recovery requires shell access to the server.</div>
     <button class="pa-btn pa-btn--primary submit" type="submit" id="submitBtn">Create Account</button>
     <div class="err" id="err">{{ error }}</div>
   </form>

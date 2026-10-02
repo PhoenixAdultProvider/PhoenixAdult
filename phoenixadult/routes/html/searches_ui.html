@@ -16,12 +16,11 @@
     .dup-only input { accent-color: var(--button-primary-bg); width: 16px; height: 16px; }
     .group { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
     .group-head { font-size: 12px; color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
-    .dup-badge { background: var(--badge-warning-bg); color: var(--badge-warning-text); }
-    .card { margin-bottom: var(--space-2); }
-    .group .card:last-child { margin-bottom: 0; }
+    .search-card { margin-bottom: var(--space-2); }
+    .group .search-card:last-child { margin-bottom: 0; }
     .card-head { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
     .q-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-    .chip { background: var(--badge-info-bg); color: var(--badge-info-text); cursor: pointer; border: 0; }
+    .site-chip { cursor: pointer; border: 0; }
     .meta { color: var(--muted-text); font-size: 12px; }
     .meta.expired { color: var(--status-danger-text); }
     .card-actions { margin-left: auto; display: flex; gap: 6px; }
@@ -33,7 +32,6 @@
     .r-title { overflow-wrap: anywhere; }
     .r-sub { color: var(--label-text); font-size: 12px; }
     .r-links a { color: var(--link-text); font-size: 12px; margin-right: 8px; }
-    .empty { color: var(--empty-text); font-size: 13px; padding: 18px; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -42,7 +40,7 @@
       .toolbar .pa-btn { flex: 1 1 auto; height: 40px; }
       .stats { gap: 6px; }
       .card-actions { margin-left: 0; width: 100%; }
-      .card-actions .pa-btn { flex: 1 1 auto; height: 36px; }
+      .card-actions .pa-btn { flex: 1 1 auto; }
     }
   </style>
 {% endblock %}
@@ -66,7 +64,7 @@
     <button type="button" class="pa-btn pa-btn--lg" id="nextBtn" onclick="nextPage()">Next</button>
   </span>
   <div id="list"></div>
-  <div class="empty" id="empty" style="display:none">no stored searches match</div>
+  <div class="pa-empty" id="empty" style="display:none">no stored searches match</div>
 
   
 {% endblock %}
@@ -130,10 +128,10 @@
     function card(e) {
       const expiry = e.expiresAt == null ? '' : ` · <span class="meta ${e.expired ? 'expired' : ''}">${until(e.expiresAt)}</span>`;
       const bits = [e.date, e.sceneId ? 'id ' + e.sceneId : '', e.language].filter(Boolean).map(esc).join(' · ');
-      return `<div class="pa-card card">
+      return `<div class="pa-card search-card">
         <div class="card-head">
           <span class="q-title">${esc(e.title)}</span>
-          <button type="button" class="pa-badge chip" data-site="${esc(e.site)}">${esc(e.site)}</button>
+          <button type="button" class="pa-badge pa-badge--info site-chip" data-site="${esc(e.site)}">${esc(e.site)}</button>
           <span class="meta">${bits}${bits ? ' · ' : ''}saved ${rel(e.savedAt)}${expiry}</span>
           <div class="card-actions">
             <button type="button" class="pa-btn pa-btn--sm" data-research="${esc(e.keyHash)}">Re-search</button>
@@ -187,7 +185,7 @@
       let html = '';
       for (const members of groups) {
         if (members.length > 1) {
-          html += `<div class="group"><div class="group-head"><span class="pa-badge dup-badge">${members.length} spellings of one scene</span>
+          html += `<div class="group"><div class="group-head"><span class="pa-badge pa-badge--warning">${members.length} spellings of one scene</span>
             <span>${esc(members[0].site)} · ${esc(members[0].date)}</span></div>${members.map(card).join('')}</div>`;
         } else {
           html += card(members[0]);
@@ -205,7 +203,7 @@
     }
 
     document.getElementById('list').addEventListener('click', (ev) => {
-      const chip = ev.target.closest('.chip');
+      const chip = ev.target.closest('.site-chip');
       if (chip) {
         document.getElementById('site-filter').value = chip.dataset.site;
         reloadFirst();

@@ -809,11 +809,11 @@ def test_cards_show_two_actors_and_expand_the_rest() -> None:
 
 def test_the_empty_thumbnail_is_a_centred_well() -> None:
     page = authed_client().get('/metadata')
-    rule = page.text.split('\n    .card .noimg {')[1].split('}')[0]
+    rule = page.text.split('\n    .scene-card .noimg {')[1].split('}')[0]
     assert 'place-content: center' in rule
     assert 'font-size: var(--text-sm)' in rule
     assert 'checkerboard-a' in rule
-    assert '.card .noimg::before' not in page.text
+    assert '.scene-card .noimg::before' not in page.text
     assert '>No image<' in page.text
 
 
@@ -821,10 +821,10 @@ def test_the_card_subgrid_span_matches_its_row_count() -> None:
     import re
 
     page = authed_client().get('/metadata').text
-    block = page.split('return `<div class="card">')[1].split('</div>`;')[0]
+    block = page.split('return `<div class="pa-card scene-card">')[1].split('</div>`;')[0]
     rows = len([ln for ln in block.split('\n') if re.match(r'^ {10}(<div|\$\{)', ln)])
     assert f'grid-row: span {rows};' in page
-    assert f'.cards.sfw .card {{ grid-row: span {rows - 1}; }}' in page
+    assert f'.cards.sfw .scene-card {{ grid-row: span {rows - 1}; }}' in page
     assert "cards.classList.toggle('sfw', SFW);" in page
     assert 'const actors = `<div class="c-actors"' in page
 

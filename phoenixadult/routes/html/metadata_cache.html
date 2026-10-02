@@ -8,18 +8,15 @@
 
     /* ── Cards ── */
     .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-    .card {
-      display: flex; flex-direction: column; gap: 6px; padding: 12px;
-      background: var(--card-bg); border: 1px solid var(--divider); border-radius: 8px;
-    }
-    .card:hover { border-color: var(--input-border); }
+    .scene-card { display: flex; flex-direction: column; gap: 6px; }
+    .scene-card:hover { border-color: var(--input-border); }
     @supports (grid-template-rows: subgrid) {
-      .card { display: grid; grid-template-rows: subgrid; grid-row: span 10; row-gap: 6px; }
-      .cards.sfw .card { grid-row: span 9; }
+      .scene-card { display: grid; grid-template-rows: subgrid; grid-row: span 10; row-gap: 6px; }
+      .cards.sfw .scene-card { grid-row: span 9; }
     }
-    .card img, .card .noimg { width: 100%; height: 190px; border-radius: 4px; background: var(--image-well-bg); display: block; }
-    .card img { object-fit: contain; }
-    .card .noimg {
+    .scene-card img, .card .noimg { width: 100%; height: 190px; border-radius: 4px; background: var(--image-well-bg); display: block; }
+    .scene-card img { object-fit: contain; }
+    .scene-card .noimg {
       display: grid; place-content: center;
       color: var(--empty-text); font-size: var(--text-sm);
       background-color: var(--image-well-bg);
@@ -53,26 +50,22 @@
     .c-record span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .c-record .rec-id { flex: 1 1 auto; min-width: 0; }
     .c-record .rec-hash { flex: 0 0 auto; color: var(--blank-text); }
-    .card:hover .c-record .rec-hash { color: var(--label-text); }
+    .scene-card:hover .c-record .rec-hash { color: var(--label-text); }
     .c-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 4px; }
     .c-actions:has(> button:only-child) { grid-template-columns: minmax(0, 160px); justify-content: center; }
     .c-actions button { width: 100%; }
 
     /* ── Misc ── */
     .blank { color: var(--blank-text); }
-    .manual { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--badge-violet-solid-bg); color: var(--button-text); vertical-align: middle; }
+    .pa-badge.manual { background: var(--badge-violet-solid-bg); color: var(--button-text); vertical-align: middle; }
     .cached-ts { color: var(--muted-text); white-space: nowrap; }
-    .empty { color: var(--muted-text); margin-top: 24px; }
 
     /* ── Progress ── */
     .progress { margin-bottom: 14px; }
-    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
-    .progress-track { height: 8px; border-radius: 4px; background: var(--divider); overflow: hidden; }
-    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--button-primary-bg); transition: width .3s ease; }
 
     /* ── Sort bar ── */
     .sortbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
-    .sortbar label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
+    .sortbar .pa-label { margin: 0; }
     .sortbar select { min-width: 180px; width: auto; }
 
     /* ── Mobile ── */
@@ -88,7 +81,6 @@
 
       .c-title { font-size: 20px; }
       .c-cached .cached-ts { white-space: normal; }
-      .c-actions .pa-btn { font-size: 15px; height: 42px; }
     }
   </style>
 {{ toolbar.styles() }}
@@ -99,7 +91,7 @@
 
   <div class="searchbar">
     <div class="filter-group">
-      <label for="q">Search</label>
+      <label class="pa-label" for="q">Search</label>
       <input class="pa-input" type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
     </div>
     <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">Filters</button>
@@ -109,28 +101,28 @@
   <div class="controls" id="controls">
   <div class="filters">
     <div class="filter-group">
-      <label for="f-actor">Actor</label>
+      <label class="pa-label" for="f-actor">Actor</label>
       <input class="pa-input" type="text" id="f-actor" list="actor-options" autocomplete="off" placeholder="start typing a name…" oninput="actorChanged()">
       <datalist id="actor-options"></datalist>
     </div>
     <div class="filter-group">
-      <label>Provider</label>
+      <label class="pa-label">Provider</label>
       <select class="pa-input" id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
-      <label>Studio</label>
+      <label class="pa-label">Studio</label>
       <select class="pa-input" id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
-      <label>Tagline</label>
+      <label class="pa-label">Tagline</label>
       <select class="pa-input" id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
-      <label>Collection</label>
+      <label class="pa-label">Collection</label>
       <select class="pa-input" id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
-      <label>Genres</label>
+      <label class="pa-label">Genres</label>
       <select class="pa-input" id="f-genre" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Untagged</option>
@@ -138,7 +130,7 @@
       </select>
     </div>
     <div class="filter-group">
-      <label>Cast</label>
+      <label class="pa-label">Cast</label>
       <select class="pa-input" id="f-cast" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Uncredited</option>
@@ -146,7 +138,7 @@
       </select>
     </div>
     <div class="filter-group">
-      <label>Directors</label>
+      <label class="pa-label">Directors</label>
       <select class="pa-input" id="f-director" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Uncredited</option>
@@ -154,7 +146,7 @@
       </select>
     </div>
     <div class="filter-group">
-      <label>Producers</label>
+      <label class="pa-label">Producers</label>
       <select class="pa-input" id="f-producer" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Uncredited</option>
@@ -162,7 +154,7 @@
       </select>
     </div>
     <div class="filter-group">
-      <label>Data18</label>
+      <label class="pa-label">Data18</label>
       <select class="pa-input" id="f-data18" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__set__">Filled</option>
@@ -171,15 +163,15 @@
       </select>
     </div>
     <div class="filter-group">
-      <label>Year</label>
+      <label class="pa-label">Year</label>
       <select class="pa-input" id="f-year" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
-      <label>Month</label>
+      <label class="pa-label">Month</label>
       <select class="pa-input" id="f-month" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
-      <label>Day</label>
+      <label class="pa-label">Day</label>
       <select class="pa-input" id="f-day" onchange="facetChanged()"><option value="">All</option></select>
     </div>
   </div>
@@ -199,18 +191,18 @@
   </div>
 
   <div class="progress" id="progress" style="display:none">
-    <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
-    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="pa-progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
+    <div class="pa-progress-track"><div class="pa-progress-fill" id="progress-fill"></div></div>
   </div>
 
   <div class="sortbar">
-    <label for="mobileSort">Sort By</label>
+    <label class="pa-label" for="mobileSort">Sort By</label>
     <select class="pa-input" id="mobileSort" onchange="mobileSortChanged()"></select>
     <button class="pa-btn" id="sortDirBtn" onclick="toggleSortDir()" title="Reverse Sort Order"></button>
   </div>
 
   <div class="cards" id="cards"></div>
-  <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
+  <p class="pa-empty" id="empty" style="display:none">No snapshots match the current filters.</p>
 
   
 {% endblock %}
@@ -491,7 +483,7 @@
           : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb + (e.thumb.includes('/cache/') ? (e.thumb.includes('?') ? '&' : '?') + 'v=' + Math.floor(e.mtime || 0) : ''))}" loading="lazy" decoding="async" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'noimg', textContent: 'Image missing'}))">` : '<div class="noimg">No image</div>'}</div>`;
         const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
-          ? esc(e.data18_id) + (e.data18_also ? ' <span class="manual">+' + e.data18_also.split(',').length + '</span>' : '') + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
+          ? esc(e.data18_id) + (e.data18_also ? ' <span class="pa-badge manual">+' + e.data18_also.split(',').length + '</span>' : '') + (e.data18_manual ? ' <span class="pa-badge manual">manual</span>' : '')
           : '<span class="blank">—</span>';
         const cast = e.actors || [];
         const castLink = a => `<a href="${esc(personLink(a))}">${esc(a)}</a>`;
@@ -505,7 +497,7 @@
             : '<span class="blank">—</span>'
         }</div>`;
         const key = esc(JSON.stringify(e.key));
-        return `<div class="card">
+        return `<div class="pa-card scene-card">
           ${thumb}
           <div class="c-title" title="${esc(e.title)}">${esc(e.title)}</div>
           <div class="c-studio">${esc(heading)}</div>

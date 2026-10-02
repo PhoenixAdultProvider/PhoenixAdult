@@ -22,10 +22,7 @@
     .item.running { border-color: var(--running-item-border); background: var(--running-item-bg); }
     .item .label { flex: 1; word-break: break-all; }
     .item .age { color: var(--label-text); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .spinner { width: 14px; height: 14px; border: 2px solid var(--spinner-track); border-top-color: var(--spinner-head); border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; }
-    @keyframes spin { to { transform: rotate(360deg); } }
     .pos { color: var(--empty-text); font-size: 12px; width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
-    .empty { color: var(--empty-text); font-size: 13px; padding: 14px; }
     .cd.banned { color: var(--status-danger-text); font-weight: 700; }
     .pause-banner { background: var(--banner-danger-bg); color: var(--banner-danger-text); border-radius: 6px; padding: 8px 14px; font-size: 13px;
                     margin-bottom: 12px; display: flex; gap: 12px; align-items: center; }
@@ -36,9 +33,6 @@
     .item-x { flex: none; width: 26px; padding: 0; font-size: var(--text-lg); }
 
     .progress { margin-bottom: 18px; }
-    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
-    .progress-track { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; }
-    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--progress-fill); transition: width .3s ease; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -48,7 +42,7 @@
       .pacer { width: 100%; flex-wrap: wrap; gap: 4px 14px; }
       .queues { grid-template-columns: 1fr; }
       .queue-tabs { display: flex; gap: 8px; margin: 16px 0 4px; }
-      .queue-tab { flex: 1 1 0; height: 42px; border-radius: var(--radius-md); }
+      .queue-tab { flex: 1 1 0; border-radius: var(--radius-md); }
       .queue-tab.active { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
       .queue-tab .count-badge { color: inherit; opacity: 0.8; }
       .queues[data-active='search'] #updates-col { display: none; }
@@ -56,7 +50,7 @@
       .item { flex-wrap: wrap; }
       .item .label { flex: 1 1 100%; order: 1; }
       .item .age { margin-left: auto; }
-      .item-x { width: 40px; height: 40px; font-size: 18px; }
+      .item-x { width: 44px; }
       .pause-banner { flex-wrap: wrap; }
     }
   </style>
@@ -66,8 +60,8 @@
   <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>
   <div class="eta" id="eta" style="display:none"></div>
   <div class="progress" id="progress" style="display:none">
-    <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
-    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="pa-progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
+    <div class="pa-progress-track"><div class="pa-progress-fill" id="progress-fill"></div></div>
   </div>
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
@@ -126,7 +120,7 @@
           : `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? 'working…' : ready ? 'ready' : 'next turn in ' + fmtSecs(wait)}</span>`;
         return `<div class="pa-card pa-card--tight pacer"><span class="tag">${esc(p.tag)}</span>` + status +
           `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
-      }).join('') || '<div class="empty">no paced scrapers registered</div>';
+      }).join('') || '<div class="pa-empty">no paced scrapers registered</div>';
 
       const eta = STATE.etaSeconds == null ? null : Math.max(0, STATE.etaSeconds - drift);
       const etaBox = document.getElementById('eta');
@@ -167,11 +161,11 @@
         if (pauseBtn) pauseBtn.textContent = kindPaused ? 'Resume' : 'Pause';
         document.getElementById(listId).innerHTML = rows.map((e, i) => `
           <div class="pa-card pa-card--tight item ${e.running ? 'running' : ''}">
-            ${e.running ? '<div class="spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
+            ${e.running ? '<div class="pa-spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
             <span class="label">${esc(e.label)}</span>
             <span class="age">${e.running ? 'running ' + fmtSecs(e.running_for + drift) : 'waiting ' + fmtSecs(e.waited + drift)}</span>
             ${IS_ADMIN && !e.running ? `<button type="button" class="pa-btn pa-btn--sm pa-btn--danger item-x" data-kind="${kind}" data-idx="${i}" title="Remove from queue">×</button>` : ''}
-          </div>`).join('') || '<div class="empty">nothing queued</div>';
+          </div>`).join('') || '<div class="pa-empty">nothing queued</div>';
       }
     }
 

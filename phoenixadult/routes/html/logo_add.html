@@ -4,18 +4,16 @@
 {% block head %}
   <style>
     body { padding: 24px; }
-    h1, .sub, .pa-card { max-width: 1040px; margin-inline: auto; }
-    .pa-card { margin: 0 auto 16px; }
+    h1, .sub, .add-card { max-width: 1040px; margin-inline: auto; }
+    .add-card { margin: 0 auto 16px; }
     .field { display: flex; flex-direction: column; gap: 4px; }
-    .field label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
+    .field .pa-label { margin: 0; }
     .head { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
     .head .field { flex: 1 1 280px; }
     .head .field.wide { flex: 1 1 100%; }
-    .tally { font-size: 12px; color: var(--label-text); align-self: center; }
-    .tally.err { color: var(--status-danger-text); }
-    .tally.ok { color: var(--status-ok-text); }
-    .hint { font-size: var(--text-2xs); color: var(--hint-text); margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
-    .hint code { font-family: var(--font-mono); cursor: help; }
+    .tally { align-self: center; }
+    .tokens { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tokens code { font-family: var(--font-mono); cursor: help; }
 
     .rows { display: flex; flex-direction: column; gap: 6px; }
     .lrow {
@@ -37,7 +35,6 @@
     .lstate.err { color: var(--status-danger-text); }
     .lstate.ok { color: var(--status-ok-text); display: flex; align-items: center; gap: 8px; }
     .lstate img { height: 26px; max-width: 120px; object-fit: contain; }
-    .empty { color: var(--empty-text); font-size: 13px; padding: 18px; text-align: center; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -52,30 +49,30 @@
   <h1>Add Logo</h1>
   <div class="sub">Every supported site is listed. Anything that already has a logo is left out, so what you see is what is still missing.</div>
 
-  <div class="pa-card">
+  <div class="pa-card add-card">
     <div class="head">
       <div class="field">
-        <label for="studio">Studio</label>
+        <label class="pa-label" for="studio">Studio</label>
         <select class="pa-input" id="studio" onchange="studioChanged()"></select>
       </div>
       <button type="button" class="pa-btn pa-btn--primary" id="fetchAll" onclick="fetchAll()">Fetch Every URL</button>
-      <span class="tally" id="tally"></span>
+      <span class="pa-status tally" id="tally"></span>
       <div class="field wide">
-        <label for="template">Logo URL Template</label>
+        <label class="pa-label" for="template">Logo URL Template</label>
         <input class="pa-input" type="text" id="template" autocomplete="off"
                placeholder="https://static.example.com/media/{domain}/images/site-logo.svg">
-        <div class="hint">
+        <div class="pa-hint tokens">
           {%- for p in state.placeholders %}<code title="{{ p.note }}">{{ p.token }}</code>{% endfor %}
         </div>
       </div>
       <button type="button" class="pa-btn" id="tryAll" onclick="tryAllSubsites()">Try All Subsites</button>
-      <span class="tally" id="tstate"></span>
+      <span class="pa-status tally" id="tstate"></span>
     </div>
   </div>
 
-  <div class="pa-card">
+  <div class="pa-card add-card">
     <div class="rows" id="rows"></div>
-    <div class="empty" id="empty">Pick a studio to list what still needs a logo.</div>
+    <div class="pa-empty" id="empty">Pick a studio to list what still needs a logo.</div>
   </div>
   <input type="file" id="picker" accept=".png,.jpg,.jpeg,.webp,.svg" hidden>
 {% endblock %}
@@ -89,7 +86,7 @@
     function tstate(msg, kind) {
       var el = document.getElementById('tstate');
       el.textContent = msg;
-      el.className = 'tally' + (kind ? ' ' + kind : '');
+      el.className = 'pa-status tally' + (kind ? ' ' + kind : '');
     }
 
     function studio() { return document.getElementById('studio').value; }

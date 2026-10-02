@@ -23,7 +23,7 @@ def test_config_page_renders_styled(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.text
     assert 'PhoenixAdult Config' in body
-    assert 'class="toolbar"' in body
+    assert 'class="actionbar"' in body
     assert 'var STATE =' in body
     assert '__STATE_JSON__' not in body
 
@@ -251,7 +251,7 @@ def test_the_logs_tab_breaks_out_of_the_page_width_but_the_header_stays_put(clie
     body = client.get('/config').text
     assert 'body.logs-wide #tab-logs { max-width: none; }' in body
     assert 'scrollbar-gutter: stable;' in body
-    assert 'h1, .sub, .toolbar, .tabbar, #tabpanes, #tab-plex, #tab-logs, #tab-theme { max-width: 1092px; margin-inline: auto; }' in body
+    assert 'h1, .sub, .actionbar, .tabbar, #tabpanes, #tab-plex, #tab-logs, #tab-theme { max-width: 1092px; margin-inline: auto; }' in body
     assert "document.body.classList.toggle('logs-wide', name === 'logs');" in body
     assert 'function logFill()' in body
     assert "window.addEventListener('resize'" in body

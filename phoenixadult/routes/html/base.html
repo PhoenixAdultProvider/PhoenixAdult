@@ -61,6 +61,9 @@
     .pa-btn--warn { background: var(--button-outline-bg); border-color: var(--warn-solid-border); color: var(--warn-solid-border); }
     .pa-btn--warn.on, .pa-btn--warn.active { background: var(--warn-solid-bg); border-color: var(--warn-solid-border); color: var(--button-text); }
     .pa-btn--warn.active:hover { background: var(--warn-solid-hover-bg); border-color: var(--warn-solid-border); color: var(--button-text); }
+    .pa-btn--success { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
+    .pa-btn--success:hover { background: var(--button-success-hover-bg); border-color: var(--button-success-hover-bg); color: var(--button-text); }
+    .pa-btn--success:disabled { background: var(--input-border); border-color: var(--input-border); color: var(--label-text); }
     .pa-btn.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
 
     .pa-input {
@@ -70,6 +73,7 @@
     }
     .pa-input::placeholder { color: var(--hint-text); }
     .pa-input:focus { border-color: var(--input-focus-border); }
+    .pa-input--lg { height: 36px; }
     textarea.pa-input { height: auto; padding: var(--space-2) var(--space-3); line-height: 1.45; }
     @media (max-width: 720px) { .pa-input { font-size: 16px; } }
 
@@ -81,7 +85,70 @@
       display: inline-block; padding: 1px 7px; border-radius: 10px;
       font-size: var(--text-2xs); line-height: 1.5; white-space: nowrap; background: var(--badge-neutral-bg);
     }
+    .pa-badge--info { background: var(--badge-info-bg); color: var(--badge-info-text); }
+    .pa-badge--success { background: var(--badge-success-bg); color: var(--badge-success-text); }
+    .pa-badge--warning { background: var(--badge-warning-bg); color: var(--badge-warning-text); }
+    .pa-badge--danger { background: var(--badge-danger-bg); color: var(--badge-danger-text); }
+    .pa-badge--violet { background: var(--badge-violet-bg); color: var(--badge-violet-text); }
+    .pa-badge--indigo { background: var(--badge-indigo-bg); color: var(--badge-indigo-text); }
     .pa-mono { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--label-text); letter-spacing: -0.01em; }
+    .pa-card--roomy { border-radius: var(--radius-lg); padding: 28px 26px; }
+    .pa-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 11px; border-radius: 20px;
+      background: var(--chip-bg); border: 1px solid var(--chip-border); font-size: var(--text-xs);
+    }
+    .pa-chip button { background: none; border: 0; color: var(--label-text); cursor: pointer; font-size: var(--text-lg); line-height: 1; padding: 0 3px; }
+    .pa-chip button:hover { color: var(--chip-remove-hover-text); }
+    .pa-chip a { color: inherit; text-decoration: none; }
+    .pa-chip a:hover { color: var(--link-text); text-decoration: underline; }
+
+    .pa-fieldset {
+      min-width: 0; margin: 0 0 20px; padding: 14px 16px 18px;
+      background: var(--card-bg); border: 1px solid var(--input-border); border-radius: var(--radius-md);
+    }
+    .pa-fieldset > legend { padding: 0 6px; color: var(--muted-text); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .04em; }
+    .pa-label {
+      display: block; margin: 10px 0 var(--space-1); color: var(--label-text);
+      font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .04em;
+    }
+    .pa-field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .pa-reveal {
+      width: auto; min-height: 32px; margin: 0; padding: 0 var(--space-1); background: none; border: 0; cursor: pointer;
+      color: var(--link-text); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .04em;
+    }
+    .pa-reveal:hover { text-decoration: underline; }
+    input[type=password].pa-input, input.revealed { padding-right: 44px; }
+    input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
+    .pa-hint { font-size: var(--text-2xs); color: var(--hint-text); margin-top: var(--space-1); }
+    .pa-status { font-size: var(--text-xs); color: var(--label-text); }
+    .pa-status.ok { color: var(--status-ok-text); }
+    .pa-status.err { color: var(--status-danger-text); }
+    .pa-empty { color: var(--empty-text); font-size: var(--text-sm); padding: 18px; text-align: center; }
+
+    .pa-progress-head { display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--muted-text); margin-bottom: 5px; }
+    .pa-progress-track { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; }
+    .pa-progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--progress-fill); transition: width .3s ease; }
+    .pa-progress-fill.working {
+      background: repeating-linear-gradient(90deg, var(--progress-fill) 0 12px, var(--progress-fill-alt) 12px 24px);
+      animation: pa-slide 1s linear infinite;
+    }
+    @keyframes pa-slide { from { background-position: 0 0; } to { background-position: 24px 0; } }
+    .pa-meter { height: 5px; margin-top: 6px; background: var(--progress-track); border-radius: 3px; overflow: hidden; }
+    .pa-meter-fill { height: 100%; width: 0; border-radius: 3px; transition: width .2s ease, background .2s ease; }
+    .pa-meter-fill[data-score='0'], .pa-meter-fill[data-score='1'] { background: var(--button-danger-bg); }
+    .pa-meter-fill[data-score='2'] { background: var(--badge-warning-text); }
+    .pa-meter-fill[data-score='3'] { background: var(--progress-fill); }
+    .pa-meter-fill[data-score='4'] { background: var(--button-success-bg); }
+    .pa-spinner {
+      display: inline-block; flex: none; width: 14px; height: 14px; vertical-align: middle; border-radius: 50%;
+      border: 2px solid var(--spinner-track); border-top-color: var(--spinner-head); animation: pa-spin 0.8s linear infinite;
+    }
+    @keyframes pa-spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 720px) {
+      .pa-input:not(textarea), .pa-btn { height: 44px; }
+      .pa-card--roomy { border: 0; border-radius: 0; padding: var(--space-5) 18px; background: none; }
+    }
   </style>
   <meta name="pa-head" content="page">
   {% block head %}{% endblock %}
@@ -91,6 +158,17 @@
   {% include 'common.html' %}
   {% include 'nav_swap.html' %}{% endblock %}
   <main>{% block content %}{% endblock %}</main>
+  <script>
+    document.addEventListener('click', (e) => {
+      const toggle = e.target.closest('.pa-reveal');
+      if (!toggle) return;
+      const field = document.getElementById(toggle.dataset.for);
+      const show = field.type === 'password';
+      field.type = show ? 'text' : 'password';
+      field.classList.toggle('revealed', show);
+      toggle.textContent = show ? 'Hide' : 'Show';
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

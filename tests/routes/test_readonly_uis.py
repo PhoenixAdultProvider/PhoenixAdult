@@ -139,6 +139,23 @@ def test_base_html_is_the_only_place_the_components_are_declared() -> None:
         assert not re.search(r'outline:\s*(0|none)', body), f'{path} cancels the keyboard focus ring'
 
 
+def test_no_page_redeclares_a_shared_component() -> None:
+    import re
+
+    html_dir = Path(__file__).resolve().parents[2] / 'phoenixadult' / 'routes' / 'html'
+    shared = set(re.findall(r'^\s*\.(pa-[a-z-]+)\s*\{', (html_dir / 'base.html').read_text(encoding='utf-8'), re.M))
+    generic = r'\.(card|hint|empty|spinner|spin|chip|status|badge|meter|reveal|field-head|progress-(?:head|track|fill))|label|fieldset|legend'
+    for page in sorted(html_dir.glob('*.html')):
+        if page.name == 'base.html':
+            continue
+        css = page.read_text(encoding='utf-8')
+        for name in shared:
+            assert not re.search(rf'^\s*\.{name}\s*[{{,]', css, re.M), f'{page.name} redeclares .{name}; base.html owns it'
+        assert not re.search(rf'^\s*(?:{generic})\s*[{{,]', css, re.M), f'{page.name} declares its own copy of a shared component'
+        assert '@keyframes' not in css, f'{page.name} declares an animation; base.html owns them'
+        assert not re.search(r'@media \(max-width:\s*(?!720px)\d+px\)', css), f'{page.name} uses a breakpoint other than 720px'
+
+
 def test_source_json_is_admin_only(member: TestClient) -> None:
     key = _seed_snapshot()
     assert member.get(f'/metadata/source-json?key={key}').status_code == 403

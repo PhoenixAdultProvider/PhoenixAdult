@@ -3,22 +3,18 @@
 {% block page %}config{% endblock %}
 {% block head %}
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; padding: 2rem; }
-    h1, .sub, .toolbar, .tabbar, #tabpanes, #tab-plex, #tab-logs, #tab-theme { max-width: 1092px; margin-inline: auto; }
-    h1 { font-size: 1.5rem; font-weight: 700; color: var(--heading-text); margin-bottom: 0.25rem; }
+    *, *::before, *::after { margin: 0; padding: 0; }
+    body { min-height: 100vh; padding: 24px; }
+    h1, .sub, .actionbar, .tabbar, #tabpanes, #tab-plex, #tab-logs, #tab-theme { max-width: 1092px; margin-inline: auto; }
     h2 { font-size: 0.8rem; font-weight: 600; color: var(--section-heading-text); margin: 1.75rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
-    .sub { color: var(--subtitle-text); font-size: 0.875rem; margin-top: 0.25rem; }
     .ver { vertical-align: middle; margin-left: 6px; font-weight: 600; color: var(--badge-neutral-text); }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 1.1rem 1.25rem; margin-bottom: 0.75rem; }
+    .config-card { margin-bottom: 0.75rem; }
     code { background: var(--code-bg); padding: 0.12rem 0.4rem; border-radius: 4px; font-size: 0.78rem; color: var(--code-text); word-break: break-all; }
 
-    /* Toolbar */
-    .toolbar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; position: sticky; top: var(--app-nav-h, 0px);
+    /* Action bar */
+    .actionbar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; position: sticky; top: var(--app-nav-h, 0px);
                background: var(--toolbar-bg); padding: 0.85rem 0; z-index: 5; border-bottom: 1px solid var(--divider); }
-    .toolbar-status { font-size: 0.82rem; color: var(--label-text); flex: 1; min-width: 140px; }
-    .toolbar-status.ok   { color: var(--status-ok-text); }
-    .toolbar-status.err  { color: var(--status-danger-text); }
+    .actionbar-status { flex: 1; min-width: 140px; }
 
     /* Variable rows */
     .var { display: grid; grid-template-columns: 1fr; gap: 0.5rem; padding: 0.85rem 0; border-bottom: 1px solid var(--divider); }
@@ -28,7 +24,7 @@
     .var-key { font-size: 0.72rem; color: var(--label-text); font-family: ui-monospace, monospace; }
     .var-desc { font-size: 0.8rem; color: var(--muted-text); line-height: 1.45; }
     .var-control { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-    .pa-input { flex: 1; min-width: 220px; font-family: var(--font-mono); }
+    main .pa-input { flex: 1; min-width: 220px; font-family: var(--font-mono); }
     .pa-input.changed { border-color: var(--soft-warn-text); }
     select.pa-input { flex: 0 0 auto; width: auto; min-width: 130px; }
     input.limit-input { flex: 0 0 170px; min-width: 170px; }
@@ -44,7 +40,7 @@
     .listwrap.changed .srclist { border-color: var(--soft-warn-text); }
     .srclist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.3rem; padding: 0.4rem;
                background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 6px; }
-    .srclist .hint { grid-column: 1 / -1; }
+    .srclist .pa-hint { grid-column: 1 / -1; }
     .srcitem { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.55rem; background: var(--panel-bg);
                border: 1px solid var(--panel-border); border-radius: 5px; cursor: grab; font-size: 0.85rem; min-width: 0; }
     .srcitem.dragging { opacity: 0.4; }
@@ -57,15 +53,6 @@
     .src-add-select { flex: 0 0 auto; min-width: 180px; padding: 0.4rem 0.5rem; background: var(--input-bg);
                       border: 1px solid var(--input-border); border-radius: 6px; color: var(--input-text); font-size: 0.82rem; }
 
-    /* Badges */
-    .badge { font-size: 0.62rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 4px;
-             text-transform: uppercase; letter-spacing: 0.04em; }
-    .badge.override { background: var(--badge-indigo-bg); color: var(--badge-indigo-text); }
-    .badge.restart  { background: var(--badge-warning-bg); color: var(--badge-warning-text); }
-    .badge.secret   { background: var(--badge-success-bg); color: var(--badge-success-text); }
-    .hint { font-size: 0.72rem; color: var(--hint-text); }
-
-    /* Restart button */
 
     /* Tabs */
     .tabbar { display: flex; gap: 0.25rem; margin-top: 1rem; border-bottom: 1px solid var(--panel-border); }
@@ -90,7 +77,7 @@
     }
     body.logs-wide #tab-logs { max-width: none; }
     body.logs-wide #tab-logs h2 { display: none; }
-    body.logs-wide #tab-logs .card { margin-top: 0.75rem; margin-bottom: 0; }
+    body.logs-wide #tab-logs .config-card { margin-top: 0.75rem; margin-bottom: 0; }
     .logview:focus-visible { outline: 1px solid var(--button-primary-bg); outline-offset: -1px; }
     .logview .ln { display: block; width: max-content; min-width: 100%; }
     .logview .ln.hide { display: none; }
@@ -104,15 +91,7 @@
 
     /* Plex tab */
     .plex-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
-    .plex-status { font-size: 0.82rem; color: var(--muted-text); }
-    .plex-status.ok { color: var(--status-ok-text); }
-    .plex-status.err { color: var(--status-danger-text); }
-    .user-meter { height: 5px; margin-top: 6px; max-width: 320px; background: var(--progress-track); border-radius: 3px; overflow: hidden; }
-    .user-meter-fill { height: 100%; width: 0; border-radius: 3px; transition: width .2s ease, background .2s ease; }
-    .user-meter-fill[data-score='0'], .user-meter-fill[data-score='1'] { background: var(--button-danger-bg); }
-    .user-meter-fill[data-score='2'] { background: var(--badge-warning-text); }
-    .user-meter-fill[data-score='3'] { background: var(--progress-fill); }
-    .user-meter-fill[data-score='4'] { background: var(--button-success-bg); }
+    .user-meter { max-width: 320px; }
     .users-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .users-table th, .users-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--panel-border); }
     .users-table th { color: var(--label-text); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; }
@@ -120,15 +99,9 @@
     .plex-kv { font-size: 0.82rem; color: var(--muted-text); display: grid; grid-template-columns: max-content 1fr;
                gap: 0.25rem 0.9rem; margin-top: 0.6rem; }
     .plex-kv b { color: var(--soft-text); font-weight: 600; }
-    .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--spinner-track); border-top-color: var(--spinner-head);
-            border-radius: 50%; animation: spin 0.9s linear infinite; vertical-align: -2px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
     pre.report { background: var(--inset-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.7rem;
                  font-size: 0.75rem; margin-top: 0.6rem; max-height: 320px; overflow-y: auto; white-space: pre-wrap; }
     .recon-progress { margin-top: 0.7rem; }
-    .recon-progress-head { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted-text); margin-bottom: 0.3rem; }
-    .recon-progress-track { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; }
-    .recon-progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--progress-fill); transition: width .4s ease; }
     .recon-counts { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.82rem; color: var(--muted-text); }
     .recon-counts b { color: var(--heading-text); font-size: 1rem; margin-right: 0.3rem; }
     .recon-summary { margin-top: 0.7rem; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--inset-bg); padding: 0.7rem; }
@@ -138,12 +111,12 @@
     .recon-sumrow:last-child { border-bottom: 0; }
     .recon-field { color: var(--code-text); font-weight: 600; }
     .recon-vals { display: flex; flex-direction: column; gap: 0.25rem; }
-    .chip { display: inline-flex; align-items: baseline; gap: 0.5rem; }
-    .chip .val { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 0.08rem 0.45rem;
+    .recon-chip { display: inline-flex; align-items: baseline; gap: 0.5rem; }
+    .recon-chip .val { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 0.08rem 0.45rem;
                  font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--soft-danger-text); }
-    .chip .why { color: var(--muted-text); font-size: 0.76rem; }
-    .chip .why .now { color: var(--status-ok-text); font-family: ui-monospace, monospace; }
-    .chip .n { color: var(--hint-text); font-size: 0.72rem; }
+    .recon-chip .why { color: var(--muted-text); font-size: 0.76rem; }
+    .recon-chip .why .now { color: var(--status-ok-text); font-family: ui-monospace, monospace; }
+    .recon-chip .n { color: var(--hint-text); font-size: 0.72rem; }
     .recon-items { margin-top: 0.7rem; max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
     .recon-card { background: var(--inset-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.6rem 0.8rem; }
     .recon-card .t { font-weight: 600; font-size: 0.88rem; color: var(--page-text); }
@@ -152,9 +125,8 @@
     .recon-card .locked-note { color: var(--soft-warn-text); font-size: 0.76rem; margin-top: 0.35rem; }
     details.rawjson { margin-top: 0.7rem; }
     details.rawjson summary { cursor: pointer; color: var(--muted-text); font-size: 0.82rem; display: flex; gap: 0.6rem; align-items: center; }
-    .copy-btn.copied { background: var(--badge-success-bg); color: var(--badge-success-text); border-color: var(--badge-success-border); }
-    .toolbar-toggle { display: none; }
-    .toolbar-toggle.on { border-color: var(--tab-active-underline); color: var(--page-text); }
+    .actionbar-toggle { display: none; }
+    .actionbar-toggle.on { border-color: var(--tab-active-underline); color: var(--page-text); }
 
     /* Theme tab */
     .theme-picker { display: flex; gap: 1.5rem; flex-wrap: wrap; }
@@ -172,28 +144,9 @@
     .pv-row { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; }
     .pv-body a { color: var(--link-text); text-decoration: none; }
     .pv-body code { background: var(--code-bg); color: var(--code-text); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.75rem; }
-    .pv-btn { padding: 0.35rem 0.8rem; border: 0; border-radius: 6px; font-size: 0.78rem; cursor: default;
-              background: var(--button-primary-bg); color: var(--button-text); }
-    .pv-btn.secondary { background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--button-secondary-text); }
-    .pv-btn.danger { background: var(--button-danger-bg); }
-    .pv-btn.success { background: var(--button-success-bg); }
-    .pv-btn.outline { background: var(--button-outline-bg); border: 1px solid var(--button-outline-border); color: var(--button-outline-text); }
-    .pv-btn.disabled { background: var(--button-disabled-bg); color: var(--button-disabled-text); }
-    .pv-input { padding: 0.35rem 0.55rem; background: var(--input-bg); border: 1px solid var(--input-border);
-                border-radius: 6px; color: var(--input-text); font-size: 0.78rem; min-width: 0; flex: 1; }
-    .pv-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.7rem 0.8rem; }
     .pv-card-title { font-weight: 600; color: var(--card-title-text); margin-bottom: 0.15rem; }
     .pv-card-meta { font-size: 0.72rem; color: var(--muted-text); }
-    .pv-badge { font-size: 0.62rem; font-weight: 700; padding: 0.14rem 0.45rem; border-radius: 4px; text-transform: uppercase; }
-    .pv-badge.info { background: var(--badge-info-bg); color: var(--badge-info-text); }
-    .pv-badge.success { background: var(--badge-success-bg); color: var(--badge-success-text); }
-    .pv-badge.warning { background: var(--badge-warning-bg); color: var(--badge-warning-text); }
-    .pv-badge.danger { background: var(--badge-danger-bg); color: var(--badge-danger-text); }
-    .pv-badge.neutral { background: var(--badge-neutral-bg); color: var(--badge-neutral-text); }
-    .pv-chip { font-size: 0.72rem; background: var(--chip-bg); border: 1px solid var(--chip-border); color: var(--chip-text);
-               border-radius: 20px; padding: 0.15rem 0.6rem; }
-    .pv-progress { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; flex: 1; }
-    .pv-progress span { display: block; height: 100%; width: 55%; background: var(--progress-fill); }
+    .pv-progress { flex: 1; }
     .pv-gender { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; }
     .pv-swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
     .pv-gcard { border-left: 4px solid; border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.72rem; }
@@ -206,16 +159,14 @@
 
     @media (max-width: 720px) {
       body { padding: 14px; }
-      h1 { font-size: 1.25rem; }
       h2 { margin: 1.2rem 0 0.5rem; }
-      .card { padding: 0.85rem 0.9rem; }
 
-      .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; padding: 0.6rem 0; }
-      .toolbar button { width: 100%; padding: 0.65rem 0.5rem; font-size: 0.85rem; white-space: normal; }
-      .toolbar-toggle { display: block; }
-      .toolbar > .toolbar-extra { display: none; }
-      .toolbar.open > .toolbar-extra { display: block; }
-      .toolbar-status { grid-column: 1 / -1; min-width: 0; font-size: 0.78rem; }
+      .actionbar { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; padding: 0.6rem 0; }
+      .actionbar button { width: 100%; white-space: normal; }
+      .actionbar-toggle { display: block; }
+      .actionbar > .actionbar-extra { display: none; }
+      .actionbar.open > .actionbar-extra { display: block; }
+      .actionbar-status { grid-column: 1 / -1; min-width: 0; font-size: 0.78rem; }
 
       .tabbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-top: 0.75rem;
                 -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
@@ -267,7 +218,7 @@
       .users-table td.actions button { flex: 1 1 auto; padding: 0.55rem 0.7rem; }
       .user-field { flex: 1 1 100%; }
       .user-meter { max-width: none; }
-      #tab-users .plex-row label.hint { flex: 1 1 100%; }
+      #tab-users .plex-row label.pa-hint { flex: 1 1 100%; }
     }
   </style>
 {% endblock %}
@@ -275,13 +226,13 @@
   <h1>⚙️ PhoenixAdult Config <span class="pa-badge pa-mono ver" title="Application version">v{{ app_version() }}</span></h1>
   <p class="sub" id="ovSub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
 
-  <div class="toolbar" id="toolbar">
+  <div class="actionbar" id="toolbar">
     <button class="pa-btn pa-btn--primary" id="saveBtn" onclick="save()" disabled>Save Changes</button>
-    <button class="pa-btn toolbar-toggle" id="toolbarToggle" onclick="toggleToolbar()" aria-expanded="false">More Actions</button>
-    <button class="pa-btn toolbar-extra" onclick="resetAll()">Reset All Overrides</button>
-    <button class="pa-btn toolbar-extra" onclick="reload()">Reload</button>
-    <button class="pa-btn pa-btn--danger toolbar-extra" onclick="restartServer()">Restart Server</button>
-    <span class="toolbar-status" id="status"></span>
+    <button class="pa-btn actionbar-toggle" id="toolbarToggle" onclick="toggleToolbar()" aria-expanded="false">More Actions</button>
+    <button class="pa-btn actionbar-extra" onclick="resetAll()">Reset All Overrides</button>
+    <button class="pa-btn actionbar-extra" onclick="reload()">Reload</button>
+    <button class="pa-btn pa-btn--danger actionbar-extra" onclick="restartServer()">Restart Server</button>
+    <span class="pa-status actionbar-status" id="status"></span>
   </div>
 
   <div class="tabbar" id="tabbar"></div>
@@ -290,19 +241,19 @@
 
   <div id="tab-plex" class="tabpane">
     <h2>Plex Connections</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="plex-row">
         <select class="pa-input" id="plex-conn-select" onchange="selectConnection(this.value)"></select>
         <button type="button" class="pa-btn" onclick="addConnection()">Add Connection</button>
         <button type="button" class="pa-btn pa-btn--danger" onclick="deleteConnection()">Delete</button>
-        <span class="plex-status" id="plex-conn-status"></span>
+        <span class="pa-status" id="plex-conn-status"></span>
       </div>
-      <div class="hint">Each connection pairs this provider with one Plex server. Tokens are encrypted and never shown again.</div>
+      <div class="pa-hint">Each connection pairs this provider with one Plex server. Tokens are encrypted and never shown again.</div>
     </div>
 
     <div id="plex-conn-detail" style="display:none">
       <h2>Server</h2>
-      <div class="card">
+      <div class="pa-card config-card">
         <label for="conn-name">Connection Name</label>
         <input class="pa-input" type="text" id="conn-name" onchange="saveConnection()">
         <label for="conn-url">Server URL</label>
@@ -311,7 +262,7 @@
           <button class="pa-btn pa-btn--primary" type="button" onclick="fetchPlexToken()">Fetch New Token</button>
           <button type="button" class="pa-btn" onclick="loadPlexServers()">Discover Servers</button>
           <button type="button" class="pa-btn" onclick="verifyPlexServer()">Verify Server</button>
-          <span class="plex-status" id="plex-auth-status"></span>
+          <span class="pa-status" id="plex-auth-status"></span>
         </div>
         <div class="plex-row" id="plex-server-pick" style="display:none">
           <select class="pa-input" id="plex-server-select"></select>
@@ -321,17 +272,17 @@
       </div>
 
       <h2>Allowed Plex Clients</h2>
-      <div class="card">
+      <div class="pa-card config-card">
         <div class="srclist" id="conn-clients"></div>
         <div class="srcadd">
           <input type="text" id="conn-client-add" class="pa-input src-add-select src-add-input" placeholder="X-Plex-Client-Identifier…" autocomplete="off" spellcheck="false">
           <button type="button" class="pa-btn pa-btn--sm" onclick="addAllowedClient()">Add</button>
         </div>
-        <div class="hint">Empty on every connection means any Plex server may call the provider.</div>
+        <div class="pa-hint">Empty on every connection means any Plex server may call the provider.</div>
       </div>
 
       <h2>Server Updates</h2>
-      <div class="card">
+      <div class="pa-card config-card">
         <div class="plex-row">
           <label class="log-follow">Update Channel
             <select class="pa-input" id="plex-update-channel" onchange="saveConnection()">
@@ -346,35 +297,35 @@
         </div>
         <div class="plex-row">
           <button type="button" class="pa-btn" onclick="plexUpdateStatus(true)">Check for Update</button>
-          <span class="plex-status" id="plex-update-status"></span>
+          <span class="pa-status" id="plex-update-status"></span>
         </div>
         <div class="plex-kv" id="plex-update-out" style="display:none"></div>
       </div>
 
     <h2>Reconcile Stale Tags</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit; dry run reports without writing.</div>
       <div class="plex-row">
         <button type="button" class="pa-btn" onclick="runReconcile(false)">Dry Run</button>
         <button type="button" class="pa-btn pa-btn--danger" onclick="runReconcile(true)">Apply Removals</button>
         <input type="text" id="plex-reconcile-limit" placeholder="limit" class="pa-input limit-input"
                title="Stop after this many changed items">
-        <span class="plex-status" id="plex-reconcile-status"></span>
+        <span class="pa-status" id="plex-reconcile-status"></span>
       </div>
-      <div class="hint">Limit stops after N changed items.</div>
+      <div class="pa-hint">Limit stops after N changed items.</div>
       <div class="recon-progress" id="plex-reconcile-progress" style="display:none">
-        <div class="recon-progress-head"><span id="plex-reconcile-progress-label"></span><span id="plex-reconcile-progress-pct"></span></div>
-        <div class="recon-progress-track"><div class="recon-progress-fill" id="plex-reconcile-progress-fill"></div></div>
+        <div class="pa-progress-head"><span id="plex-reconcile-progress-label"></span><span id="plex-reconcile-progress-pct"></span></div>
+        <div class="pa-progress-track"><div class="pa-progress-fill" id="plex-reconcile-progress-fill"></div></div>
       </div>
       <div class="plex-row" id="plex-reconcile-fields"></div>
-      <div class="plex-row" id="plex-reconcile-sites"><span class="hint">Run a dry run to list scraper clients for partial removal.</span></div>
+      <div class="plex-row" id="plex-reconcile-sites"><span class="pa-hint">Run a dry run to list scraper clients for partial removal.</span></div>
       <div id="plex-reconcile-view" style="display:none">
         <div class="recon-counts" id="plex-reconcile-counts"></div>
         <div class="recon-summary" id="plex-reconcile-summary"></div>
         <div class="recon-items" id="plex-reconcile-items"></div>
         <div class="plex-row" id="plex-recase-row" style="display:none">
           <button type="button" class="pa-btn pa-btn--sm" onclick="copyRecaseScript(this)">Copy Recase Script (PowerShell)</button>
-          <span class="hint">rewrites the tag rows in place — set the two paths at the top, STOP Plex first</span>
+          <span class="pa-hint">rewrites the tag rows in place — set the two paths at the top, STOP Plex first</span>
         </div>
         <details class="rawjson">
           <summary>Raw JSON
@@ -386,20 +337,20 @@
     </div>
 
     <h2>Push Logos to Collections</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="var-desc">Sets each Plex collection's clearLogo from a matching cached logo; manage the files at
         <a href="/logos" target="_blank">/logos</a>.</div>
       <div class="plex-row">
         <button type="button" class="pa-btn" onclick="runCollectionLogos(false)">Dry Run</button>
         <button class="pa-btn pa-btn--primary" type="button" onclick="runCollectionLogos(true)">Apply Logos</button>
         <input type="text" id="plex-collogo-limit" placeholder="limit" class="pa-input limit-input" title="Stop after this many pushed collections">
-        <span class="plex-status" id="plex-collogo-status"></span>
+        <span class="pa-status" id="plex-collogo-status"></span>
       </div>
       <div class="plex-kv" id="plex-collogo-out" style="display:none"></div>
     </div>
 
     <h2>Import a Library Into the Cache</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="var-desc">Stores every scene in one Plex movie library as a provider snapshot; already-cached scenes are left alone.</div>
       <div class="plex-row">
         <select id="plex-import-section" class="pa-input lib-select"><option value="">Loading libraries…</option></select>
@@ -409,20 +360,20 @@
         <button type="button" class="pa-btn" onclick="runPlexImport(false)">Dry Run</button>
         <button class="pa-btn pa-btn--primary" type="button" onclick="runPlexImport(true)">Import</button>
         <input type="text" id="plex-import-limit" placeholder="limit" class="pa-input limit-input" title="Stop after this many scanned items">
-        <label class="hint" style="display:flex; align-items:center; gap:6px">
+        <label class="pa-hint" style="display:flex; align-items:center; gap:6px">
           <input type="checkbox" id="plex-import-overwrite"> Overwrite cached scenes
         </label>
-        <span class="plex-status" id="plex-import-status"></span>
+        <span class="pa-status" id="plex-import-status"></span>
       </div>
       <div class="plex-kv" id="plex-import-out" style="display:none"></div>
     </div>
 
     <h2>Purge clearLogos from Plex</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="var-desc">Removes per-scene clearLogo art by editing the Plex database directly; collection logos and server files stay.</div>
       <div class="plex-row">
         <button type="button" class="pa-btn pa-btn--sm" onclick="copyLogoPurgeScript(this)">Copy Logo Purge Script (PowerShell)</button>
-        <span class="hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
+        <span class="pa-hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
       </div>
     </div>
     </div>
@@ -430,7 +381,7 @@
 
   <div id="tab-logs" class="tabpane">
     <h2>Session Log</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="log-toolbar">
         <input type="text" id="logFilter" class="pa-input log-filter" placeholder="Filter lines…" oninput="logFilterChanged()"
                autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -441,7 +392,7 @@
         <button type="button" class="pa-btn" id="logPauseBtn" onclick="logTogglePause()">Pause</button>
         <button type="button" class="pa-btn" onclick="logClear()">Clear</button>
         <button type="button" class="pa-btn" onclick="copyLog(this)">Copy</button>
-        <span class="toolbar-status" id="logStatus"></span>
+        <span class="pa-status actionbar-status" id="logStatus"></span>
       </div>
       <pre id="logView" class="logview" tabindex="0"><div class="ln empty">Loading…</div></pre>
     </div>
@@ -449,42 +400,42 @@
 
   <div id="tab-users" class="tabpane">
     <h2>User Accounts</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <table class="users-table" id="users-table"><thead><tr><th>User</th><th>Admin</th><th>API Key</th><th>Connections</th><th></th></tr></thead><tbody></tbody></table>
     </div>
 
     <h2>Add User</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="plex-row">
         <input type="text" id="new-username" class="pa-input user-field" placeholder="username" autocomplete="off" spellcheck="false">
         <input type="password" id="new-password" class="pa-input user-field" placeholder="password (8+, upper, number, special)" autocomplete="new-password">
-        <label class="hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> Admin</label>
+        <label class="pa-hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> Admin</label>
         <button class="pa-btn pa-btn--primary" type="button" onclick="createUser()">Add User</button>
-        <span class="plex-status" id="users-status"></span>
+        <span class="pa-status" id="users-status"></span>
       </div>
-      <div class="user-meter" id="pwMeter" hidden><div class="user-meter-fill" id="pwMeterFill"></div></div>
-      <div class="hint" id="pwMeterText"></div>
+      <div class="pa-meter user-meter" id="pwMeter" hidden><div class="pa-meter-fill" id="pwMeterFill"></div></div>
+      <div class="pa-hint" id="pwMeterText"></div>
     </div>
   </div>
 
   <div id="tab-clients" class="tabpane">
     <h2>Plex Client Hits</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="var-desc">Every request that carried an <code>X-Plex-Client-Identifier</code> header, newest first. Copy an identifier into a
         connection's Allowed Plex Clients list to pin the provider to that server.</div>
-      <div class="plex-row"><button type="button" class="pa-btn" onclick="loadClients()">Refresh</button><span class="plex-status" id="clients-status"></span></div>
+      <div class="plex-row"><button type="button" class="pa-btn" onclick="loadClients()">Refresh</button><span class="pa-status" id="clients-status"></span></div>
     </div>
     <div id="clients-list"></div>
   </div>
 
   <div id="tab-theme" class="tabpane">
     <h2>Theme Selection</h2>
-    <div class="card">
+    <div class="pa-card config-card">
       <div class="theme-picker">
         <label><span>Light Theme</span> <select class="pa-input" id="themeLight"></select></label>
         <label><span>Dark Theme</span> <select class="pa-input" id="themeDark"></select></label>
       </div>
-      <p class="hint">Pages follow the system light/dark mode (override with the nav sun/moon toggle); choices apply immediately
+      <p class="pa-hint">Pages follow the system light/dark mode (override with the nav sun/moon toggle); choices apply immediately
         and are remembered per browser.</p>
     </div>
     <h2>Element Preview</h2>
@@ -529,22 +480,22 @@
 
     function metadataApiCardHtml() {
       const hasToken = !!(STATE.metadataapi && STATE.metadataapi.hasToken);
-      return '<h2>MetadataAPI</h2><div class="card">'
+      return '<h2>MetadataAPI</h2><div class="pa-card config-card">'
         + '<div class="var-desc">ThePornDB bearer token for api.theporndb.net — stored on your account, encrypted, and never shown again. '
         + 'Scrapes serving your Plex servers use your token.</div>'
         + '<div class="plex-row">'
         + '<input class="pa-input" type="password" id="metadataapi-token" placeholder="' + (hasToken ? '●●●●●●●● token saved — paste to replace' : 'paste your token') + '" autocomplete="off">'
         + '<button class="pa-btn pa-btn--primary" type="button" onclick="saveMetadataApiToken(true)">Save Token</button>'
         + '<button type="button" class="pa-btn pa-btn--danger" onclick="saveMetadataApiToken(false)">Clear</button>'
-        + '<span class="plex-status" id="metadataapi-status"></span>'
+        + '<span class="pa-status" id="metadataapi-status"></span>'
         + '</div></div>';
     }
 
     function imageOverrideCardHtml() {
-      return '<h2>Image Base URL Override</h2><div class="card">'
+      return '<h2>Image Base URL Override</h2><div class="pa-card config-card">'
         + '<div class="var-desc">Per-connection override for the connection selected on the Plex tab (<span id="img-override-conn">none selected</span>).</div>'
         + '<input class="pa-input" type="text" id="conn-image-base" placeholder="blank uses the global Local Image Base Address" onchange="saveConnection()">'
-        + '<div class="hint">Set this when a server reaches the provider at a different address than the global setting.</div>'
+        + '<div class="pa-hint">Set this when a server reaches the provider at a different address than the global setting.</div>'
         + '</div>';
     }
 
@@ -623,21 +574,21 @@
         const title = h['x-plex-device-name'] || h['x-plex-product'] || c.clientId;
         const rows = Object.keys(h).sort()
           .map((k) => '<tr><td class="c-key"><code>' + esc(k) + '</code></td><td>' + esc(String(h[k])) + '</td></tr>').join('');
-        return '<h2>' + esc(String(title)) + '</h2><div class="card">'
+        return '<h2>' + esc(String(title)) + '</h2><div class="pa-card config-card">'
           + '<div class="plex-row"><code>' + esc(c.clientId) + '</code>'
           + '<button type="button" class="pa-btn pa-btn--sm" data-copy="' + esc(c.clientId) + '" onclick="navigator.clipboard.writeText(this.dataset.copy)">Copy</button>'
-          + '<span class="hint">' + c.count + ' hit(s) · first ' + esc(fmt(c.firstSeen)) + ' · last ' + esc(fmt(c.lastSeen))
+          + '<span class="pa-hint">' + c.count + ' hit(s) · first ' + esc(fmt(c.firstSeen)) + ' · last ' + esc(fmt(c.lastSeen))
           + ' · ' + esc(c.lastPath || '') + '</span></div>'
           + '<table class="users-table"><tbody>' + rows + '</tbody></table>'
           + '</div>';
-      }).join('') || '<div class="card"><span class="hint">No client hits recorded since the last restart.</span></div>';
+      }).join('') || '<div class="pa-card config-card"><span class="pa-hint">No client hits recorded since the last restart.</span></div>';
       const status = document.getElementById('clients-status');
       status.textContent = (data.clients || []).length + ' client(s)';
-      status.className = 'plex-status';
+      status.className = 'pa-status';
     }
 
     function renderGroup(group) {
-      return '<h2>' + esc(group.name) + '</h2><div class="card">'
+      return '<h2>' + esc(group.name) + '</h2><div class="pa-card config-card">'
         + group.vars.map(renderVar).join('') + '</div>';
     }
 
@@ -646,7 +597,7 @@
     function usersStatus(msg, kind) {
       const el = document.getElementById('users-status');
       el.textContent = msg;
-      el.className = 'plex-status' + (kind ? ' ' + kind : '');
+      el.className = 'pa-status' + (kind ? ' ' + kind : '');
     }
 
     async function loadUsers() {
@@ -764,26 +715,26 @@
         <div class="pv-h1">Heading</div>
         <div class="pv-sub">Subtitle text with a <a href="#" onclick="return false">link</a> and <code>code</code>.</div>
         <div class="pv-row">
-          <button type="button" class="pa-btn pa-btn--primary pv-btn">Primary</button>
-          <button type="button" class="pa-btn pv-btn">Secondary</button>
-          <button type="button" class="pa-btn pa-btn--primary pv-btn outline">Outline</button>
-          <button type="button" class="pa-btn pa-btn--primary pv-btn success">Save</button>
-          <button type="button" class="pa-btn pa-btn--danger pv-btn">Purge</button>
-          <button type="button" class="pa-btn pa-btn--primary pv-btn disabled">Disabled</button>
+          <button type="button" class="pa-btn pa-btn--primary">Primary</button>
+          <button type="button" class="pa-btn">Secondary</button>
+          <button type="button" class="pa-btn pa-btn--outline">Outline</button>
+          <button type="button" class="pa-btn pa-btn--success">Save</button>
+          <button type="button" class="pa-btn pa-btn--danger">Purge</button>
+          <button type="button" class="pa-btn pa-btn--primary" disabled>Disabled</button>
         </div>
-        <div class="pv-row"><input type="text" class="pa-input pv-input" value="Input text" readonly></div>
-        <div class="pv-card"><div class="pv-card-title">Card Title</div><div class="pv-card-meta">Card meta text · details</div></div>
+        <div class="pv-row"><input type="text" class="pa-input" value="Input text" readonly></div>
+        <div class="pa-card pv-card"><div class="pv-card-title">Card Title</div><div class="pv-card-meta">Card meta text · details</div></div>
         <div class="pv-row">
-          <span class="pv-badge info">info</span><span class="pv-badge success">success</span>
-          <span class="pv-badge warning">warning</span><span class="pv-badge danger">danger</span>
-          <span class="pv-badge neutral">neutral</span><span class="pv-chip">Chip</span>
+          <span class="pa-badge pa-badge--info">info</span><span class="pa-badge pa-badge--success">success</span>
+          <span class="pa-badge pa-badge--warning">warning</span><span class="pa-badge pa-badge--danger">danger</span>
+          <span class="pa-badge">neutral</span><span class="pa-chip">Chip</span>
         </div>
         <div class="pv-status">
           <span style="color:var(--status-ok-text)">✓ ok</span>
           <span style="color:var(--status-warn-text)">⚠ warning</span>
           <span style="color:var(--status-danger-text)">✗ error</span>
         </div>
-        <div class="pv-row"><div class="pv-progress"><span></span></div></div>
+        <div class="pv-row"><div class="pa-progress-track pv-progress"><div class="pa-progress-fill" style="width: 55%"></div></div></div>
         <div class="pv-banner warning">A warning banner</div>
         <div class="pv-banner danger">A danger banner</div>
         ${gender}`;
@@ -834,9 +785,9 @@
 
     function renderVar(v) {
       const badges = []
-        .concat(v.overridden ? '<span class="badge override">overridden</span>' : [])
-        .concat(v.requiresRestart ? '<span class="badge restart">restart</span>' : [])
-        .concat(v.kind === 'secret' ? '<span class="badge secret">secret</span>' : [])
+        .concat(v.overridden ? '<span class="pa-badge pa-badge--indigo">overridden</span>' : [])
+        .concat(v.requiresRestart ? '<span class="pa-badge pa-badge--warning">restart</span>' : [])
+        .concat(v.kind === 'secret' ? '<span class="pa-badge pa-badge--success">secret</span>' : [])
         .join(' ');
 
       let control;
@@ -871,7 +822,7 @@
       const imgPrev = v.preview === 'image'
         ? '<img class="img-preview" id="imgprev-' + esc(v.key) + '" alt="preview">' : '';
       const defHint = (!v.value && v.defaultValue && v.kind !== 'boolean' && v.kind !== 'enum' && v.kind !== 'list')
-        ? '<span class="hint">using default</span>' : '';
+        ? '<span class="pa-hint">using default</span>' : '';
 
       return '<div class="var">'
         + '<div class="var-head"><span class="var-label">' + esc(v.label) + '</span>'
@@ -900,7 +851,7 @@
         + (mask ? '<button type="button" class="pa-btn pa-btn--sm" data-list-show="' + esc(key) + '">Show</button>' : '')
         + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-list-remove="' + esc(key) + '" data-idx="' + i + '"'
         + ' title="Remove">×</button>'
-        + '</div>').join('') || '<span class="hint">empty — add a source below</span>';
+        + '</div>').join('') || '<span class="pa-hint">empty — add a source below</span>';
 
       const opts = v.options || [];
       const remaining = opts.filter((o) => arr.indexOf(o) < 0);
@@ -910,7 +861,7 @@
           ? '<select class="pa-input src-add-select">'
             + remaining.map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
             + '</select><button type="button" class="pa-btn pa-btn--sm" data-list-add="' + esc(key) + '">Add Source</button>'
-          : '<span class="hint">all known sources added</span>';
+          : '<span class="pa-hint">all known sources added</span>';
       } else {
         const dl = opts.length
           ? '<datalist id="dl-' + esc(key) + '">'
@@ -1122,7 +1073,7 @@
     function setStatus(msg, kind) {
       const el = document.getElementById('status');
       el.textContent = msg;
-      el.className = 'toolbar-status' + (kind ? ' ' + kind : '');
+      el.className = 'pa-status actionbar-status' + (kind ? ' ' + kind : '');
     }
 
     // ── Server calls ────────────────────────────────────────────────────────────
@@ -1273,7 +1224,7 @@
     function plexStatus(id, html, kind) {
       const el = document.getElementById(id);
       el.innerHTML = html;
-      el.className = 'plex-status' + (kind ? ' ' + kind : '');
+      el.className = 'pa-status' + (kind ? ' ' + kind : '');
     }
 
     function fmtTimer(s) {
@@ -1336,7 +1287,7 @@
         '<div class="srcitem"><span class="srcitem-name" data-real="' + esc(cid) + '">●●●●●●●●</span>'
         + '<button type="button" class="pa-btn pa-btn--sm" data-list-show="conn">Show</button>'
         + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-cid="' + esc(cid) + '" onclick="removeAllowedClient(this.dataset.cid)" title="Remove">×</button></div>'
-      ).join('') || '<span class="hint">empty — any Plex server may call the provider</span>';
+      ).join('') || '<span class="pa-hint">empty — any Plex server may call the provider</span>';
     }
 
     async function addConnection() {
@@ -1396,7 +1347,7 @@
 
     async function fetchPlexToken() {
       if (!CONN_ID) return;
-      plexStatus('plex-auth-status', '<span class="spin"></span> Contacting plex.tv…');
+      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Contacting plex.tv…');
       let pin;
       try {
         pin = await postJSON(api(connPath('/pin')), {});
@@ -1410,7 +1361,7 @@
       let waited = 0;
       const poll = setInterval(async () => {
         waited += 2;
-        plexStatus('plex-auth-status', '<span class="spin"></span> Waiting for authentication… ' + fmtTimer(waited));
+        plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Waiting for authentication… ' + fmtTimer(waited));
         if (waited >= 300) {
           clearInterval(poll);
           plexStatus('plex-auth-status', 'Authentication timed out. Please try again.', 'err');
@@ -1432,7 +1383,7 @@
 
     async function loadPlexServers() {
       if (!CONN_ID) return;
-      plexStatus('plex-auth-status', '<span class="spin"></span> Listing servers…');
+      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Listing servers…');
       try {
         const data = await postJSON(api(connPath('/servers')), {});
         const sel = document.getElementById('plex-server-select');
@@ -1461,7 +1412,7 @@
 
     async function verifyPlexServer() {
       if (!CONN_ID) return;
-      plexStatus('plex-auth-status', '<span class="spin"></span> Verifying…');
+      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Verifying…');
       const out = document.getElementById('plex-verify-out');
       out.style.display = 'none';
       try {
@@ -1506,7 +1457,7 @@
     async function plexUpdateStatus(force) {
       if (!CONN_ID) return;
       const out = document.getElementById('plex-update-out');
-      if (force) plexStatus('plex-update-status', '<span class="spin"></span> Checking…');
+      if (force) plexStatus('plex-update-status', '<span class="pa-spinner"></span> Checking…');
       try {
         const res = await fetch(api(connPath('/update' + (force ? '?force=1' : ''))));
         const data = await res.json();
@@ -1531,7 +1482,7 @@
 
     function initReconFields() {
       document.getElementById('plex-reconcile-fields').innerHTML =
-        '<span class="hint">Types:</span>' + RECON_FIELDS.map((f) =>
+        '<span class="pa-hint">Types:</span>' + RECON_FIELDS.map((f) =>
           '<label style="font-size:0.8rem"><input type="checkbox" class="recon-field-cb" value="' + f + '" checked> ' + f + '</label>').join('');
     }
 
@@ -1540,8 +1491,8 @@
       for (const i of items) if (i.site) seen[i.site] = true;
       const sites = Object.keys(seen).sort();
       const box = document.getElementById('plex-reconcile-sites');
-      if (!sites.length) { box.innerHTML = '<span class="hint">no per-client breakdown available</span>'; return; }
-      box.innerHTML = '<span class="hint">Clients:</span>' + sites.map((s) =>
+      if (!sites.length) { box.innerHTML = '<span class="pa-hint">no per-client breakdown available</span>'; return; }
+      box.innerHTML = '<span class="pa-hint">Clients:</span>' + sites.map((s) =>
         '<label style="font-size:0.8rem"><input type="checkbox" class="recon-site-cb" value="' + esc(s) + '" checked> ' + esc(s) + '</label>').join('');
     }
 
@@ -1587,13 +1538,13 @@
         if (!vals.length) return '';
         vals.sort((a, b) => b.n - a.n || a.val.localeCompare(b.val));
         return '<div class="recon-sumrow"><span class="recon-field">' + esc(f) + '</span><span class="recon-vals">'
-          + vals.map((a) => '<span class="chip"><span class="val">' + esc(a.val) + '</span>'
+          + vals.map((a) => '<span class="recon-chip"><span class="val">' + esc(a.val) + '</span>'
               + '<span class="why">' + reasonHtml(a.reason) + '</span>'
               + '<span class="n">×' + a.n + '</span></span>').join('')
           + '</span></div>';
       }).filter(Boolean).join('');
       const summary = document.getElementById('plex-reconcile-summary');
-      summary.innerHTML = rows ? '<h3>All Removals (Deduplicated)</h3>' + rows : '<h3>All Removals</h3><span class="hint">nothing to remove — Plex matches the snapshots</span>';
+      summary.innerHTML = rows ? '<h3>All Removals (Deduplicated)</h3>' + rows : '<h3>All Removals</h3><span class="pa-hint">nothing to remove — Plex matches the snapshots</span>';
 
       // Per-scene cards, removals first, then locked/skipped.
       const cards = data.items
@@ -1601,7 +1552,7 @@
         .map((i) => {
           const fields = Object.keys(i.removals || {}).map((f) =>
             '<div class="frow"><span class="recon-field">' + esc(f) + '</span>'
-            + i.removals[f].map((v) => '<span class="chip"><span class="val">' + esc(v) + '</span>'
+            + i.removals[f].map((v) => '<span class="recon-chip"><span class="val">' + esc(v) + '</span>'
                 + '<span class="why">' + reasonHtml(i.reasons && i.reasons[f] && i.reasons[f][v]) + '</span></span>').join(' ')
             + '</div>').join('');
           const locked = (i.locked || []).length
@@ -1611,7 +1562,7 @@
             + fields + locked + '</div>';
         }).join('');
       document.getElementById('plex-reconcile-items').innerHTML =
-        cards || '<span class="hint">no per-scene changes</span>';
+        cards || '<span class="pa-hint">no per-scene changes</span>';
 
       RECASES = [];
       collectRecases(data);
@@ -1692,8 +1643,8 @@
     function ackCopy(btn) {
       const orig = btn.textContent;
       btn.textContent = 'Copied!';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+      btn.classList.add('on');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('on'); }, 1500);
     }
 
     function copyRecaseScript(btn) {
@@ -1753,15 +1704,15 @@
     function applyJob(kind, job) {
       if (kind === 'reconcile') {
         reconcileBar(job);
-        if (job.active) plexStatus('plex-reconcile-status', '<span class="spin"></span> Working…');
+        if (job.active) plexStatus('plex-reconcile-status', '<span class="pa-spinner"></span> Working…');
         else if (job.error) plexStatus('plex-reconcile-status', esc(job.error), 'err');
         else if (job.report) { renderReconcile(job.report); plexStatus('plex-reconcile-status', job.report.applied ? 'Applied.' : 'Dry run complete.', 'ok'); }
       } else if (kind === 'import') {
-        if (job.active) plexStatus('plex-import-status', '<span class="spin"></span> Working…');
+        if (job.active) plexStatus('plex-import-status', '<span class="pa-spinner"></span> Working…');
         else if (job.error) plexStatus('plex-import-status', esc(job.error), 'err');
         else if (job.report) { renderImport(job.report); plexStatus('plex-import-status', job.report.applied ? 'Import complete.' : 'Dry run complete.', 'ok'); }
       } else if (kind === 'collection-logos') {
-        if (job.active) plexStatus('plex-collogo-status', '<span class="spin"></span> Working…');
+        if (job.active) plexStatus('plex-collogo-status', '<span class="pa-spinner"></span> Working…');
         else if (job.error) plexStatus('plex-collogo-status', esc(job.error), 'err');
         else if (job.report) { renderCollogo(job.report); plexStatus('plex-collogo-status', job.report.applied ? 'Applied.' : 'Dry run complete.', 'ok'); }
       }
@@ -1801,7 +1752,7 @@
 
     async function startJob(kind, path, statusId, working) {
       if (!CONN_ID) { plexStatus(statusId, 'Pick a connection first.', 'err'); return false; }
-      plexStatus(statusId, '<span class="spin"></span> ' + working);
+      plexStatus(statusId, '<span class="pa-spinner"></span> ' + working);
       try {
         const r = await fetch(api(connPath(path)), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
         if (r.status === 409) { const d = await r.json().catch(() => ({})); plexStatus(statusId, d.error || 'Already running.', 'err'); startJobPoll(); return false; }
@@ -1858,7 +1809,7 @@
       const headline = d.applied ? `<b>${d.imported}</b> imported` : `<b>${d.importable}</b> would import`;
       out.style.display = 'block';
       out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`
-        + (d.itemsTruncated ? `<div class="hint">plus ${d.itemsTruncated} more not listed</div>` : '')
+        + (d.itemsTruncated ? `<div class="pa-hint">plus ${d.itemsTruncated} more not listed</div>` : '')
         + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map((i, n) => {
           const canImport = !d.applied && (i.status === 'importable' || i.status === 'skipped') && i.ratingKey;
           const btn = canImport ? ` <button type="button" class="pa-btn" data-import-rk="${esc(i.ratingKey)}" data-row="imp-row-${n}">Import</button>` : '';
@@ -1939,7 +1890,7 @@
     function logStatus(text, cls) {
       const el = document.getElementById('logStatus');
       el.textContent = text;
-      el.className = 'toolbar-status' + (cls ? ' ' + cls : '');
+      el.className = 'pa-status actionbar-status' + (cls ? ' ' + cls : '');
     }
 
     function logMatches(text) { return !logNeedle || text.toLowerCase().includes(logNeedle); }

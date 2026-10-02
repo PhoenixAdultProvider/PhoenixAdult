@@ -11,65 +11,30 @@
     .sub summary { cursor: pointer; }
     .sub pre { background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; max-height: 320px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
     h1, .sub, .cols, .bar { max-width: 1100px; margin-inline: auto; }
-    fieldset { border: 1px solid var(--input-border); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--card-bg); min-width: 0; }
-    legend { font-size: 12px; color: var(--muted-text); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
-    label { display: block; font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
     input[type=date] { -webkit-appearance: none; appearance: none; }
     .state { text-transform: uppercase; letter-spacing: .04em; font-size: 10px; padding: 1px 7px; border-radius: 10px; background: var(--badge-neutral-bg); color: var(--badge-neutral-text); }
     .state.manual { background: var(--badge-violet-solid-bg); color: var(--button-text); }
     .state.filled { background: var(--badge-info-bg); color: var(--badge-info-text); }
     input[type=date]::-webkit-calendar-picker-indicator { filter: var(--invert-icon); cursor: pointer; }
     textarea.pa-input { min-height: 110px; resize: vertical; }
-    .hint { font-size: 11px; color: var(--hint-text); margin-top: 3px; }
     .slugrow { display: flex; align-items: center; gap: 8px; }
     .slugrow code { flex: 1 1 auto; font-size: 12px; color: var(--link-text); background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 5px 8px; overflow-x: auto; white-space: nowrap; }
-    .slugrow button { flex: 0 0 auto; padding: 5px 12px; font-size: 12px; }
 
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-    .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--chip-bg); border: 1px solid var(--chip-border); border-radius: 20px; padding: 3px 6px 3px 11px; font-size: 12px; }
-    .chip button { background: none; border: 0; color: var(--label-text); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 3px; }
-    .chip button:hover { color: var(--chip-remove-hover-text); }
-    .chip a { color: inherit; text-decoration: none; }
-    .chip a:hover { color: var(--link-text); text-decoration: underline; }
     .addrow { display: flex; gap: 6px; margin-top: 8px; }
     .addrow input { flex: 1; }
-    .addrow button { flex: 0 0 auto; padding: 0 14px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--muted-text); cursor: pointer; font-size: 12px; }
-    .addrow button:hover { color: var(--page-text); border-color: var(--hint-text); }
 
     .imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 6px; }
     .img { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; padding: 8px; }
     .img img { width: 100%; height: 150px; object-fit: contain; background: var(--image-well-bg); border-radius: 4px; display: block; }
-    .img select { width: 100%; margin-top: 6px; background: var(--page-bg); border: 1px solid var(--input-border); color: var(--page-text); border-radius: 5px; padding: 4px; font-size: 11px; }
-    .img .drop { width: 100%; margin-top: 6px; padding: 4px; border: 1px solid var(--button-danger-deep-bg); border-radius: 5px; background: var(--button-outline-bg); color: var(--status-danger-text); cursor: pointer; font-size: 11px; }
-    .img .drop:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); }
+    .img select, .img .drop { width: 100%; margin-top: 6px; }
     .img .spin { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-    .img .spin button { flex: 1 1 auto; padding: 4px; border: 1px solid var(--input-border); border-radius: 5px; background: var(--page-bg); color: var(--soft-text); cursor: pointer; font-size: 13px; }
-    .img .spin button:hover { border-color: var(--focus-ring); color: var(--page-text); }
+    .img .spin .pa-btn { flex: 1 1 auto; }
     .img .spin span { flex: 0 0 auto; min-width: 28px; text-align: center; font-size: 11px; color: var(--status-warn-text); }
     .img .spin span:empty { display: none; }
 
     .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; position: sticky; bottom: 0; background: var(--page-bg); padding: 14px 0; border-top: 1px solid var(--progress-track); }
     .progress { flex: 1 1 100%; order: -1; }
-    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
-    .progress-track { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; }
-    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--input-focus-border); transition: width .4s ease; }
-    .progress-fill.working {
-      background: repeating-linear-gradient(90deg, var(--input-focus-border) 0 12px, var(--progress-fill-alt) 12px 24px);
-      animation: slide 1s linear infinite;
-    }
-    @keyframes slide { from { background-position: 0 0; } to { background-position: 24px 0; } }
-    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: var(--button-success-bg); color: var(--button-text); cursor: pointer; font-size: 14px; font-weight: 500; }
-    .save:hover { background: var(--button-success-hover-bg); }
-    .save:disabled { background: var(--input-border); color: var(--label-text); cursor: not-allowed; }
-    .refresh { padding: 9px 18px; border: 1px solid var(--button-outline-border); border-radius: 6px; background: var(--button-outline-bg); color: var(--button-outline-text); cursor: pointer; font-size: 14px; }
-    .refresh:hover { background: var(--button-outline-hover-bg); color: var(--button-text); }
-    .refresh:disabled { border-color: var(--input-border); background: var(--input-bg); color: var(--label-text); cursor: not-allowed; }
-    .sfw-toggle { padding: 9px 18px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--muted-text); cursor: pointer; font-size: 14px; }
-    .sfw-toggle:hover { color: var(--page-text); border-color: var(--hint-text); }
-    .sfw-toggle.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
-    .cancel { padding: 9px 18px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--muted-text); cursor: pointer; font-size: 14px; }
-    .cancel:hover { color: var(--page-text); }
-    .status { font-size: 12px; color: var(--label-text); }
 
     label.has-lock, legend.has-lock { display: flex; align-items: center; gap: 6px; }
     legend.has-lock { width: 100%; }
@@ -85,9 +50,9 @@
       body { padding: 14px; }
       .imgs { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
       .addrow { flex-wrap: wrap; }
-      .addrow button { width: 100%; padding: 8px 14px; }
+      .addrow .pa-btn { width: 100%; }
       .bar { flex-wrap: wrap; }
-      .save, .refresh, .cancel { flex: 1 1 auto; }
+      .bar .pa-btn { flex: 1 1 auto; }
       .lock-toggle, .img .lockbtn { padding: 6px 12px; font-size: 16px; }
     }
   </style>
@@ -98,87 +63,87 @@
   {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>Source JSON</summary><pre id="sourceJson">Loading…</pre></details>{% endif %}</div>
 
   <div class="cols">
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Scene</legend>
-        <label for="f-title">Title</label>
+        <label class="pa-label" for="f-title">Title</label>
         <input class="pa-input" type="text" id="f-title"{% if not is_admin() %} readonly{% endif %}>
-        <label for="f-titleSort">Sort Title</label>
+        <label class="pa-label" for="f-titleSort">Sort Title</label>
         <input class="pa-input" type="text" id="f-titleSort"{% if not is_admin() %} readonly{% endif %}>
-        <label for="f-date">Date</label>
+        <label class="pa-label" for="f-date">Date</label>
         <input class="pa-input" type="date" id="f-date"{% if not is_admin() %} readonly{% endif %}>
-        <label for="f-studio">Studio</label>
+        <label class="pa-label" for="f-studio">Studio</label>
         <input class="pa-input" type="text" id="f-studio"{% if not is_admin() %} readonly{% endif %}>
-        <div class="hint">Changing Studio or Tagline moves the snapshot folder.</div>
-        <label for="f-tagline">Tagline</label>
+        <div class="pa-hint">Changing Studio or Tagline moves the snapshot folder.</div>
+        <label class="pa-label" for="f-tagline">Tagline</label>
         <input class="pa-input" type="text" id="f-tagline"{% if not is_admin() %} readonly{% endif %}>
-        <label for="f-summary">Summary</label>
+        <label class="pa-label" for="f-summary">Summary</label>
         <textarea class="pa-input" id="f-summary"{% if not is_admin() %} readonly{% endif %}></textarea>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Data18</legend>
-        <label for="f-data18Id">Data18 ID</label>
+        <label class="pa-label" for="f-data18Id">Data18 ID</label>
         <input class="pa-input" type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated"{% if not is_admin() %} readonly{% endif %}>
-        <label for="f-data18Type">Data18 Type</label>
+        <label class="pa-label" for="f-data18Type">Data18 Type</label>
         <select class="pa-input" id="f-data18Type">
           <option value="scene">scene</option>
           <option value="movie">movie</option>
         </select>
-        <label>Mapping Slug</label>
-        <div class="slugrow"><code id="d18slug"></code><button type="button" id="d18slugCopy">Copy</button></div>
-        <div class="hint">State: <span id="d18state"></span>. Typing an ID here marks it <b>manual</b>, which
+        <label class="pa-label">Mapping Slug</label>
+        <div class="slugrow"><code id="d18slug"></code><button type="button" class="pa-btn" id="d18slugCopy">Copy</button></div>
+        <div class="pa-hint">State: <span id="d18state"></span>. Typing an ID here marks it <b>manual</b>, which
           the cache list can filter on so hand-made mappings export on their own. Clearing it drops the ref.</div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Genres</legend>
         <div class="chips" id="c-Genre"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Genre" placeholder="Add a genre…"><button data-add="Genre">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Genre" placeholder="Add a genre…"><button class="pa-btn" data-add="Genre">Add</button></div>{% endif %}
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Collections</legend>
         <div class="chips" id="c-Collection"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Collection" placeholder="Add a collection…"><button data-add="Collection">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Collection" placeholder="Add a collection…"><button class="pa-btn" data-add="Collection">Add</button></div>{% endif %}
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Actors</legend>
         <div class="chips" id="c-Role"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Role" placeholder="Add an actor…"><button data-add="Role">Add</button></div>{% endif %}
-        <div class="hint">A removed name loses its cached headshot link; a new one resolves on the next serve.</div>
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Role" placeholder="Add an actor…"><button class="pa-btn" data-add="Role">Add</button></div>{% endif %}
+        <div class="pa-hint">A removed name loses its cached headshot link; a new one resolves on the next serve.</div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Directors</legend>
         <div class="chips" id="c-Director"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Director" placeholder="Add a director…"><button data-add="Director">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Director" placeholder="Add a director…"><button class="pa-btn" data-add="Director">Add</button></div>{% endif %}
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Producers</legend>
         <div class="chips" id="c-Producer"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Producer" placeholder="Add a producer…"><button data-add="Producer">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Producer" placeholder="Add a producer…"><button class="pa-btn" data-add="Producer">Add</button></div>{% endif %}
       </fieldset>
 
-      <fieldset>
+      <fieldset class="pa-fieldset">
         <legend>Images</legend>
         <div class="imgs" id="imgs"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-img" placeholder="https://… (downloaded on save)"><button id="addImg">Add</button></div>{% endif %}
-        <div class="hint">Removed images are deleted from disk when the snapshot is rewritten.</div>
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-img" placeholder="https://… (downloaded on save)"><button class="pa-btn" id="addImg">Add</button></div>{% endif %}
+        <div class="pa-hint">Removed images are deleted from disk when the snapshot is rewritten.</div>
       </fieldset>
   </div>
 
   <div class="bar">
     <div class="progress" id="progress" style="display:none">
-      <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
-      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="pa-progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
+      <div class="pa-progress-track"><div class="pa-progress-fill" id="progress-fill"></div></div>
     </div>
-{% if is_admin() %}    <button class="save" id="saveBtn" onclick="save()">Save</button>
-    <button class="refresh" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
-{% endif %}    <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
-    <button class="cancel" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
-    <span class="status" id="status"></span>
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--success" id="saveBtn" onclick="save()">Save</button>
+    <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
+{% endif %}    <button class="pa-btn pa-btn--lg" id="sfwToggle" onclick="toggleSfw()"></button>
+    <button class="pa-btn pa-btn--lg" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
+    <span class="pa-status" id="status"></span>
   </div>
 
   
@@ -317,7 +282,7 @@
       box.textContent = '';
       LISTS[field].forEach((value, idx) => {
         const chip = document.createElement('span');
-        chip.className = 'chip';
+        chip.className = 'pa-chip';
         const role = PEOPLE_ROLES[field];
         if (role) {
           const link = document.createElement('a');
@@ -361,6 +326,7 @@
           card.appendChild(preview);
         }
         const kind = document.createElement('select');
+        kind.className = 'pa-input';
         KINDS.forEach(k => {
           const opt = document.createElement('option');
           opt.value = k;
@@ -376,6 +342,7 @@
         (IS_ADMIN ? [['↺', 270, 'Rotate 90° counter-clockwise'], ['↻', 90, 'Rotate 90° clockwise']] : []).forEach(([glyph, delta, label]) => {
           const b = document.createElement('button');
           b.type = 'button';
+          b.className = 'pa-btn pa-btn--sm';
           b.textContent = glyph;
           b.title = label;
           b.onclick = () => { images[idx].rotate = ((images[idx].rotate || 0) + delta) % 360; renderImages(); };
@@ -401,7 +368,7 @@
         card.appendChild(spin);
         if (IS_ADMIN) {
           const drop = document.createElement('button');
-          drop.className = 'drop';
+          drop.className = 'pa-btn pa-btn--sm pa-btn--danger drop';
           drop.textContent = 'Remove';
           drop.onclick = () => { images.splice(idx, 1); renderImages(); };
           card.appendChild(drop);

@@ -4,12 +4,11 @@
          divider, then the action toolbar. Both listing pages render this. */
       .searchbar { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
       .searchbar .filter-group { flex: 1 1 auto; max-width: 380px; }
-      .searchbar .pa-input { height: 36px; }
       .searchbar .sr-aux { flex: 0 0 auto; max-width: none; }
       .searchbar .sr-aux .pa-input { width: auto; min-width: 150px; }
       .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; margin-bottom: 12px; }
       .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-      .filter-group label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
+      .filter-group .pa-label { margin: 0; }
       .toolbar {
         display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
         padding-top: 12px; margin-bottom: 18px; border-top: 1px solid var(--divider);
@@ -18,8 +17,8 @@
       .count-badge { font-size: 12px; color: var(--label-text); align-self: center; }
       .filters-toggle, .actions-toggle { display: none; }
       .tb-actions { display: contents; }
-      #pager{display:none;gap:8px;align-items:center}
-      #pager .pa-page{font-size:12px;color:var(--label-text);align-self:center}
+      #pager { display: none; gap: 8px; align-items: center; }
+      #pager .pa-page { font-size: var(--text-xs); color: var(--label-text); align-self: center; }
 
       @media (max-width: 720px) {
         /* Four controls stay on screen: Filters, Actions, Reset and SFW.
@@ -62,8 +61,8 @@
   </div>{% endmacro %}
 {% macro search_row(input_id, placeholder, label='Search') %}<div class="searchbar">
     <div class="filter-group">
-      <label for="{{ input_id }}">{{ label }}</label>
-      <input class="pa-input" type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
+      <label class="pa-label" for="{{ input_id }}">{{ label }}</label>
+      <input class="pa-input pa-input--lg" type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
     </div>
 {% if caller %}{{ caller() }}{% endif %}    <button class="pa-btn pa-btn--lg filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">Filters</button>
     <button class="pa-btn pa-btn--lg actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">Actions</button>

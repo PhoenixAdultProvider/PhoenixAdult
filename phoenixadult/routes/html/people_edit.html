@@ -5,20 +5,12 @@
   <style>
     body {padding: 24px; }
     h1 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .copy { padding: 5px 14px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--muted-text); cursor: pointer; font-size: 12px; font-family: inherit; }
-    .copy:hover { color: var(--page-text); border-color: var(--hint-text); }
-    .copy.done { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
     a.iafd { text-decoration: none; line-height: normal; }
     .sub code { color: var(--soft-text); }
     h1, .sub, .wrap { max-width: 900px; margin-inline: auto; }
-    fieldset { border: 1px solid var(--button-secondary-border); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--card-bg); }
-    legend { font-size: 12px; color: var(--muted-text); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
-    label { display: block; font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
-    .hint { font-size: 11px; color: var(--hint-text); margin-top: 4px; }
     .fetchrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
     .fetchrow select { flex: 1 1 180px; }
     .fetch { flex: 0 0 auto; }
-    .fetch:hover { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
     .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--soft-text); }
     .toggle input { width: 16px; height: 16px; accent-color: var(--button-primary-bg); }
     .imgs { display: flex; gap: 12px; }
@@ -26,13 +18,6 @@
     figcaption { font-size: 11px; color: var(--muted-text); margin-bottom: 4px; }
     figure img { width: 100%; height: 240px; object-fit: contain; background: var(--image-well-bg); border-radius: 6px; }
     .bar { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
-    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: var(--button-success-bg); color: var(--button-text); cursor: pointer; font-size: 14px; font-weight: 500; }
-    .save:hover { background: var(--button-success-hover-bg); }
-    .save:disabled { background: var(--button-secondary-border); color: var(--label-text); cursor: not-allowed; }
-    .cancel { padding: 9px 18px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--muted-text); cursor: pointer; font-size: 14px; }
-    .cancel:hover { color: var(--page-text); }
-    .status { font-size: 12px; color: var(--label-text); }
-    #sfwToggle.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
     body.sfw #previewCard { display: none; }
     .scenewrap { max-height: 340px; overflow: auto; border-radius: 6px; }
     .scenes { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -52,33 +37,33 @@
       figure { flex: 1 1 140px; }
       figure img { height: 200px; }
       .bar { flex-wrap: wrap; }
-      .save, .cancel { flex: 1 1 auto; }
+      .bar .pa-btn { flex: 1 1 auto; }
     }
   </style>
 {% endblock %}
 {% block content %}
-  <h1><span id="actorName">{{ actor_name }}</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
+  <h1><span id="actorName">{{ actor_name }}</span><button class="pa-btn copy" id="copyName" title="Copy Name">Copy</button><a class="pa-btn copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="pa-btn copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
   <div class="sub">{{ role }} · <code>{{ relpath }}</code> · from {{ origin }}</div>
 
   <div class="wrap">
-    <fieldset>
+    <fieldset class="pa-fieldset">
       <legend>Source</legend>
-      <label for="f-upstream">Upstream Original URL</label>
+      <label class="pa-label" for="f-upstream">Upstream Original URL</label>
       <input class="pa-input" type="text" id="f-upstream" placeholder="https://…"{% if not is_admin() %} readonly{% endif %}>
 {% if is_admin() %}      <div class="fetchrow">
         <select class="pa-input" id="f-source"></select>
         <button class="pa-btn fetch" id="fetchBtn">Fetch From</button>
-        <span class="status" id="fetchStatus"></span>
+        <span class="pa-status" id="fetchStatus"></span>
       </div>
-      <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
-{% endif %}      <div class="toggle"><input type="checkbox" id="f-cropped"{% if not is_admin() %} disabled{% endif %}><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--soft-text)">Cropped Status — face-crop the image</label></div>
-      <div class="hint" id="cropHint"></div>
-      <label for="f-recorded">Recorded Source</label>
+      <div class="pa-hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
+{% endif %}      <div class="toggle"><input type="checkbox" id="f-cropped"{% if not is_admin() %} disabled{% endif %}><label for="f-cropped">Cropped Status — face-crop the image</label></div>
+      <div class="pa-hint" id="cropHint"></div>
+      <label class="pa-label" for="f-recorded">Recorded Source</label>
       <select id="f-recorded" class="pa-input recorded"{% if not is_admin() %} disabled{% endif %}></select>
-{% if is_admin() %}      <div class="hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>{% endif %}
+{% if is_admin() %}      <div class="pa-hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>{% endif %}
     </fieldset>
 
-    <fieldset id="previewCard">
+    <fieldset class="pa-fieldset" id="previewCard">
       <legend>Preview</legend>
       <div class="imgs">
         <figure><figcaption>Cached (Shown in Plex)</figcaption><img id="cachedImg" data-src="{{ cached_src }}" alt=""></figure>
@@ -86,17 +71,17 @@
       </div>
     </fieldset>
 
-    <fieldset>
+    <fieldset class="pa-fieldset">
       <legend>Scenes</legend>
-      {% if scenes is none %}<div class="hint">The snapshot cache is off, so there is nothing to list. Set <code>METADATA_CACHE_ENABLE</code> to turn it on.</div>
-      {% elif not scenes %}<div class="hint">No cached snapshot credits this person.</div>
+      {% if scenes is none %}<div class="pa-hint">The snapshot cache is off, so there is nothing to list. Set <code>METADATA_CACHE_ENABLE</code> to turn it on.</div>
+      {% elif not scenes %}<div class="pa-hint">No cached snapshot credits this person.</div>
       {% else %}<div class="scenewrap"><table class="scenes"><thead><tr><th>Title</th><th>Date</th><th>Studio</th><th>Sub-Site</th></tr></thead><tbody>{% for scene in scenes %}<tr><td><a href="/metadata/edit?key={{ scene.key_quoted }}">{{ scene.title }}</a></td><td class="nowrap">{{ scene.date or '—' }}</td><td>{{ scene.studio or '—' }}</td><td>{{ scene.tagline or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
     </fieldset>
 
     <div class="bar">
-{% if is_admin() %}      <button class="save" id="saveBtn" onclick="save()">Save</button>
-{% endif %}      <button class="cancel" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
-      <span class="status" id="status"></span>
+{% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--success" id="saveBtn" onclick="save()">Save</button>
+{% endif %}      <button class="pa-btn pa-btn--lg" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
+      <span class="pa-status" id="status"></span>
     </div>
   </div>
 
@@ -231,8 +216,8 @@
         field.remove();
       }
       button.textContent = 'Copied';
-      button.classList.add('done');
-      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('done'); }, 1200);
+      button.classList.add('on');
+      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('on'); }, 1200);
     };
   </script>
 {% endblock %}

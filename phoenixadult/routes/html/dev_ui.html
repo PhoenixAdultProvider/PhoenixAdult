@@ -3,12 +3,11 @@
 {% block page %}dev{% endblock %}
 {% block head %}
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; padding: 2rem; max-width: 1100px; margin: 0 auto; }
-    h1 { font-size: 1.5rem; font-weight: 700; color: var(--heading-text); margin-bottom: 0.25rem; }
+    *, *::before, *::after { margin: 0; padding: 0; }
+    body { min-height: 100vh; padding: 24px; max-width: 1100px; margin: 0 auto; }
     h2 { font-size: 0.8rem; font-weight: 600; color: var(--section-heading-text); margin: 1.5rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
-    label { display: block; font-size: 0.85rem; color: var(--muted-text); margin-bottom: 0.4rem; }
+    .dev-card { margin-bottom: var(--space-4); }
+    .row .pa-label { margin-top: 0; }
     .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
     .row > div { flex: 1; min-width: 200px; }
     .examples { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
@@ -21,9 +20,6 @@
     .step { border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; margin-bottom: 0.6rem; }
     .step-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; background: var(--strip-bg); }
     .step-header:hover { background: var(--strip-hover-bg); }
-    .badge { font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
-    .ok   { background: var(--badge-success-bg); color: var(--badge-success-text); }
-    .fail { background: var(--badge-danger-bg); color: var(--badge-danger-soft-text); }
     .step-title { font-weight: 600; flex: 1; font-size: 0.9rem; }
     .step-duration { font-size: 0.75rem; color: var(--label-text); }
     .step-body { padding: 0.75rem 1rem; border-top: 1px solid var(--panel-border); display: none; }
@@ -33,20 +29,17 @@
     .captures-label   { font-size: 0.72rem; color: var(--label-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
     .capture          { border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; margin-bottom: 0.4rem; background: var(--inset-bg); }
     .capture-header   { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.65rem; user-select: none; background: var(--strip-alt-bg); }
-    .capture-header > .badge,
+    .capture-header > .pa-badge,
     .capture-header > .capture-label { cursor: pointer; }
     .capture-header:hover { background: var(--strip-alt-hover-bg); }
     .capture-label    { flex: 1; font-size: 0.78rem; color: var(--soft-text); word-break: break-all; }
     .capture-url      { color: var(--link-text); text-decoration: none; }
     .capture-url:hover { color: var(--link-hover-text); text-decoration: underline; }
     .copy-btn { flex-shrink: 0; }
-    .copy-btn.copied { background: var(--badge-success-bg); color: var(--badge-success-text); border-color: var(--badge-success-border); }
     .capture-size     { font-size: 0.7rem; color: var(--label-text); }
     .capture-body     { display: none; }
     .capture-body.open { display: block; }
     .capture-body pre { margin: 0; border: 0; border-radius: 0; max-height: 500px; }
-    .badge.json { background: var(--badge-success-bg); color: var(--badge-success-text); }
-    .badge.html { background: var(--badge-violet-bg); color: var(--badge-violet-text); }
     .step-error { color: var(--status-danger-text); font-size: 0.85rem; margin-bottom: 0.5rem; }
     pre { background: var(--log-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.75rem; font-size: 0.75rem; overflow-x: auto; color: var(--log-text); white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
 
@@ -119,22 +112,18 @@
     table.sites-table th:nth-child(2), table.sites-table td:nth-child(2) { width: 16%; }
     table.sites-table th:nth-child(3), table.sites-table td:nth-child(3) { width: 18%; }
     table.sites-table th:nth-child(4), table.sites-table td:nth-child(4) { width: 46%; }
-    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--spinner-track); border-top-color: var(--spinner-head); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
-      h1 { font-size: 1.25rem; }
       h2 { margin: 1.1rem 0 0.5rem; }
-      .card { padding: 0.9rem; }
 
       .row { gap: 0.6rem; }
       .row > div, .row > .field-year, .row > .field-tight { flex: 1 1 100%; min-width: 0; }
       .pipeline-toggle { margin: 0.2rem 0 0; white-space: normal; }
-      .run-btn { margin-top: 0.2rem; width: 100%; height: 42px; }
+      .run-btn { margin-top: 0.2rem; width: 100%; }
 
       .step-header { flex-wrap: wrap; gap: 0.35rem 0.6rem; padding: 0.7rem 0.8rem; }
-      .step-header .badge { order: 1; }
+      .step-header .pa-badge { order: 1; }
       .step-duration { order: 2; margin-left: auto; }
       .step-title { order: 3; flex: 1 1 100%; min-width: 0; line-height: 1.35; overflow-wrap: anywhere; }
       .step-body { padding: 0.6rem 0.7rem; }
@@ -143,10 +132,10 @@
       code { overflow-wrap: anywhere; }
 
       .capture-header { flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.6rem; }
-      .capture-header .badge { order: 1; }
+      .capture-header .pa-badge { order: 1; }
       .capture-size { order: 2; margin-left: auto; }
       .capture-label { order: 3; flex: 1 1 100%; word-break: normal; overflow-wrap: anywhere; }
-      .capture-header .copy-btn { order: 4; flex: 1 1 auto; padding: 0.45rem 0.5rem; }
+      .capture-header .copy-btn { order: 4; flex: 1 1 auto; }
 
       .log-box { max-height: 260px; padding: 0.5rem 0.6rem; }
       .results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
@@ -179,10 +168,10 @@
   <h1>🎬 Provider Dev UI</h1>
   <p style="color:var(--label-text);margin-top:0.25rem;font-size:0.875rem">Test the full scraper pipeline — search, select a result, inspect metadata</p>
 
-  <div class="card" style="margin-top:1.25rem">
+  <div class="pa-card dev-card" style="margin-top:1.25rem">
     <div class="row" style="align-items:flex-start">
       <div>
-        <label for="filename">Filename</label>
+        <label class="pa-label" for="filename">Filename</label>
         <input class="pa-input" type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
         <div class="examples">
           <span style="font-size:0.72rem;color:var(--hint-text);align-self:center">Examples:</span>
@@ -191,7 +180,7 @@
         </div>
       </div>
       <div class="field-year">
-        <label for="year-override">Year (Override)</label>
+        <label class="pa-label" for="year-override">Year (Override)</label>
         <input class="pa-input" type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
       </div>
       <div class="field-tight">
@@ -209,7 +198,7 @@
     <h2>Search Pipeline</h2>
     <div id="search-steps"></div>
     <h2>Pipeline Logs</h2>
-    <div class="card log-box" id="search-logs"></div>
+    <div class="pa-card dev-card log-box" id="search-logs"></div>
   </div>
 
   <div id="results-section" style="display:none">
@@ -220,7 +209,7 @@
   <div id="meta-panel">
     <h2 id="meta-heading">Metadata</h2>
 
-    <div class="card">
+    <div class="pa-card dev-card">
       <div class="meta-layout" id="meta-summary">
         <div id="meta-poster-wrap">
           <div class="meta-poster-placeholder">🎬</div>
@@ -231,7 +220,7 @@
 
     <div id="meta-images-section" style="display:none">
       <h2>Images (<span id="img-count">0</span>)</h2>
-      <div class="card" style="padding:0.75rem">
+      <div class="pa-card dev-card" style="padding:0.75rem">
         <div class="image-strip" id="image-strip"></div>
       </div>
     </div>
@@ -240,7 +229,7 @@
       <h2>DB Round-Trip (Reassembled)</h2>
       <div class="capture">
         <div class="capture-header">
-          <span class="badge json" onclick="toggle('roundtrip-body')">JSON</span>
+          <span class="pa-badge pa-badge--success" onclick="toggle('roundtrip-body')">JSON</span>
           <span class="capture-label" id="roundtrip-note" onclick="toggle('roundtrip-body')"></span>
           <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'roundtrip-pre', event)">Copy</button>
         </div>
@@ -252,7 +241,7 @@
       <h2>Fixture (paste into <code>tests/health/fixtures.json</code>)</h2>
       <div class="capture">
         <div class="capture-header">
-          <span class="badge json">JSON</span>
+          <span class="pa-badge pa-badge--success">JSON</span>
           <span class="capture-label" style="cursor:default">Suggested fixture for this result</span>
           <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">Copy</button>
           <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy One-Liner</button>
@@ -265,11 +254,11 @@
     <h2>Metadata Pipeline</h2>
     <div id="meta-steps"></div>
     <h2>Pipeline Logs</h2>
-    <div class="card log-box" id="meta-logs"></div>
+    <div class="pa-card dev-card log-box" id="meta-logs"></div>
   </div>
 
   <h2>Registered Sites</h2>
-  <div class="card" style="padding:0;overflow:hidden">
+  <div class="pa-card dev-card" style="padding:0;overflow:hidden">
     <table class="sites-table">
       <thead><tr><th>Site</th><th>Content Type</th><th>Scraper</th><th>Aliases</th></tr></thead>
       <tbody>{% for s in sites %}<tr{% if s.grouped %} class="group-row"{% endif %}>
@@ -336,7 +325,7 @@
 
       return `<div class="capture">
         <div class="capture-header">
-          <span class="badge ${isJson ? 'json' : 'html'}" onclick="toggle('${id}')">${isJson ? 'JSON' : 'HTML'}</span>
+          <span class="pa-badge ${isJson ? 'pa-badge--success' : 'pa-badge--violet'}" onclick="toggle('${id}')">${isJson ? 'JSON' : 'HTML'}</span>
           <span class="capture-label" onclick="toggle('${id}')">${labelHtml}</span>
           <span class="capture-size">${sizeHint}</span>
           ${copyUrlBtn}
@@ -350,10 +339,10 @@
       const ack = () => {
         const orig = btn.textContent;
         btn.textContent = 'Copied!';
-        btn.classList.add('copied');
+        btn.classList.add('on');
         setTimeout(() => {
           btn.textContent = orig;
-          btn.classList.remove('copied');
+          btn.classList.remove('on');
         }, 1500);
       };
       const fail = (err) => {
@@ -466,7 +455,7 @@
 
         return `<div class="step">
           <div class="step-header" onclick="toggle('${id}')">
-            <span class="badge ${s.ok ? 'ok' : 'fail'}">${s.ok ? 'OK' : 'FAIL'}</span>
+            <span class="pa-badge ${s.ok ? 'pa-badge--success' : 'pa-badge--danger'}">${s.ok ? 'OK' : 'FAIL'}</span>
             <span class="step-title">${esc(s.step)}</span>
             <span class="step-duration">${s.durationMs != null ? s.durationMs + 'ms' : ''}</span>
           </div>
@@ -487,7 +476,7 @@
 
       const btn = document.getElementById('runBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Searching…';
+      btn.innerHTML = '<span class="pa-spinner"></span> Searching…';
 
       document.getElementById('search-output').style.display  = 'none';
       document.getElementById('results-section').style.display = 'none';
@@ -548,7 +537,7 @@
 
       document.getElementById('meta-panel').style.display = 'none';
       document.getElementById('meta-steps').innerHTML = '';
-      document.getElementById('meta-fields').innerHTML = '<p style="color:var(--label-text);font-size:0.85rem"><span class="spinner"></span> Fetching metadata…</p>';
+      document.getElementById('meta-fields').innerHTML = '<p style="color:var(--label-text);font-size:0.85rem"><span class="pa-spinner"></span> Fetching metadata…</p>';
       document.getElementById('meta-poster-wrap').innerHTML = '<div class="meta-poster-placeholder">🎬</div>';
       document.getElementById('fixture-section').style.display = 'none';
       document.getElementById('roundtrip-section').style.display = 'none';
@@ -611,8 +600,7 @@
       }
 
       const fields = [];
-      const refreshBtn = ' <button class="pa-btn pa-btn--primary" onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot" '
-        + 'style="cursor:pointer;background:var(--badge-info-bg);color:var(--badge-info-text);border:1px solid var(--badge-info-border);border-radius:5px;padding:2px 8px;font-size:0.75rem;font-weight:700">🔄 Fetch Upstream</button>';
+      const refreshBtn = ' <button class="pa-btn pa-btn--sm pa-btn--primary" onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot">🔄 Fetch Upstream</button>';
       if (meta.servedFrom === 'snapshot') {
         fields.push(field('Source', '<span class="meta-tag" style="background:var(--badge-success-bg);color:var(--badge-success-text);border-color:var(--badge-success-border);font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>' + refreshBtn));
       } else if (meta.servedFrom === 'live') {

@@ -6,19 +6,18 @@
     <style>
       body { padding: 24px; }
       .warn { background: var(--banner-danger-bg); border: 1px solid var(--banner-danger-border); padding: 8px 12px; border-radius: 6px; }
-      .empty { color: var(--muted-text); }
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 16px; }
-      .card { border-left: 5px solid var(--card-stripe); display: none; }
-      .card.gf { border-left-color: var(--female); background: var(--female-card-bg); }
-      .card.gm { border-left-color: var(--button-primary-bg); background: var(--male-card-bg); }
-      .card.gt { border-left-color: var(--trans); background: var(--trans-card-bg); }
-      .card.gn { border-left-color: var(--gender-none); }
+      .people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 16px; }
+      .person-card { border-left: 5px solid var(--card-stripe); display: none; }
+      .person-card.gf { border-left-color: var(--female); background: var(--female-card-bg); }
+      .person-card.gm { border-left-color: var(--button-primary-bg); background: var(--male-card-bg); }
+      .person-card.gt { border-left-color: var(--trans); background: var(--trans-card-bg); }
+      .person-card.gn { border-left-color: var(--gender-none); }
       .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
       .hd b { white-space: nowrap; }
       .ts { margin-left: auto; color: var(--label-text); font-size: 12px; }
-      .badge.crop { background: var(--badge-info-bg); }
-      .badge.orig { background: var(--badge-neutral-bg); }
-      .badge.src { background: var(--badge-muted-bg); border: 1px solid var(--badge-muted-border); color: var(--badge-muted-text); }
+      .pa-badge.crop { background: var(--badge-info-bg); }
+      .pa-badge.orig { background: var(--badge-neutral-bg); }
+      .pa-badge.src { background: var(--badge-muted-bg); border: 1px solid var(--badge-muted-border); color: var(--badge-muted-text); }
       .role { text-transform: capitalize; background: var(--role-badge-bg); color: var(--role-badge-text); }
       .role.r-actor { background: var(--role-actor-bg); }
       .role.r-director { background: var(--role-director-bg); }
@@ -41,11 +40,7 @@
       .actions > .edit:only-child { flex: 0 0 160px; }
       .edit { flex: 0 0 80px; }
       .purge { flex: 0 0 90px; }
-      .progress {
-        flex: 1 1 220px; max-width: 320px; height: 8px; background: var(--progress-track); border: 1px solid var(--panel-border);
-        border-radius: 6px; overflow: hidden;
-      }
-      .progress .fill { height: 100%; width: 0; background: var(--progress-fill); transition: width .15s linear; }
+      .bulk-progress { flex: 1 1 220px; max-width: 320px; }
       .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
       .filters .tabs { grid-column: 1 / -1; }
       .tab.active { background: var(--button-primary-bg); color: var(--button-text); border-color: var(--button-primary-bg); }
@@ -57,7 +52,7 @@
       .tab .cnt { opacity: .65; font-size: 11px; }
       @media (max-width: 720px) {
         body { padding: 14px; }
-        .grid { grid-template-columns: 1fr; }
+        .people-grid { grid-template-columns: 1fr; }
         .actions { flex-wrap: wrap; }
         .edit, .purge { flex: 1 1 auto; }
         .tabs { flex-direction: column; gap: 6px; }
@@ -74,8 +69,8 @@
     {% if not crop_available %}<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>{% endif %}
     {% call toolbar.search_row('nameSearch', 'Search names…') %}
       <div class="filter-group sr-aux">
-        <label for="sourceFilter">Source</label>
-        <select class="pa-input" id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+        <label class="pa-label" for="sourceFilter">Source</label>
+        <select class="pa-input pa-input--lg" id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
     {% endcall %}
   <div class="controls" id="controls">
@@ -88,14 +83,14 @@
     {% call toolbar.bar('searchCount') %}
     <div class="tb-actions">
 {% if is_admin() %}      <button class="pa-btn pa-btn--lg bulk" id="bulkBtn">Fetch Images for Shown</button>
-      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
+      <div class="pa-progress-track bulk-progress" id="bulkProgress" hidden><div class="pa-progress-fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span>
 {% endif %}    </div>
     {% endcall %}
   </div>
-    <div class="grid" id="grid"></div>
-    <p class="empty viewempty" style="display:none">No images in this category.</p>
-    {% if not entries %}<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>{% endif %}
+    <div class="people-grid" id="grid"></div>
+    <p class="pa-empty viewempty" style="display:none">No images in this category.</p>
+    {% if not entries %}<p class="pa-empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>{% endif %}
     
 {% endblock %}
 {% block scripts %}
@@ -127,7 +122,7 @@
         document.body.classList.toggle('sfw', SFW);
         // Only the cards on the current page get a src, so a big library never
         // hydrates thousands of images at once.
-        document.querySelectorAll('.card').forEach(card => {
+        document.querySelectorAll('.person-card').forEach(card => {
           const shown = card.style.display === 'block';
           card.querySelectorAll('.imgs img').forEach(img => {
             if(SFW || !shown) img.removeAttribute('src');
@@ -166,8 +161,8 @@
       function prevPage(){ if(offset > 0){ offset = Math.max(0, offset - PAGE_SIZE); refresh(); } }
       function nextPage(){ if(offset + PAGE_SIZE < TOTAL){ offset += PAGE_SIZE; refresh(); } }
       function cardHtml(e){
-        const badge = e.cropped ? '<span class="pa-badge badge crop">cropped</span>' : '<span class="pa-badge badge orig">original</span>';
-        const srcBadge = e.source ? '<span class="pa-badge badge src">' + esc(e.source) + '</span>' : '';
+        const badge = e.cropped ? '<span class="pa-badge crop">cropped</span>' : '<span class="pa-badge orig">original</span>';
+        const srcBadge = e.source ? '<span class="pa-badge src">' + esc(e.source) + '</span>' : '';
         const upstream = e.upstream_url
           ? '<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url=' + esc(e.upstream_quoted) + '" loading="lazy" decoding="async"></figure>'
           : '';
@@ -183,7 +178,7 @@
           else restore = '<button class="pa-btn pa-btn--primary restore" disabled>Original Kept</button>';
         }
         const purgeBtn = IS_ADMIN ? '<button class="pa-btn pa-btn--danger purge">Purge</button>' : '';
-        return '<div class="pa-card card ' + esc(e.gcss) + '" data-type="' + esc(e.type) + '" data-fn="' + esc(e.filename)
+        return '<div class="pa-card person-card ' + esc(e.gcss) + '" data-type="' + esc(e.type) + '" data-fn="' + esc(e.filename)
           + '" data-cropped="' + (e.cropped ? 1 : 0) + '" data-name="' + esc(e.search_key)
           + '" data-upstream="' + (e.upstream_url ? 1 : 0) + '" data-source="' + esc(e.source || '')
           + '" data-single="' + (e.single ? 1 : 0) + '" style="display:block">'
@@ -365,7 +360,7 @@
       document.addEventListener('click', e => {
         const b = e.target.closest('button');
         if (!b || b.disabled) return;
-        const fn = b.closest('.card')?.dataset.fn;
+        const fn = b.closest('.person-card')?.dataset.fn;
         if (!fn) return;
         if (b.classList.contains('purge')) purge(fn);
         else if (b.classList.contains('edit')) edit(fn);

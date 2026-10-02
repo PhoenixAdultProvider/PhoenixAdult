@@ -57,7 +57,7 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
     (d / 'actor.voodoo-child_male.jpg').write_bytes(b'x')
 
     page = authed_client().get('/people')
-    assert 'display: none; }' in page.text.split('.card {')[1].split('.card.gf')[0]
+    assert 'display: none; }' in page.text.split('.person-card {')[1].split('.person-card.gf')[0]
 
 
 def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
@@ -230,7 +230,7 @@ def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) 
     assert "const SFW_KEY = 'metadata-sfw';" in page.text
     assert 'function resetFilters()' in page.text
     assert 'body.sfw .imgs { display: none; }' in page.text
-    page_css = next(block for block in page.text.split('<style>') if '.card {' in block)
+    page_css = next(block for block in page.text.split('<style>') if '.person-card {' in block)
     assert '::after' not in page_css
 
 

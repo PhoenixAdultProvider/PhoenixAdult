@@ -18,18 +18,17 @@
     .studios .st.active { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
     .studios .st .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .studios .st .c { flex: 0 0 auto; font-variant-numeric: tabular-nums; opacity: .7; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .card { display: flex; flex-direction: column; gap: var(--space-2); }
+    .logo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .logo-card { display: flex; flex-direction: column; gap: var(--space-2); }
     .purge-btn { align-self: center; margin-top: auto; }
     .logo-box { border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px;
                 background: repeating-conic-gradient(var(--logo-proof-dark-a) 0% 25%, var(--logo-proof-dark-b) 0% 50%) 0 0 / 20px 20px; }
     .logo-box.on-light { background: repeating-conic-gradient(var(--logo-proof-light-a) 0% 25%, var(--logo-proof-light-b) 0% 50%) 0 0 / 20px 20px; }
-    .grid.force-light .logo-box { background: repeating-conic-gradient(var(--logo-proof-light-a) 0% 25%, var(--logo-proof-light-b) 0% 50%) 0 0 / 20px 20px; }
-    .grid.force-dark .logo-box { background: repeating-conic-gradient(var(--logo-proof-dark-a) 0% 25%, var(--logo-proof-dark-b) 0% 50%) 0 0 / 20px 20px; }
+    .logo-grid.force-light .logo-box { background: repeating-conic-gradient(var(--logo-proof-light-a) 0% 25%, var(--logo-proof-light-b) 0% 50%) 0 0 / 20px 20px; }
+    .logo-grid.force-dark .logo-box { background: repeating-conic-gradient(var(--logo-proof-dark-a) 0% 25%, var(--logo-proof-dark-b) 0% 50%) 0 0 / 20px 20px; }
     .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
     .site { font-size: 14px; font-weight: 600; text-align: center; overflow-wrap: anywhere; }
     .site .unknown { color: var(--label-text); font-weight: 400; font-style: italic; }
-    .empty { color: var(--empty-text); font-size: 14px; padding: 40px; text-align: center; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -37,8 +36,7 @@
       .layout { grid-template-columns: 1fr; }
       .studios { position: static; max-height: none; flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
       .studios .st { width: auto; flex: 0 0 auto; }
-      .grid { grid-template-columns: 1fr; }
-      .empty { padding: 24px 12px; }
+      .logo-grid { grid-template-columns: 1fr; }
     }
   </style>
 {{ toolbar.styles() }}
@@ -49,11 +47,11 @@
 Add one below, or drop a file into a studio folder there and click Rescan.{% endif %}</div>
   {% call toolbar.search_row('filter', 'site, slug or path…') %}
     <div class="filter-group sr-aux">
-      <label for="unmatched">Registry</label>
-      <select class="pa-input" id="unmatched"><option value="">All</option><option value="1">Unmatched</option></select>
+      <label class="pa-label" for="unmatched">Registry</label>
+      <select class="pa-input pa-input--lg" id="unmatched"><option value="">All</option><option value="1">Unmatched</option></select>
     </div>
     <div class="filter-group sr-aux">
-      <label for="bgBtn">Backdrop</label>
+      <label class="pa-label" for="bgBtn">Backdrop</label>
       <button type="button" class="pa-btn pa-btn--lg" id="bgBtn" onclick="cycleBackdrop()" title="Proof the artwork against a light or dark backdrop"></button>
     </div>
   {% endcall %}
@@ -72,8 +70,8 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
   <div class="layout">
     <nav class="studios" id="studios" aria-label="Studios"></nav>
     <div>
-      <div class="grid" id="grid"></div>
-      <div class="empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
+      <div class="logo-grid" id="grid"></div>
+      <div class="pa-empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
     </div>
   </div>
 
@@ -159,7 +157,7 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       document.getElementById('empty').style.display = STATE.logos.length ? 'none' : 'block';
       paintBackdrop();
       document.getElementById('grid').innerHTML = rows.map((l) => `
-        <div class="pa-card card">
+        <div class="pa-card logo-card">
           ${SFW ? '' : `<div class="logo-box${l.well === 'light' ? ' on-light' : ''}"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>`}
           <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'}</div>
           ${IS_ADMIN ? `<button type="button" class="pa-btn pa-btn--danger purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
