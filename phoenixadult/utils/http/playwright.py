@@ -35,37 +35,40 @@ class _PlaywrightBackend:
             async with async_playwright() as pw:
                 launch_env = {**os.environ, 'HOME': os.environ.get('HOME') or tempfile.gettempdir()}
                 browser = await getattr(pw, env.playwright_browser).launch(headless=True, env=launch_env)
-                ctx = await browser.new_context(ignore_https_errors=True, extra_http_headers=req.headers or {})
-                if req.cookies:
-                    host = urlsplit(req.url).hostname or ''
-                    await ctx.add_cookies([{'name': n, 'value': v, 'domain': host, 'path': '/'} for n, v in req.cookies.items()])
-                page = await ctx.new_page()
+                ctx = await _context(browser, req)
                 try:
-                    response: Any
-                    if req.method == 'POST':
-                        response = await page.request.post(req.url, headers=req.headers or {}, data=req.body, timeout=timeout)
-                        body = await response.text()
-                    else:
-                        response = await page.goto(req.url, wait_until='domcontentloaded', timeout=timeout)
-                        body = await page.content()
-                    if not response:
-                        return None
-                    cookie_map = {c['name']: c['value'] for c in await ctx.cookies()}
-                    user_agent = await page.evaluate('navigator.userAgent')
-                    return BypassResponse(
-                        status=response.status,
-                        body=body,
-                        headers=dict(response.headers),
-                        cookies=cookie_map,
-                        final_url=page.url,
-                        user_agent=str(user_agent or ''),
-                    )
+                    return await _visit(ctx, req, timeout)
                 finally:
                     await ctx.close()
                     await browser.close()
         except Exception as err:  # noqa: BLE001 - any Playwright failure → skip backend
             logger.warn('bypass:Playwright', f'{req.url} failed: {err}')
             return None
+
+
+async def _context(browser: Any, req: BypassRequest) -> Any:
+    ctx = await browser.new_context(ignore_https_errors=True, extra_http_headers=req.headers or {})
+    if req.cookies:
+        host = urlsplit(req.url).hostname or ''
+        await ctx.add_cookies([{'name': n, 'value': v, 'domain': host, 'path': '/'} for n, v in req.cookies.items()])
+    return ctx
+
+
+async def _visit(ctx: Any, req: BypassRequest, timeout: int) -> BypassResponse | None:
+    page = await ctx.new_page()
+    if req.method == 'POST':
+        response = await page.request.post(req.url, headers=req.headers or {}, data=req.body, timeout=timeout)
+        body = await response.text()
+    else:
+        response = await page.goto(req.url, wait_until='domcontentloaded', timeout=timeout)
+        body = await page.content()
+    if not response:
+        return None
+    cookie_map = {c['name']: c['value'] for c in await ctx.cookies()}
+    user_agent = await page.evaluate('navigator.userAgent')
+    return BypassResponse(
+        status=response.status, body=body, headers=dict(response.headers), cookies=cookie_map, final_url=page.url, user_agent=str(user_agent or '')
+    )
 
 
 playwright_backend = _PlaywrightBackend()

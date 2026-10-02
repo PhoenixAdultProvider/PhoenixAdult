@@ -145,3 +145,40 @@ async def test_an_unreachable_solver_names_the_endpoint_it_could_not_reach(monke
         assert await flare_solverr_backend.request(BypassRequest(url='https://example.com/x', method='GET')) is None
     assert 'http://mipha.local:8191/v1' in caplog.text, 'the warning must name the endpoint, not just the transport error'
     assert 'FLARESOLVERR_URL' in caplog.text
+
+
+@respx.mock
+async def test_the_solver_receives_the_post_body_and_cookies_and_its_solution_is_returned(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    from phoenixadult.utils.http.flaresolverr import flare_solverr_backend
+
+    monkeypatch.setenv('FLARESOLVERR_URL', 'http://solver.test:8191/')
+    solution = {'status': 200, 'response': '<html>ok</html>', 'cookies': [{'name': 'cf', 'value': '1'}], 'userAgent': 'UA', 'url': 'https://example.com/y'}
+    route = respx.post('http://solver.test:8191/v1').mock(return_value=httpx.Response(200, json={'status': 'ok', 'solution': solution}))
+    got = await flare_solverr_backend.request(BypassRequest(url='https://example.com/x', method='POST', body='a=1', cookies={'s': '2'}, timeout_ms=5000))
+    sent = json.loads(route.calls[0].request.content)
+    assert sent == {
+        'cmd': 'request.post',
+        'url': 'https://example.com/x',
+        'maxTimeout': 5000,
+        'headers': {},
+        'cookies': [{'name': 's', 'value': '2'}],
+        'postData': 'a=1',
+    }
+    assert got is not None and (got.status, got.body, got.cookies, got.final_url, got.user_agent) == (
+        200,
+        '<html>ok</html>',
+        {'cf': '1'},
+        'https://example.com/y',
+        'UA',
+    )
+
+
+@respx.mock
+async def test_a_solver_error_is_no_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.http.flaresolverr import flare_solverr_backend
+
+    monkeypatch.setenv('FLARESOLVERR_URL', 'http://solver.test:8191')
+    respx.post('http://solver.test:8191/v1').mock(return_value=httpx.Response(200, json={'status': 'error', 'message': 'challenge failed'}))
+    assert await flare_solverr_backend.request(BypassRequest(url='https://example.com/x', method='GET')) is None
