@@ -42,7 +42,7 @@ def record(directory: str, *, name: str, filename: str, base: str, orig_ext: str
         )
 
 
-def _parse_entry(raw: str, source: str = '') -> dict[str, Any] | None:
+def parse_entry(raw: str, source: str = '') -> dict[str, Any] | None:
     try:
         entry = json.loads(raw)
     except ValueError:
@@ -67,7 +67,7 @@ def recent(directory: str) -> list[dict[str, Any]]:
     for row in rows:
         if str(row['rel_path']).rpartition('/')[0] != rel_dir:
             continue
-        entry = _parse_entry(str(row['entry']), str(row['source'] or ''))
+        entry = parse_entry(str(row['entry']), str(row['source'] or ''))
         if entry is not None:
             out.append(entry)
     return out
@@ -75,13 +75,13 @@ def recent(directory: str) -> list[dict[str, Any]]:
 
 def entry_for(directory: str, filename: str) -> dict[str, Any] | None:
     row = _conn().execute('SELECT entry, source FROM crop_log WHERE rel_path = ?', (f'{_rel_dir(directory)}/{filename}',)).fetchone()
-    return None if row is None else _parse_entry(str(row['entry']), str(row['source'] or ''))
+    return None if row is None else parse_entry(str(row['entry']), str(row['source'] or ''))
 
 
 def entries_by_path() -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for row in _conn().execute('SELECT rel_path, entry, source FROM crop_log').fetchall():
-        entry = _parse_entry(str(row['entry']), str(row['source'] or ''))
+        entry = parse_entry(str(row['entry']), str(row['source'] or ''))
         if entry is not None:
             out[str(row['rel_path'])] = entry
     return out

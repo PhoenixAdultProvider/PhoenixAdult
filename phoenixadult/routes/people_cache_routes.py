@@ -179,12 +179,85 @@ class PeopleFilters:
         return not needle or needle in name.casefold()
 
 
-def _listing(filters: PeopleFilters, pick_default: bool = False) -> dict[str, Any]:
-    everything = _list_people(env.people_cache_dir)
-    counts = {t: sum(1 for e in everything if e['type'] == t) for t, _ in _TABS}
-    tab = filters.type if any(t == filters.type for t, _ in _TABS) else ''
+_TAB_SQL = "replace(rtrim(rtrim(p.rel_path, replace(p.rel_path, '/', '')), '/'), '/', '-')"
+_NAME_SQL = "coalesce(nullif(trim(json_extract(c.entry, '$.name')), ''), replace(p.slug, '-', ' '))"
+_SOURCE_SQL = "coalesce(c.source, '')"
+_FROM_SQL = 'FROM people_images p LEFT JOIN crop_log c ON c.rel_path = p.rel_path'
+
+
+def _pick_tab(filters: PeopleFilters, counts: dict[str, int], pick_default: bool) -> str:
     if pick_default:
-        tab = next((t for t, _ in _TABS if counts[t]), _TABS[0][0])
+        return next((t for t, _ in _TABS if counts[t]), _TABS[0][0])
+    return filters.type if any(t == filters.type for t, _ in _TABS) else ''
+
+
+def _where(filters: PeopleFilters, tab: str) -> tuple[str, list[Any]]:
+    clauses: list[str] = []
+    args: list[Any] = []
+    if tab:
+        clauses.append(f'{_TAB_SQL} = ?')
+        args.append(tab)
+    if filters.source == '__blank__':
+        clauses.append(f"{_SOURCE_SQL} = ''")
+    elif filters.source:
+        clauses.append(f'{_SOURCE_SQL} = ?')
+        args.append(filters.source)
+    if filters.cropped:
+        clauses.append("coalesce(json_extract(c.entry, '$.cropped'), 0)")
+    if filters.noupstream:
+        clauses.append("coalesce(json_extract(c.entry, '$.upstream_url'), '') = ''")
+    if filters.generic:
+        clauses.append(f"{_SOURCE_SQL} = 'Generic'")
+    if filters.single:
+        clauses.append(f"instr(trim({_NAME_SQL}), ' ') = 0")
+    needle = filters.q.strip().casefold()
+    if needle:
+        clauses.append(f"casefold({_NAME_SQL}) LIKE ? ESCAPE '\\'")
+        args.append(db.like_contains(needle))
+    return ('WHERE ' + ' AND '.join(clauses)) if clauses else '', args
+
+
+def _listing(filters: PeopleFilters, pick_default: bool = False) -> dict[str, Any]:
+    conn = index_conn()
+    if conn.execute('SELECT 1 FROM people_images LIMIT 1').fetchone() is None:
+        return _listing_from(_list_people_files(env.people_cache_dir), filters, pick_default)
+    conn.create_function('casefold', 1, lambda s: s.casefold() if isinstance(s, str) else s, deterministic=True)
+    counts = dict.fromkeys((t for t, _ in _TABS), 0)
+    library = 0
+    for row in conn.execute(f'SELECT {_TAB_SQL} AS tab, count(*) AS n FROM people_images p GROUP BY tab'):
+        library += int(row['n'])
+        if row['tab'] in counts:
+            counts[row['tab']] = int(row['n'])
+    tab = _pick_tab(filters, counts, pick_default)
+    where, args = _where(filters, tab)
+    total = int(conn.execute(f'SELECT count(*) {_FROM_SQL} {where}', args).fetchone()[0])
+    page = conn.execute(
+        f'SELECT p.rel_path, p.mtime, c.entry, c.source {_FROM_SQL} {where} ORDER BY p.mtime DESC, p.rel_path LIMIT ? OFFSET ?',
+        [*args, filters.limit, filters.offset],
+    ).fetchall()
+    entries = []
+    for row in page:
+        log = face_crop_log.parse_entry(str(row['entry']), str(row['source'] or '')) if row['entry'] is not None else None
+        entry = _entry(str(row['rel_path']), float(row['mtime']), log or {})
+        if entry is not None:
+            entries.append(_display_entry(entry))
+    tab_where, tab_args = _where(PeopleFilters(), tab)
+    present = [str(r[0]) for r in conn.execute(f'SELECT DISTINCT {_SOURCE_SQL} {_FROM_SQL} {tab_where}', tab_args)]
+    return {
+        'entries': entries,
+        'total': total,
+        'counts': counts,
+        'tab': tab,
+        'sources': sorted((s for s in present if s), key=str.casefold),
+        'has_unrecorded': '' in present,
+        'library': library,
+        'pageSize': filters.limit,
+    }
+
+
+def _listing_from(everything: list[dict[str, Any]], filters: PeopleFilters, pick_default: bool) -> dict[str, Any]:
+    counts = {t: sum(1 for e in everything if e['type'] == t) for t, _ in _TABS}
+    tab = _pick_tab(filters, counts, pick_default)
     in_tab = [e for e in everything if not tab or e['type'] == tab]
     hits = [e for e in in_tab if filters.matches(e)]
     return {

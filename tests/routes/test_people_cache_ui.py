@@ -514,3 +514,18 @@ def test_the_search_row_can_carry_its_own_filters() -> None:
     row = logos.split('<div class="searchbar">')[1].split('<div class="controls"')[0]
     assert 'id="unmatched"' in row and 'id="bgBtn"' in row, 'Registry and Backdrop sit beside the search box'
     assert '.searchbar .sr-aux .pa-input { width: auto; min-width: 150px; }' in logos, 'aux controls size to content'
+
+
+def test_the_listing_pages_in_sql_instead_of_loading_the_library(_person_cache: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.routes import people_cache_routes
+
+    def whole_library(directory: str) -> list[dict[str, object]]:
+        raise AssertionError('the listing must not build every entry to show one page')
+
+    monkeypatch.setattr(people_cache_routes, '_list_people', whole_library)
+    client = authed_client()
+    assert client.get('/people').status_code == 200
+    body = client.get('/people/api/entries', params={'type': 'actors-female', 'q': 'JANE'}).json()
+    assert body['total'] == 1 and body['entries'][0]['name'] == 'Jane Doe'
+    assert body['counts']['actors-female'] == 1 and body['has_unrecorded']
+    assert people_cache_routes.index_conn().execute('SELECT count(*) FROM people_images').fetchone()[0] == 1, 'the SQL path ran'
