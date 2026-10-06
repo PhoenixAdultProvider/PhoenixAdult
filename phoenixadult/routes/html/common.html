@@ -15,7 +15,7 @@
   function paintSfwButton(on, titleOn, titleOff) {
     const btn = qs('sfwToggle');
     if (!btn) return;
-    btn.textContent = on ? 'SFW Mode: On' : 'SFW Mode: Off';
+    btn.textContent = on ? {{ _('common.sfw_on')|tojson }} : {{ _('common.sfw_off')|tojson }};
     btn.classList.toggle('on', on);
     if (titleOn) btn.title = on ? titleOn : titleOff;
   }

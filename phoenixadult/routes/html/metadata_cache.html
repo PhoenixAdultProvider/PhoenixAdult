@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% import 'toolbar.html' as toolbar %}
-{% block title %}Metadata Cache{% endblock %}
+{% block title %}{{ _('metadata.page_title') }}{% endblock %}
 {% block page %}metadata{% endblock %}
 {% block head %}
   <style>
@@ -85,103 +85,103 @@
 {{ toolbar.styles() }}
 {% endblock %}
 {% block content %}
-  <h1>Snapshot Metadata Cache</h1>
-  <div class="sub">Status: {{ status }}</div>
+  <h1>{{ _('metadata.title') }}</h1>
+  <div class="sub">{{ _('metadata.status', status=status) }}</div>
 
   <div class="searchbar">
     <div class="filter-group">
-      <label class="pa-label" for="q">Search</label>
-      <input class="pa-input" type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
+      <label class="pa-label" for="q">{{ _('metadata.search') }}</label>
+      <input class="pa-input" type="text" id="q" placeholder="{{ _('metadata.search_placeholder') }}" oninput="queryChanged()">
     </div>
-    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">Filters</button>
-    <button class="pa-btn actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">Actions</button>
+    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">{{ _('toolbar.filters') }}</button>
+    <button class="pa-btn actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">{{ _('toolbar.actions') }}</button>
   </div>
 
   <div class="controls" id="controls">
   <div class="filters">
     <div class="filter-group">
-      <label class="pa-label" for="f-actor">Actor</label>
-      <input class="pa-input" type="text" id="f-actor" list="actor-options" autocomplete="off" placeholder="start typing a name…" oninput="actorChanged()">
+      <label class="pa-label" for="f-actor">{{ _('metadata.actor') }}</label>
+      <input class="pa-input" type="text" id="f-actor" list="actor-options" autocomplete="off" placeholder="{{ _('metadata.actor_placeholder') }}" oninput="actorChanged()">
       <datalist id="actor-options"></datalist>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Provider</label>
-      <select class="pa-input" id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.provider') }}</label>
+      <select class="pa-input" id="f-provider" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Studio</label>
-      <select class="pa-input" id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.studio') }}</label>
+      <select class="pa-input" id="f-studio" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Tagline</label>
-      <select class="pa-input" id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.tagline') }}</label>
+      <select class="pa-input" id="f-tagline" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Collection</label>
-      <select class="pa-input" id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.collection') }}</label>
+      <select class="pa-input" id="f-collection" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Genres</label>
+      <label class="pa-label">{{ _('metadata.genres') }}</label>
       <select class="pa-input" id="f-genre" onchange="facetChanged()">
-        <option value="">All</option>
-        <option value="__blank__">Untagged</option>
-        <option value="__set__">Tagged</option>
+        <option value="">{{ _('metadata.all') }}</option>
+        <option value="__blank__">{{ _('metadata.untagged') }}</option>
+        <option value="__set__">{{ _('metadata.tagged') }}</option>
       </select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Cast</label>
+      <label class="pa-label">{{ _('metadata.cast') }}</label>
       <select class="pa-input" id="f-cast" onchange="facetChanged()">
-        <option value="">All</option>
-        <option value="__blank__">Uncredited</option>
-        <option value="__set__">Credited</option>
+        <option value="">{{ _('metadata.all') }}</option>
+        <option value="__blank__">{{ _('metadata.uncredited') }}</option>
+        <option value="__set__">{{ _('metadata.credited') }}</option>
       </select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Directors</label>
+      <label class="pa-label">{{ _('metadata.directors') }}</label>
       <select class="pa-input" id="f-director" onchange="facetChanged()">
-        <option value="">All</option>
-        <option value="__blank__">Uncredited</option>
-        <option value="__set__">Credited</option>
+        <option value="">{{ _('metadata.all') }}</option>
+        <option value="__blank__">{{ _('metadata.uncredited') }}</option>
+        <option value="__set__">{{ _('metadata.credited') }}</option>
       </select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Producers</label>
+      <label class="pa-label">{{ _('metadata.producers') }}</label>
       <select class="pa-input" id="f-producer" onchange="facetChanged()">
-        <option value="">All</option>
-        <option value="__blank__">Uncredited</option>
-        <option value="__set__">Credited</option>
+        <option value="">{{ _('metadata.all') }}</option>
+        <option value="__blank__">{{ _('metadata.uncredited') }}</option>
+        <option value="__set__">{{ _('metadata.credited') }}</option>
       </select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Data18</label>
+      <label class="pa-label">{{ _('metadata.data18') }}</label>
       <select class="pa-input" id="f-data18" onchange="facetChanged()">
-        <option value="">All</option>
-        <option value="__set__">Filled</option>
-        <option value="__manual__">Manual</option>
-        <option value="__blank__">Blank</option>
+        <option value="">{{ _('metadata.all') }}</option>
+        <option value="__set__">{{ _('metadata.filled') }}</option>
+        <option value="__manual__">{{ _('metadata.manual') }}</option>
+        <option value="__blank__">{{ _('metadata.blank') }}</option>
       </select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Year</label>
-      <select class="pa-input" id="f-year" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.year') }}</label>
+      <select class="pa-input" id="f-year" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Month</label>
-      <select class="pa-input" id="f-month" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.month') }}</label>
+      <select class="pa-input" id="f-month" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
     <div class="filter-group">
-      <label class="pa-label">Day</label>
-      <select class="pa-input" id="f-day" onchange="facetChanged()"><option value="">All</option></select>
+      <label class="pa-label">{{ _('metadata.day') }}</label>
+      <select class="pa-input" id="f-day" onchange="facetChanged()"><option value="">{{ _('metadata.all') }}</option></select>
     </div>
   </div>
 
   {% call toolbar.bar('count') %}
-{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
-    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>
-    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="brokenToggle" onclick="toggleBroken()">Show Missing Images</button>{% endif %}
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>{{ _('metadata.show_stale') }}</button>
+    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="potToggle" onclick="togglePotential()">{{ _('metadata.show_duplicates') }}</button>
+    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="brokenToggle" onclick="toggleBroken()">{{ _('metadata.show_missing_images') }}</button>{% endif %}
     <div class="tb-actions">
 {% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
-      <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Purge Unused Names</button>
+      <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">{{ _('metadata.purge_unused_names') }}</button>
 {% endif %}      <button class="pa-btn pa-btn--lg pa-btn--outline" id="exportBtn" onclick="exportShown()" disabled></button>
 {% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
       <button class="pa-btn pa-btn--lg pa-btn--danger" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
@@ -195,19 +195,20 @@
   </div>
 
   <div class="sortbar">
-    <label class="pa-label" for="mobileSort">Sort By</label>
+    <label class="pa-label" for="mobileSort">{{ _('metadata.sort_by') }}</label>
     <select class="pa-input" id="mobileSort" onchange="mobileSortChanged()"></select>
-    <button class="pa-btn" id="sortDirBtn" onclick="toggleSortDir()" title="Reverse Sort Order"></button>
+    <button class="pa-btn" id="sortDirBtn" onclick="toggleSortDir()" title="{{ _('metadata.reverse_sort') }}"></button>
   </div>
 
   <div class="cards" id="cards"></div>
-  <p class="pa-empty" id="empty" style="display:none">No snapshots match the current filters.</p>
+  <p class="pa-empty" id="empty" style="display:none">{{ _('metadata.none_match') }}</p>
 
   
 {% endblock %}
 {% block scripts %}
 {{ toolbar.script() }}
   <script>
+    var T = {{ strings('metadata', 'common') | tojson }};
     var IS_ADMIN = {{ is_admin()|tojson }};
     var DUP_KEYS = {{ dup_keys|tojson }};
     var ALL = {{ entries|tojson }};
@@ -221,7 +222,7 @@
     var STORE_KEY = 'metadata-cache-filters';
 
     function paintSfwToggle() {
-      paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
+      paintSfwButton(SFW, T.sfw_on_hint, T.sfw_off_hint);
     }
 
     function repaintSfw() {
@@ -230,13 +231,13 @@
     }
     var FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-cast', 'f-director', 'f-producer', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
     var SORT_FIELDS = [
-      {key: 'mtime', label: 'Cached'},
-      {key: 'date', label: 'Date'},
-      {key: 'studio', label: 'Studio'},
-      {key: 'title', label: 'Scene Title'},
-      {key: 'tagline', label: 'Tagline'},
-      {key: 'year', label: 'Year'},
-      {key: 'data18_id', label: 'Data18'},
+      {key: 'mtime', label: T.sort_cached},
+      {key: 'date', label: T.sort_date},
+      {key: 'studio', label: T.sort_studio},
+      {key: 'title', label: T.sort_title},
+      {key: 'tagline', label: T.sort_tagline},
+      {key: 'year', label: T.sort_year},
+      {key: 'data18_id', label: T.sort_data18},
     ];
 
     // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
@@ -315,7 +316,7 @@
       const pages = Math.max(1, Math.ceil(TOTAL / PAGE_SIZE));
       const page = Math.floor(offset / PAGE_SIZE) + 1;
       document.getElementById('pager').style.display = pages > 1 ? 'inline-flex' : 'none';
-      document.getElementById('pageInfo').textContent = `Page ${page} of ${pages}`;
+      document.getElementById('pageInfo').textContent = tr(T.page_of, {page, pages});
       document.getElementById('prevBtn').disabled = offset <= 0;
       document.getElementById('nextBtn').disabled = offset + PAGE_SIZE >= TOTAL;
     }
@@ -331,12 +332,12 @@
       });
     }
 
-    var MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    function monthName(m) { return new Date(2000, m - 1, 1).toLocaleString(document.documentElement.lang, {month: 'short'}); }
 
     function ensureOption(sel, value) {
       if (value && ![...sel.options].some(o => o.value === value)) {
         const o = document.createElement('option');
-        o.value = value; o.textContent = value === '__blank__' ? '(Blank)' : value;
+        o.value = value; o.textContent = value === '__blank__' ? T.blank_option : value;
         sel.appendChild(o);
       }
       sel.value = value;
@@ -351,7 +352,7 @@
         'f-tagline': {values: FACET_VALUES.taglines || [], blank: FACET_VALUES.tagline_blank},
         'f-collection': {values: FACET_VALUES.collections || [], blank: FACET_VALUES.collection_blank},
         'f-year': {values: FACET_VALUES.years || [], blank: FACET_VALUES.year_blank},
-        'f-month': {values: FACET_VALUES.months || [], label: m => `${m} – ${MONTH_NAMES[+m]}`},
+        'f-month': {values: FACET_VALUES.months || [], label: m => `${m} – ${monthName(+m)}`},
         'f-day': {values: FACET_VALUES.days || []},
       };
       for (const [id, spec] of Object.entries(specs)) {
@@ -359,7 +360,7 @@
         const prev = sel.value;
         while (sel.options.length > 1) sel.remove(1); // keep "All"
         if (spec.blank) {
-          const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; sel.appendChild(o);
+          const o = document.createElement('option'); o.value = '__blank__'; o.textContent = T.blank_option; sel.appendChild(o);
         }
         spec.values.forEach(v => {
           const o = document.createElement('option'); o.value = v; o.textContent = spec.label ? spec.label(v) : v; sel.appendChild(o);
@@ -408,7 +409,7 @@
     function applySortIndicators() {
       const sel = document.getElementById('mobileSort');
       if (sel.value !== sortKey) sel.value = sortKey;
-      document.getElementById('sortDirBtn').textContent = sortDir === 1 ? '↑ Ascending' : '↓ Descending';
+      document.getElementById('sortDirBtn').textContent = sortDir === 1 ? T.ascending : T.descending;
     }
 
     function mobileSortChanged() {
@@ -428,7 +429,7 @@
     function updateFilterToggle() {
       const active = Object.keys(FILTER_PARAMS).filter(id => document.getElementById(id).value).length + (showDupsOnly ? 1 : 0) + (showPotential ? 1 : 0);
       const btn = document.getElementById('filtersToggle');
-      btn.textContent = active ? `Filters (${active} Active)` : 'Filters';
+      btn.textContent = active ? tr(T.filters_active, {count: active}) : T.filters;
       btn.classList.toggle('on', active > 0);
     }
 
@@ -450,8 +451,8 @@
       const rows = ALL;
 
       document.getElementById('count').textContent = rows.length
-        ? `${offset + 1}–${offset + rows.length} of ${TOTAL} snapshot(s)`
-        : `0 of ${TOTAL} snapshot(s)`;
+        ? tr(T.range, {first: offset + 1, last: offset + rows.length, total: TOTAL})
+        : tr(T.range_empty, {total: TOTAL});
       updatePager();
       updateFilterToggle();
 
@@ -459,15 +460,15 @@
       const bulkBtn = document.getElementById('purgeAllBtn');
       if (bulkBtn) {
         bulkBtn.disabled = !TOTAL;
-        bulkBtn.textContent = filtered ? `Purge Filtered (${TOTAL})` : `Purge All (${TOTAL})`;
+        bulkBtn.textContent = tr(filtered ? T.purge_filtered : T.purge_all, {count: TOTAL});
       }
       const exportBtn = document.getElementById('exportBtn');
       exportBtn.disabled = !TOTAL;
-      exportBtn.textContent = `Export Mappings (${TOTAL})`;
+      exportBtn.textContent = tr(T.export_mappings, {count: TOTAL});
       const refreshBtn = document.getElementById('refreshAllBtn');
       if (refreshBtn) {
         refreshBtn.disabled = !TOTAL;
-        refreshBtn.textContent = filtered ? `Refresh Filtered (${TOTAL})` : `Refresh All (${TOTAL})`;
+        refreshBtn.textContent = tr(filtered ? T.refresh_filtered : T.refresh_all, {count: TOTAL});
       }
 
       const cards = document.getElementById('cards');
@@ -479,19 +480,19 @@
       cards.innerHTML = rows.map(e => {
         const thumb = SFW
           ? ''
-          : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb + (e.thumb.includes('/cache/') ? (e.thumb.includes('?') ? '&' : '?') + 'v=' + Math.floor(e.mtime || 0) : ''))}" loading="lazy" decoding="async" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'noimg', textContent: 'Image missing'}))">` : '<div class="noimg">No image</div>'}</div>`;
+          : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb + (e.thumb.includes('/cache/') ? (e.thumb.includes('?') ? '&' : '?') + 'v=' + Math.floor(e.mtime || 0) : ''))}" loading="lazy" decoding="async" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'noimg', textContent: ${esc(JSON.stringify(T.image_missing))}}))">` : `<div class="noimg">${T.no_image}</div>`}</div>`;
         const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
-          ? esc(e.data18_id) + (e.data18_also ? ' <span class="pa-badge manual">+' + e.data18_also.split(',').length + '</span>' : '') + (e.data18_manual ? ' <span class="pa-badge manual">manual</span>' : '')
+          ? esc(e.data18_id) + (e.data18_also ? ' <span class="pa-badge manual">+' + e.data18_also.split(',').length + '</span>' : '') + (e.data18_manual ? ' <span class="pa-badge manual">' + T.badge_manual + '</span>' : '')
           : '<span class="blank">—</span>';
         const cast = e.actors || [];
         const castLink = a => `<a href="${esc(personLink(a))}">${esc(a)}</a>`;
-        const actors = `<div class="c-actors" data-label="Actors">${
+        const actors = `<div class="c-actors" data-label="${T.card_actors}">${
           cast.length
             ? cast.slice(0, 2).map(castLink).join(', ') +
               (cast.length > 2
                 ? `<span class="c-rest" hidden>, ${cast.slice(2).map(castLink).join(', ')}</span>` +
-                  `<button type="button" class="c-more" aria-expanded="false" title="Show ${cast.length - 2} more">…</button>`
+                  `<button type="button" class="c-more" aria-expanded="false" title="${esc(tr(T.show_more, {count: cast.length - 2}))}">…</button>`
                 : '')
             : '<span class="blank">—</span>'
         }</div>`;
@@ -500,15 +501,15 @@
           ${thumb}
           <div class="c-title" title="${esc(e.title)}">${esc(e.title)}</div>
           <div class="c-studio">${esc(heading)}</div>
-          <div class="c-row c-date" data-label="Date">${e.date ? esc(e.date) : '<span class="blank">—</span>'}</div>
-          <div class="c-row c-genres" data-label="Genres">${e.genres || 0}</div>
+          <div class="c-row c-date" data-label="${T.card_date}">${e.date ? esc(e.date) : '<span class="blank">—</span>'}</div>
+          <div class="c-row c-genres" data-label="${T.card_genres}">${e.genres || 0}</div>
           ${actors}
-          <div class="c-row c-data18" data-label="Data18">${data18}</div>
-          <div class="c-row c-cached" data-label="Cached"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
+          <div class="c-row c-data18" data-label="${T.card_data18}">${data18}</div>
+          <div class="c-row c-cached" data-label="${T.card_cached}"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
           <div class="pa-mono c-record" title="${esc(e.site)} · ${esc(e.cur_id)} · ${esc(e.hash)}"><span class="rec-site">${esc(e.site)}</span>·<span class="rec-id">${esc(e.cur_id)}</span>·<span class="rec-hash">${esc(String(e.hash).slice(0, 12))}</span></div>
           <div class="c-actions">
-            <button class="pa-btn pa-btn--lg pa-btn--outline" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
-            ${IS_ADMIN ? `<button class="pa-btn pa-btn--lg pa-btn--danger" onclick="purge(${key})">Purge</button>` : ''}
+            <button class="pa-btn pa-btn--lg pa-btn--outline" onclick="edit(${key})">${IS_ADMIN ? T.edit : T.view}</button>
+            ${IS_ADMIN ? `<button class="pa-btn pa-btn--lg pa-btn--danger" onclick="purge(${key})">${T.purge}</button>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -524,10 +525,10 @@
     }
 
     async function purge(key) {
-      if (!confirm('Purge this snapshot?')) return;
+      if (!confirm(T.purge_confirm)) return;
       const r = await fetch('/metadata/purge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key})});
       const j = await r.json().catch(() => ({ok: false}));
-      if (j.ok) refreshNow(); else alert('Purge failed');
+      if (j.ok) refreshNow(); else alert(T.purge_failed);
     }
 
     // Every row matching the current filters, unpaged (limit=0 → no limit server-side).
@@ -561,8 +562,8 @@
     async function refreshShown() {
       if (!TOTAL) return;
       const msg = anyFilterActive()
-        ? `Re-scrape the ${TOTAL} snapshot(s) matching the current filters?\n\nEach stored snapshot is replaced, so manual edits to them are lost. Scrapes run in the background — watch /queue.`
-        : `Re-scrape ALL ${TOTAL} cached snapshot(s)?\n\nEach stored snapshot is replaced, so manual edits to them are lost. Scrapes run in the background — watch /queue.`;
+        ? tr(T.refresh_filtered_confirm, {count: TOTAL})
+        : tr(T.refresh_all_confirm, {count: TOTAL});
       if (!confirm(msg)) return;
       const btn = document.getElementById('refreshAllBtn');
       btn.disabled = true;
@@ -571,8 +572,8 @@
       const r = await fetch('/metadata/refresh-bulk', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({keys: rows.map(e => e.key)})});
       const j = await r.json().catch(() => ({ok: false}));
       btn.disabled = false;
-      if (!j.ok) { alert('Refresh failed'); return; }
-      if (j.skipped) alert(`Queued ${j.queued} re-scrape(s); ${j.skipped} skipped (already queued or the queue is full).`);
+      if (!j.ok) { alert(T.refresh_failed); return; }
+      if (j.skipped) alert(tr(T.refresh_skipped, {queued: j.queued, skipped: j.skipped}));
       trackQueue();
     }
 
@@ -600,7 +601,7 @@
       const done = Math.min(state.done || 0, total);
       const pct = Math.round((done / total) * 100);
       document.getElementById('progress-label').textContent =
-        `Scraping ${done} of ${total} · ${state.running || 0} running · ${state.pending || 0} left`;
+        tr(T.scraping, {done, total, running: state.running || 0, left: state.pending || 0});
       document.getElementById('progress-pct').textContent = pct + '%';
       document.getElementById('progress-fill').style.width = pct + '%';
       box.style.display = '';
@@ -615,35 +616,34 @@
     async function purgeShown() {
       if (!TOTAL) return;
       const msg = anyFilterActive()
-        ? `Purge the ${TOTAL} snapshot(s) matching the current filters? This cannot be undone.`
-        : `Purge ALL ${TOTAL} cached snapshot(s)? This cannot be undone.`;
+        ? tr(T.purge_filtered_confirm, {count: TOTAL})
+        : tr(T.purge_all_confirm, {count: TOTAL});
       if (!confirm(msg)) return;
       const rows = await fetchAllMatching();
       if (!rows || !rows.length) return;
       const r = await fetch('/metadata/purge-bulk', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({keys: rows.map(e => e.key)})});
       const j = await r.json().catch(() => ({ok: false}));
-      if (j.ok) refreshNow(); else alert('Purge failed');
+      if (j.ok) refreshNow(); else alert(T.purge_failed);
     }
 
     async function purgeDuplicates() {
       const n = DUP_SET.size;
       if (!n) return;
-      if (!confirm(`Purge ${n} stale duplicate snapshot(s)? The newest copy of each scene is kept.`)) return;
+      if (!confirm(tr(T.purge_stale_confirm, {count: n}))) return;
       const r = await fetch('/metadata/purge-duplicates', {method: 'POST'});
       const j = await r.json().catch(() => ({ok: false}));
-      if (j.ok) refreshNow(); else alert('Purge failed');
+      if (j.ok) refreshNow(); else alert(T.purge_failed);
     }
 
     async function pruneNames() {
-      if (!confirm('Delete every person, studio, tagline, collection, genre and country that no scene references?\n\nThey come back automatically the next time a scene credits them.')) return;
+      if (!confirm(T.prune_confirm)) return;
       const btn = document.getElementById('pruneBtn');
       btn.disabled = true;
       try {
         const r = await fetch('/metadata/prune-names', {method: 'POST'});
         const j = await r.json().catch(() => ({ok: false}));
-        if (!j.ok) { alert('Prune failed'); return; }
-        const detail = Object.entries(j.pruned || {}).map(([t, n]) => `${n} ${t}`).join(', ');
-        alert(j.total ? `Pruned ${j.total} unused name(s): ${detail}` : 'Nothing to prune.');
+        if (!j.ok) { alert(T.prune_failed); return; }
+        alert(j.total ? tr(T.pruned, {count: j.total, detail: j.detail || ''}) : T.nothing_to_prune);
         refreshNow();
       } finally {
         btn.disabled = false;
@@ -656,7 +656,7 @@
       const t = document.getElementById('dupToggle');
       if (!t) return;
       t.classList.toggle('on', on);
-      t.textContent = on ? 'Showing Stale Only' : 'Show Stale';
+      t.textContent = on ? T.showing_stale : T.show_stale;
     }
 
     function setPotential(on) {
@@ -665,7 +665,7 @@
       const t = document.getElementById('potToggle');
       if (!t) return;
       t.classList.toggle('on', on);
-      t.textContent = on ? 'Showing Duplicates Only' : 'Show Duplicates';
+      t.textContent = on ? T.showing_duplicates : T.show_duplicates;
     }
 
     function togglePotential() {
@@ -679,7 +679,7 @@
       const t = document.getElementById('brokenToggle');
       if (!t) return;
       t.classList.toggle('on', on);
-      t.textContent = on ? 'Showing Missing Images Only' : 'Show Missing Images';
+      t.textContent = on ? T.showing_missing_images : T.show_missing_images;
     }
 
     function toggleBroken() {
@@ -698,7 +698,7 @@
       const n = DUP_SET.size;
       const btn = document.getElementById('dupBtn');
       if (btn) {
-        btn.textContent = n ? `Purge ${n} Duplicate ${n === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
+        btn.textContent = n ? tr(n === 1 ? T.purge_one_duplicate : T.purge_duplicates, {count: n}) : T.no_duplicates;
         btn.disabled = !n;
         btn.classList.toggle('active', n > 0);
       }
@@ -764,7 +764,7 @@
       rest.hidden = !open;
       more.setAttribute('aria-expanded', open ? 'true' : 'false');
       more.textContent = open ? '×' : '…';
-      more.title = open ? 'Show fewer' : more.title;
+      more.title = open ? T.show_fewer : more.title;
     });
 
     buildSortOptions();

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}PhoenixAdult Config{% endblock %}
+{% block title %}{{ _('config.page_title') }}{% endblock %}
 {% block page %}config{% endblock %}
 {% block head %}
   <style>
@@ -223,15 +223,15 @@
   </style>
 {% endblock %}
 {% block content %}
-  <h1>⚙️ PhoenixAdult Config <span class="pa-badge pa-mono ver" title="Application version">v{{ app_version() }}</span></h1>
-  <p class="sub" id="ovSub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
+  <h1>{{ _('config.title') }} <span class="pa-badge pa-mono ver" title="{{ _('config.version_hint') }}">v{{ app_version() }}</span></h1>
+  <p class="sub" id="ovSub">{{ _('config.overrides_note') }}</p>
 
   <div class="actionbar" id="toolbar">
-    <button class="pa-btn pa-btn--primary" id="saveBtn" onclick="save()" disabled>Save Changes</button>
-    <button class="pa-btn actionbar-toggle" id="toolbarToggle" onclick="toggleToolbar()" aria-expanded="false">More Actions</button>
-    <button class="pa-btn actionbar-extra" onclick="resetAll()">Reset All Overrides</button>
-    <button class="pa-btn actionbar-extra" onclick="reload()">Reload</button>
-    <button class="pa-btn pa-btn--danger actionbar-extra" onclick="restartServer()">Restart Server</button>
+    <button class="pa-btn pa-btn--primary" id="saveBtn" onclick="save()" disabled>{{ _('config.save_changes') }}</button>
+    <button class="pa-btn actionbar-toggle" id="toolbarToggle" onclick="toggleToolbar()" aria-expanded="false">{{ _('config.more_actions') }}</button>
+    <button class="pa-btn actionbar-extra" onclick="resetAll()">{{ _('config.reset_all') }}</button>
+    <button class="pa-btn actionbar-extra" onclick="reload()">{{ _('config.reload') }}</button>
+    <button class="pa-btn pa-btn--danger actionbar-extra" onclick="restartServer()">{{ _('config.restart_server') }}</button>
     <span class="pa-status actionbar-status" id="status"></span>
   </div>
 
@@ -240,177 +240,176 @@
   <div id="tabpanes"></div>
 
   <div id="tab-plex" class="tabpane">
-    <h2>Plex Connections</h2>
+    <h2>{{ _('config.plex_connections') }}</h2>
     <div class="pa-card config-card">
       <div class="plex-row">
         <select class="pa-input" id="plex-conn-select" onchange="selectConnection(this.value)"></select>
-        <button type="button" class="pa-btn" onclick="addConnection()">Add Connection</button>
-        <button type="button" class="pa-btn pa-btn--danger" onclick="deleteConnection()">Delete</button>
+        <button type="button" class="pa-btn" onclick="addConnection()">{{ _('config.add_connection') }}</button>
+        <button type="button" class="pa-btn pa-btn--danger" onclick="deleteConnection()">{{ _('config.delete') }}</button>
         <span class="pa-status" id="plex-conn-status"></span>
       </div>
-      <div class="pa-hint">Each connection pairs this provider with one Plex server. Tokens are encrypted and never shown again.</div>
+      <div class="pa-hint">{{ _('config.connections_hint') }}</div>
     </div>
 
     <div id="plex-conn-detail" style="display:none">
-      <h2>Server</h2>
+      <h2>{{ _('config.server') }}</h2>
       <div class="pa-card config-card">
-        <label for="conn-name">Connection Name</label>
+        <label for="conn-name">{{ _('config.connection_name') }}</label>
         <input class="pa-input" type="text" id="conn-name" onchange="saveConnection()">
-        <label for="conn-url">Server URL</label>
+        <label for="conn-url">{{ _('config.server_url') }}</label>
         <input class="pa-input" type="text" id="conn-url" placeholder="http://plex.lan:32400" onchange="saveConnection()">
         <div class="plex-row">
-          <button class="pa-btn pa-btn--primary" type="button" onclick="fetchPlexToken()">Fetch New Token</button>
-          <button type="button" class="pa-btn" onclick="loadPlexServers()">Discover Servers</button>
-          <button type="button" class="pa-btn" onclick="verifyPlexServer()">Verify Server</button>
+          <button class="pa-btn pa-btn--primary" type="button" onclick="fetchPlexToken()">{{ _('config.fetch_token') }}</button>
+          <button type="button" class="pa-btn" onclick="loadPlexServers()">{{ _('config.discover_servers') }}</button>
+          <button type="button" class="pa-btn" onclick="verifyPlexServer()">{{ _('config.verify_server') }}</button>
           <span class="pa-status" id="plex-auth-status"></span>
         </div>
         <div class="plex-row" id="plex-server-pick" style="display:none">
           <select class="pa-input" id="plex-server-select"></select>
-          <button type="button" class="pa-btn pa-btn--sm" onclick="usePlexServer()">Use This Address</button>
+          <button type="button" class="pa-btn pa-btn--sm" onclick="usePlexServer()">{{ _('config.use_address') }}</button>
         </div>
         <div class="plex-kv" id="plex-verify-out" style="display:none"></div>
       </div>
 
-      <h2>Allowed Plex Clients</h2>
+      <h2>{{ _('config.allowed_clients') }}</h2>
       <div class="pa-card config-card">
         <div class="srclist" id="conn-clients"></div>
         <div class="srcadd">
           <input type="text" id="conn-client-add" class="pa-input src-add-select src-add-input" placeholder="X-Plex-Client-Identifier…" autocomplete="off" spellcheck="false">
-          <button type="button" class="pa-btn pa-btn--sm" onclick="addAllowedClient()">Add</button>
+          <button type="button" class="pa-btn pa-btn--sm" onclick="addAllowedClient()">{{ _('config.add') }}</button>
         </div>
-        <div class="pa-hint">Empty on every connection means any Plex server may call the provider.</div>
+        <div class="pa-hint">{{ _('config.allowed_clients_hint') }}</div>
       </div>
 
-      <h2>Server Updates</h2>
+      <h2>{{ _('config.server_updates') }}</h2>
       <div class="pa-card config-card">
         <div class="plex-row">
-          <label class="log-follow">Update Channel
+          <label class="log-follow">{{ _('config.update_channel') }}
             <select class="pa-input" id="plex-update-channel" onchange="saveConnection()">
-              <option value="plex">Server Preference</option>
-              <option value="public">Public</option>
-              <option value="beta">Beta (Plex Pass)</option>
+              <option value="plex">{{ _('config.channel_server') }}</option>
+              <option value="public">{{ _('config.channel_public') }}</option>
+              <option value="beta">{{ _('config.channel_beta') }}</option>
             </select>
           </label>
-          <label class="log-follow" id="plex-update-release-row" style="display:none">Release
+          <label class="log-follow" id="plex-update-release-row" style="display:none">{{ _('config.release') }}
             <select class="pa-input" id="plex-update-release" onchange="saveConnection()"></select>
           </label>
         </div>
         <div class="plex-row">
-          <button type="button" class="pa-btn" onclick="plexUpdateStatus(true)">Check for Update</button>
+          <button type="button" class="pa-btn" onclick="plexUpdateStatus(true)">{{ _('config.check_update') }}</button>
           <span class="pa-status" id="plex-update-status"></span>
         </div>
         <div class="plex-kv" id="plex-update-out" style="display:none"></div>
       </div>
 
-    <h2>Reconcile Stale Tags</h2>
+    <h2>{{ _('config.reconcile_heading') }}</h2>
     <div class="pa-card config-card">
-      <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit; dry run reports without writing.</div>
+      <div class="var-desc">{{ _('config.reconcile_desc') }}</div>
       <div class="plex-row">
-        <button type="button" class="pa-btn" onclick="runReconcile(false)">Dry Run</button>
-        <button type="button" class="pa-btn pa-btn--danger" onclick="runReconcile(true)">Apply Removals</button>
-        <input type="text" id="plex-reconcile-limit" placeholder="limit" class="pa-input limit-input"
-               title="Stop after this many changed items">
+        <button type="button" class="pa-btn" onclick="runReconcile(false)">{{ _('config.dry_run') }}</button>
+        <button type="button" class="pa-btn pa-btn--danger" onclick="runReconcile(true)">{{ _('config.apply_removals') }}</button>
+        <input type="text" id="plex-reconcile-limit" placeholder="{{ _('config.limit') }}" class="pa-input limit-input"
+               title="{{ _('config.reconcile_limit_hint') }}">
         <span class="pa-status" id="plex-reconcile-status"></span>
       </div>
-      <div class="pa-hint">Limit stops after N changed items.</div>
+      <div class="pa-hint">{{ _('config.reconcile_limit_note') }}</div>
       <div class="recon-progress" id="plex-reconcile-progress" style="display:none">
         <div class="pa-progress-head"><span id="plex-reconcile-progress-label"></span><span id="plex-reconcile-progress-pct"></span></div>
         <div class="pa-progress-track"><div class="pa-progress-fill" id="plex-reconcile-progress-fill"></div></div>
       </div>
       <div class="plex-row" id="plex-reconcile-fields"></div>
-      <div class="plex-row" id="plex-reconcile-sites"><span class="pa-hint">Run a dry run to list scraper clients for partial removal.</span></div>
+      <div class="plex-row" id="plex-reconcile-sites"><span class="pa-hint">{{ _('config.reconcile_sites_hint') }}</span></div>
       <div id="plex-reconcile-view" style="display:none">
         <div class="recon-counts" id="plex-reconcile-counts"></div>
         <div class="recon-summary" id="plex-reconcile-summary"></div>
         <div class="recon-items" id="plex-reconcile-items"></div>
         <div class="plex-row" id="plex-recase-row" style="display:none">
-          <button type="button" class="pa-btn pa-btn--sm" onclick="copyRecaseScript(this)">Copy Recase Script (PowerShell)</button>
-          <span class="pa-hint">rewrites the tag rows in place — set the two paths at the top, STOP Plex first</span>
+          <button type="button" class="pa-btn pa-btn--sm" onclick="copyRecaseScript(this)">{{ _('config.copy_recase') }}</button>
+          <span class="pa-hint">{{ _('config.recase_hint') }}</span>
         </div>
         <details class="rawjson">
-          <summary>Raw JSON
-            <button type="button" class="pa-btn pa-btn--sm" onclick="copyReconcileJson(this, event)">Copy</button>
+          <summary>{{ _('config.raw_json') }}
+            <button type="button" class="pa-btn pa-btn--sm" onclick="copyReconcileJson(this, event)">{{ _('config.copy') }}</button>
           </summary>
           <pre class="report" id="plex-reconcile-json"></pre>
         </details>
       </div>
     </div>
 
-    <h2>Push Logos to Collections</h2>
+    <h2>{{ _('config.collogo_heading') }}</h2>
     <div class="pa-card config-card">
-      <div class="var-desc">Sets each Plex collection's clearLogo from a matching cached logo; manage the files at
-        <a href="/logos" target="_blank">/logos</a>.</div>
+      <div class="var-desc">{{ _('config.collogo_desc') }}</div>
       <div class="plex-row">
-        <button type="button" class="pa-btn" onclick="runCollectionLogos(false)">Dry Run</button>
-        <button class="pa-btn pa-btn--primary" type="button" onclick="runCollectionLogos(true)">Apply Logos</button>
-        <input type="text" id="plex-collogo-limit" placeholder="limit" class="pa-input limit-input" title="Stop after this many pushed collections">
+        <button type="button" class="pa-btn" onclick="runCollectionLogos(false)">{{ _('config.dry_run') }}</button>
+        <button class="pa-btn pa-btn--primary" type="button" onclick="runCollectionLogos(true)">{{ _('config.apply_logos') }}</button>
+        <input type="text" id="plex-collogo-limit" placeholder="{{ _('config.limit') }}" class="pa-input limit-input" title="{{ _('config.collogo_limit_hint') }}">
         <span class="pa-status" id="plex-collogo-status"></span>
       </div>
       <div class="plex-kv" id="plex-collogo-out" style="display:none"></div>
     </div>
 
-    <h2>Import a Library Into the Cache</h2>
+    <h2>{{ _('config.import_heading') }}</h2>
     <div class="pa-card config-card">
-      <div class="var-desc">Stores every scene in one Plex movie library as a provider snapshot; already-cached scenes are left alone.</div>
+      <div class="var-desc">{{ _('config.import_desc') }}</div>
       <div class="plex-row">
-        <select id="plex-import-section" class="pa-input lib-select"><option value="">Loading libraries…</option></select>
-        <button type="button" class="pa-btn" onclick="loadPlexLibraries()">Refresh</button>
+        <select id="plex-import-section" class="pa-input lib-select"><option value="">{{ _('config.loading_libraries') }}</option></select>
+        <button type="button" class="pa-btn" onclick="loadPlexLibraries()">{{ _('config.refresh') }}</button>
       </div>
       <div class="plex-row">
-        <button type="button" class="pa-btn" onclick="runPlexImport(false)">Dry Run</button>
-        <button class="pa-btn pa-btn--primary" type="button" onclick="runPlexImport(true)">Import</button>
-        <input type="text" id="plex-import-limit" placeholder="limit" class="pa-input limit-input" title="Stop after this many scanned items">
+        <button type="button" class="pa-btn" onclick="runPlexImport(false)">{{ _('config.dry_run') }}</button>
+        <button class="pa-btn pa-btn--primary" type="button" onclick="runPlexImport(true)">{{ _('config.import') }}</button>
+        <input type="text" id="plex-import-limit" placeholder="{{ _('config.limit') }}" class="pa-input limit-input" title="{{ _('config.import_limit_hint') }}">
         <label class="pa-hint" style="display:flex; align-items:center; gap:6px">
-          <input type="checkbox" id="plex-import-overwrite"> Overwrite cached scenes
+          <input type="checkbox" id="plex-import-overwrite"> {{ _('config.overwrite_cached') }}
         </label>
         <span class="pa-status" id="plex-import-status"></span>
       </div>
       <div class="plex-kv" id="plex-import-out" style="display:none"></div>
     </div>
 
-    <h2>Purge clearLogos from Plex</h2>
+    <h2>{{ _('config.logo_purge_heading') }}</h2>
     <div class="pa-card config-card">
-      <div class="var-desc">Removes per-scene clearLogo art by editing the Plex database directly; collection logos and server files stay.</div>
+      <div class="var-desc">{{ _('config.logo_purge_desc') }}</div>
       <div class="plex-row">
-        <button type="button" class="pa-btn pa-btn--sm" onclick="copyLogoPurgeScript(this)">Copy Logo Purge Script (PowerShell)</button>
-        <span class="pa-hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
+        <button type="button" class="pa-btn pa-btn--sm" onclick="copyLogoPurgeScript(this)">{{ _('config.copy_logo_purge') }}</button>
+        <span class="pa-hint">{{ _('config.logo_purge_hint') }}</span>
       </div>
     </div>
     </div>
   </div>
 
   <div id="tab-logs" class="tabpane">
-    <h2>Session Log</h2>
+    <h2>{{ _('config.session_log') }}</h2>
     <div class="pa-card config-card">
       <div class="log-toolbar">
-        <input type="text" id="logFilter" class="pa-input log-filter" placeholder="Filter lines…" oninput="logFilterChanged()"
+        <input type="text" id="logFilter" class="pa-input log-filter" placeholder="{{ _('config.filter_lines') }}" oninput="logFilterChanged()"
                autocomplete="off" autocapitalize="off" spellcheck="false">
-        <label class="log-follow">Lines
+        <label class="log-follow">{{ _('config.lines') }}
           <select class="pa-input" id="logMaxSel" onchange="logMaxChanged()"></select>
         </label>
-        <label class="log-follow"><input type="checkbox" id="logFollow" checked onchange="logFollowChanged()"> Follow</label>
-        <button type="button" class="pa-btn" id="logPauseBtn" onclick="logTogglePause()">Pause</button>
-        <button type="button" class="pa-btn" onclick="logClear()">Clear</button>
-        <button type="button" class="pa-btn" onclick="copyLog(this)">Copy</button>
+        <label class="log-follow"><input type="checkbox" id="logFollow" checked onchange="logFollowChanged()"> {{ _('config.follow') }}</label>
+        <button type="button" class="pa-btn" id="logPauseBtn" onclick="logTogglePause()">{{ _('config.pause') }}</button>
+        <button type="button" class="pa-btn" onclick="logClear()">{{ _('config.clear') }}</button>
+        <button type="button" class="pa-btn" onclick="copyLog(this)">{{ _('config.copy') }}</button>
         <span class="pa-status actionbar-status" id="logStatus"></span>
       </div>
-      <pre id="logView" class="logview" tabindex="0"><div class="ln empty">Loading…</div></pre>
+      <pre id="logView" class="logview" tabindex="0"><div class="ln empty">{{ _('config.loading') }}</div></pre>
     </div>
   </div>
 
   <div id="tab-users" class="tabpane">
-    <h2>User Accounts</h2>
+    <h2>{{ _('config.user_accounts') }}</h2>
     <div class="pa-card config-card">
-      <table class="users-table" id="users-table"><thead><tr><th>User</th><th>Admin</th><th>API Key</th><th>Connections</th><th></th></tr></thead><tbody></tbody></table>
+      <table class="users-table" id="users-table"><thead><tr><th>{{ _('config.col_user') }}</th><th>{{ _('config.col_admin') }}</th><th>{{ _('config.col_api_key') }}</th><th>{{ _('config.col_connections') }}</th><th></th></tr></thead><tbody></tbody></table>
     </div>
 
-    <h2>Add User</h2>
+    <h2>{{ _('config.add_user') }}</h2>
     <div class="pa-card config-card">
       <div class="plex-row">
-        <input type="text" id="new-username" class="pa-input user-field" placeholder="username" autocomplete="off" spellcheck="false">
-        <input type="password" id="new-password" class="pa-input user-field" placeholder="password (8+, upper, number, special)" autocomplete="new-password">
-        <label class="pa-hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> Admin</label>
-        <button class="pa-btn pa-btn--primary" type="button" onclick="createUser()">Add User</button>
+        <input type="text" id="new-username" class="pa-input user-field" placeholder="{{ _('config.username_placeholder') }}" autocomplete="off" spellcheck="false">
+        <input type="password" id="new-password" class="pa-input user-field" placeholder="{{ _('config.password_placeholder') }}" autocomplete="new-password">
+        <label class="pa-hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> {{ _('config.admin') }}</label>
+        <button class="pa-btn pa-btn--primary" type="button" onclick="createUser()">{{ _('config.add_user') }}</button>
         <span class="pa-status" id="users-status"></span>
       </div>
       <div class="pa-meter user-meter" id="pwMeter" hidden><div class="pa-meter-fill" id="pwMeterFill"></div></div>
@@ -419,33 +418,33 @@
   </div>
 
   <div id="tab-clients" class="tabpane">
-    <h2>Plex Client Hits</h2>
+    <h2>{{ _('config.client_hits') }}</h2>
     <div class="pa-card config-card">
-      <div class="var-desc">Every request that carried an <code>X-Plex-Client-Identifier</code> header, newest first. Copy an identifier into a
-        connection's Allowed Plex Clients list to pin the provider to that server.</div>
-      <div class="plex-row"><button type="button" class="pa-btn" onclick="loadClients()">Refresh</button><span class="pa-status" id="clients-status"></span></div>
+      <div class="var-desc">{{ _('config.client_hits_desc') }}</div>
+      <div class="plex-row"><button type="button" class="pa-btn" onclick="loadClients()">{{ _('config.refresh') }}</button><span class="pa-status" id="clients-status"></span></div>
     </div>
     <div id="clients-list"></div>
   </div>
 
   <div id="tab-theme" class="tabpane">
-    <h2>Theme Selection</h2>
+    <h2>{{ _('config.theme_selection') }}</h2>
     <div class="pa-card config-card">
       <div class="theme-picker">
-        <label><span>Light Theme</span> <select class="pa-input" id="themeLight"></select></label>
-        <label><span>Dark Theme</span> <select class="pa-input" id="themeDark"></select></label>
+        <label><span>{{ _('config.light_theme') }}</span> <select class="pa-input" id="themeLight"></select></label>
+        <label><span>{{ _('config.dark_theme') }}</span> <select class="pa-input" id="themeDark"></select></label>
       </div>
-      <p class="pa-hint">Pages follow the system light/dark mode (override with the nav sun/moon toggle); choices apply immediately
-        and are remembered per browser.</p>
+      <p class="pa-hint">{{ _('config.theme_hint') }}</p>
     </div>
-    <h2>Element Preview</h2>
+    <h2>{{ _('config.element_preview') }}</h2>
     <div id="themePreview"></div>
   </div>
 
   
 {% endblock %}
 {% block scripts %}
+  {% include 'password_tools.html' %}
   <script>
+    var T = {{ strings('config') | tojson }};
     var STATE = {{ state|tojson }};
     var plexLibrariesLoaded = false;
     var LISTS = {};                 // key → ordered array (list controls)
@@ -460,42 +459,45 @@
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    var PLEX_GROUP = 'Plex Server';
-    var PLEX_TAB = 'Plex';
-    var USERS_TAB = 'Users';
-    var CLIENTS_TAB = 'Clients';
-    var LOGS_TAB = 'Logs';
-    var THEME_TAB = 'Theme';
-    var ENRICHMENT_TAB = 'Enrichment';
+    var PLEX_GROUP = 'plex_server';
+    var PLEX_TAB = 'plex';
+    var USERS_TAB = 'users';
+    var CLIENTS_TAB = 'clients';
+    var LOGS_TAB = 'logs';
+    var THEME_TAB = 'theme';
+    var ENRICHMENT_TAB = 'enrichment';
+    var EXTRA_TAB_TITLES = { enrichment: T.tab_enrichment, plex: T.tab_plex, users: T.tab_users, clients: T.tab_clients, theme: T.tab_theme, logs: T.tab_logs };
 
     function isAdmin() { return !!(STATE.user && STATE.user.isAdmin); }
-    function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
     function tabNames() {
-      const names = (STATE.tabs || []).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB && t !== THEME_TAB);
+      const names = (STATE.tabs || []).map((t) => t.id).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB && t !== THEME_TAB);
       if (!names.includes(ENRICHMENT_TAB)) names.push(ENRICHMENT_TAB);
       return names;
     }
+    function tabTitle(id) {
+      const tab = (STATE.tabs || []).find((t) => t.id === id);
+      return tab ? tab.title : EXTRA_TAB_TITLES[id] || id;
+    }
     function extraTabs() { return [PLEX_TAB, ...(isAdmin() ? [USERS_TAB, CLIENTS_TAB] : []), THEME_TAB, ...(isAdmin() ? [LOGS_TAB] : [])]; }
-    function tabIds() { return [...tabNames().map(tabSlug), 'plex', ...(isAdmin() ? ['users', 'clients'] : []), 'theme', ...(isAdmin() ? ['logs'] : [])]; }
+    function tabIds() { return [...tabNames(), ...extraTabs()]; }
 
     function metadataApiCardHtml() {
       const hasToken = !!(STATE.metadataapi && STATE.metadataapi.hasToken);
-      return '<h2>MetadataAPI</h2><div class="pa-card config-card">'
-        + '<div class="var-desc">ThePornDB bearer token for api.theporndb.net — stored on your account, encrypted, and never shown again. '
-        + 'Scrapes serving your Plex servers use your token.</div>'
+      return '<h2>' + T.metadataapi_heading + '</h2><div class="pa-card config-card">'
+        + '<div class="var-desc">' + T.metadataapi_desc + '</div>'
         + '<div class="plex-row">'
-        + '<input class="pa-input" type="password" id="metadataapi-token" placeholder="' + (hasToken ? '●●●●●●●● token saved — paste to replace' : 'paste your token') + '" autocomplete="off">'
-        + '<button class="pa-btn pa-btn--primary" type="button" onclick="saveMetadataApiToken(true)">Save Token</button>'
-        + '<button type="button" class="pa-btn pa-btn--danger" onclick="saveMetadataApiToken(false)">Clear</button>'
+        + '<input class="pa-input" type="password" id="metadataapi-token" placeholder="' + esc(hasToken ? T.token_saved_placeholder : T.token_placeholder) + '" autocomplete="off">'
+        + '<button class="pa-btn pa-btn--primary" type="button" onclick="saveMetadataApiToken(true)">' + T.save_token + '</button>'
+        + '<button type="button" class="pa-btn pa-btn--danger" onclick="saveMetadataApiToken(false)">' + T.clear_token + '</button>'
         + '<span class="pa-status" id="metadataapi-status"></span>'
         + '</div></div>';
     }
 
     function imageOverrideCardHtml() {
-      return '<h2>Image Base URL Override</h2><div class="pa-card config-card">'
-        + '<div class="var-desc">Per-connection override for the connection selected on the Plex tab (<span id="img-override-conn">none selected</span>).</div>'
-        + '<input class="pa-input" type="text" id="conn-image-base" placeholder="blank uses the global Local Image Base Address" onchange="saveConnection()">'
-        + '<div class="pa-hint">Set this when a server reaches the provider at a different address than the global setting.</div>'
+      return '<h2>' + T.image_override_heading + '</h2><div class="pa-card config-card">'
+        + '<div class="var-desc">' + tr(T.image_override_desc, { name: esc(T.none_selected) }) + '</div>'
+        + '<input class="pa-input" type="text" id="conn-image-base" placeholder="' + esc(T.image_override_placeholder) + '" onchange="saveConnection()">'
+        + '<div class="pa-hint">' + T.image_override_hint + '</div>'
         + '</div>';
     }
 
@@ -505,12 +507,12 @@
       document.getElementById('toolbar').style.display = isAdmin() ? '' : 'none';
       const current = document.querySelector('.tabbar button.active');
       const currentId = current ? current.id.replace('tabbtn-', '') : null;
-      document.getElementById('tabbar').innerHTML = [...tabNames(), ...extraTabs()]
-        .map((t) => '<button class="pa-btn pa-btn--primary" id="tabbtn-' + tabSlug(t) + '" onclick="showTab(\'' + tabSlug(t) + '\')">' + esc(t) + '</button>')
+      document.getElementById('tabbar').innerHTML = tabIds()
+        .map((t) => '<button class="pa-btn pa-btn--primary" id="tabbtn-' + t + '" onclick="showTab(\'' + t + '\')">' + esc(tabTitle(t)) + '</button>')
         .join('');
       document.getElementById('tabpanes').innerHTML = tabNames()
-        .map((t) => '<div id="tab-' + tabSlug(t) + '" class="tabpane">'
-          + STATE.groups.filter((g) => g.tab === t && g.name !== PLEX_GROUP).map(renderGroup).join('')
+        .map((t) => '<div id="tab-' + t + '" class="tabpane">'
+          + STATE.groups.filter((g) => g.tab === t && g.id !== PLEX_GROUP).map(renderGroup).join('')
           + '</div>')
         .join('');
       document.getElementById('tab-enrichment').insertAdjacentHTML('afterbegin', metadataApiCardHtml());
@@ -550,13 +552,13 @@
       const input = document.getElementById('metadataapi-token');
       const token = save ? input.value.trim() : '';
       const status = document.getElementById('metadataapi-status');
-      if (save && !token) { status.textContent = 'Paste a token first.'; status.className = 'plex-status err'; return; }
+      if (save && !token) { status.textContent = T.paste_token_first; status.className = 'plex-status err'; return; }
       try {
         const res = await postJSON(api('/config/api/metadataapi'), { token });
         STATE.metadataapi = { hasToken: !!res.hasToken };
         input.value = '';
-        input.placeholder = res.hasToken ? '●●●●●●●● token saved — paste to replace' : 'paste your token';
-        status.textContent = res.hasToken ? 'Token Saved.' : 'Token Cleared.';
+        input.placeholder = res.hasToken ? T.token_saved_placeholder : T.token_placeholder;
+        status.textContent = res.hasToken ? T.token_saved : T.token_cleared;
         status.className = 'plex-status ok';
       } catch (err) {
         status.textContent = err.message;
@@ -576,14 +578,13 @@
           .map((k) => '<tr><td class="c-key"><code>' + esc(k) + '</code></td><td>' + esc(String(h[k])) + '</td></tr>').join('');
         return '<h2>' + esc(String(title)) + '</h2><div class="pa-card config-card">'
           + '<div class="plex-row"><code>' + esc(c.clientId) + '</code>'
-          + '<button type="button" class="pa-btn pa-btn--sm" data-copy="' + esc(c.clientId) + '" onclick="navigator.clipboard.writeText(this.dataset.copy)">Copy</button>'
-          + '<span class="pa-hint">' + c.count + ' hit(s) · first ' + esc(fmt(c.firstSeen)) + ' · last ' + esc(fmt(c.lastSeen))
-          + ' · ' + esc(c.lastPath || '') + '</span></div>'
+          + '<button type="button" class="pa-btn pa-btn--sm" data-copy="' + esc(c.clientId) + '" onclick="navigator.clipboard.writeText(this.dataset.copy)">' + T.copy + '</button>'
+          + '<span class="pa-hint">' + esc(tr(T.client_hits_line, { count: c.count, first: fmt(c.firstSeen), last: fmt(c.lastSeen), path: c.lastPath || '' })) + '</span></div>'
           + '<table class="users-table"><tbody>' + rows + '</tbody></table>'
           + '</div>';
-      }).join('') || '<div class="pa-card config-card"><span class="pa-hint">No client hits recorded since the last restart.</span></div>';
+      }).join('') || '<div class="pa-card config-card"><span class="pa-hint">' + T.no_client_hits + '</span></div>';
       const status = document.getElementById('clients-status');
-      status.textContent = (data.clients || []).length + ' client(s)';
+      status.textContent = tr(T.client_count, { count: (data.clients || []).length });
       status.className = 'pa-status';
     }
 
@@ -605,56 +606,35 @@
       const data = await res.json().catch(() => ({ users: [] }));
       const me = (STATE.user || {}).username;
       document.querySelector('#users-table tbody').innerHTML = (data.users || []).map((u) => {
-        const self = u.username === me ? ' (you)' : '';
+        const self = u.username === me ? esc(T.you) : '';
         const toggle = '<button type="button" class="pa-btn pa-btn--sm" onclick="setUserAdmin(' + u.id + ',' + (!u.isAdmin) + ')">'
-          + (u.isAdmin ? 'Revoke Admin' : 'Make Admin') + '</button>';
+          + (u.isAdmin ? T.revoke_admin : T.make_admin) + '</button>';
         return '<tr><td class="u-name">' + esc(u.username) + self + '</td>'
-          + '<td class="u-admin" data-label="Admin">' + (u.isAdmin ? 'yes' : 'no') + '</td>'
-          + '<td class="u-key" data-label="API Key">' + esc(u.apiKeyHint || '—') + '</td>'
-          + '<td class="u-conns" data-label="Connections">' + u.connections + '</td>'
+          + '<td class="u-admin" data-label="' + esc(T.col_admin) + '">' + (u.isAdmin ? T.yes : T.no) + '</td>'
+          + '<td class="u-key" data-label="' + esc(T.col_api_key) + '">' + esc(u.apiKeyHint || '—') + '</td>'
+          + '<td class="u-conns" data-label="' + esc(T.col_connections) + '">' + u.connections + '</td>'
           + '<td class="actions">' + toggle
-          + '<button type="button" class="pa-btn pa-btn--sm" onclick="resetUserPassword(' + u.id + ')">Reset Password</button>'
-          + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-name="' + esc(u.username) + '" onclick="deleteUser(' + u.id + ', this.dataset.name)">Delete</button></td></tr>';
+          + '<button type="button" class="pa-btn pa-btn--sm" onclick="resetUserPassword(' + u.id + ')">' + T.reset_password + '</button>'
+          + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-name="' + esc(u.username) + '" onclick="deleteUser(' + u.id + ', this.dataset.name)">' + T.delete + '</button></td></tr>';
       }).join('');
     }
 
     async function usersPost(path, body) {
       try {
         await postJSON(api('/users/api/' + path), body);
-        usersStatus('Done.', 'ok');
+        usersStatus(T.done, 'ok');
         await loadUsers();
       } catch (err) {
         usersStatus(err.message, 'err');
       }
     }
 
-    var PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
-    var METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-    var meterTimer = 0;
-
-    document.getElementById('new-password').addEventListener('input', (e) => {
-      clearTimeout(meterTimer);
-      const value = e.target.value;
-      const meter = document.getElementById('pwMeter');
-      if (!value) { meter.hidden = true; document.getElementById('pwMeterText').textContent = ''; return; }
-      meterTimer = setTimeout(async () => {
-        try {
-          const res = await fetch('/api/password-strength', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: value }),
-          });
-          const data = await res.json();
-          meter.hidden = false;
-          const fill = document.getElementById('pwMeterFill');
-          fill.dataset.score = data.score;
-          fill.style.width = (data.score + 1) * 20 + '%';
-          document.getElementById('pwMeterText').textContent = 'Strength: ' + METER_LABELS[data.score] + (data.feedback ? ' — ' + data.feedback : '');
-        } catch (e) {}
-      }, 250);
-    });
+    wirePasswordMeter(document.getElementById('new-password'));
 
     function passwordOk(pw) {
-      if (pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)) return true;
-      usersStatus(PASSWORD_RULE, 'err');
+      const problem = policyError(pw);
+      if (!problem) return true;
+      usersStatus(problem, 'err');
       return false;
     }
 
@@ -670,12 +650,12 @@
     }
 
     async function deleteUser(id, username) {
-      if (!confirm('Delete ' + username + '? Their Plex connections and sessions go with them.')) return;
+      if (!confirm(tr(T.delete_user_confirm, { name: username }))) return;
       await usersPost('delete', { id });
     }
 
     async function resetUserPassword(id) {
-      const password = prompt('New password — 8+ characters with an uppercase letter, a number, and a special character:');
+      const password = prompt(T.new_password_prompt);
       if (!password || !passwordOk(password)) return;
       await usersPost('password', { id, password });
     }
@@ -689,54 +669,54 @@
     var themeTabReady = false;
 
     var PREVIEW_PAGES = [
-      ['', 'Shared Elements'], ['metadata', 'Metadata'], ['metadata-edit', 'Metadata Edit'], ['people', 'People'],
-      ['people-edit', 'People Edit'], ['config', 'Config'], ['logos', 'Logos'], ['queue', 'Queue'], ['dev', 'Dev'],
+      ['', T.preview_shared], ['metadata', T.preview_metadata], ['metadata-edit', T.preview_metadata_edit], ['people', T.preview_people],
+      ['people-edit', T.preview_people_edit], ['config', T.preview_config], ['logos', T.preview_logos], ['queue', T.preview_queue], ['dev', T.preview_dev],
     ];
 
     function previewSamples(page) {
       const gender = page !== 'people' ? '' : `
         <div class="pv-row">
-          <span class="pv-gender"><span class="pv-swatch" style="background:var(--female)"></span>Female</span>
-          <span class="pv-gender"><span class="pv-swatch" style="background:var(--male)"></span>Male</span>
-          <span class="pv-gender"><span class="pv-swatch" style="background:var(--trans)"></span>Trans</span>
-          <span class="pv-gender"><span class="pv-swatch" style="background:var(--gender-none)"></span>None</span>
+          <span class="pv-gender"><span class="pv-swatch" style="background:var(--female)"></span>${T.preview_female}</span>
+          <span class="pv-gender"><span class="pv-swatch" style="background:var(--male)"></span>${T.preview_male}</span>
+          <span class="pv-gender"><span class="pv-swatch" style="background:var(--trans)"></span>${T.preview_trans}</span>
+          <span class="pv-gender"><span class="pv-swatch" style="background:var(--gender-none)"></span>${T.preview_none}</span>
         </div>
         <div class="pv-row">
-          <span class="pv-gcard" style="border-color:var(--female);background:var(--female-card-bg)">Female Card</span>
-          <span class="pv-gcard" style="border-color:var(--male);background:var(--male-card-bg)">Male Card</span>
-          <span class="pv-gcard" style="border-color:var(--trans);background:var(--trans-card-bg)">Trans Card</span>
+          <span class="pv-gcard" style="border-color:var(--female);background:var(--female-card-bg)">${T.preview_female_card}</span>
+          <span class="pv-gcard" style="border-color:var(--male);background:var(--male-card-bg)">${T.preview_male_card}</span>
+          <span class="pv-gcard" style="border-color:var(--trans);background:var(--trans-card-bg)">${T.preview_trans_card}</span>
         </div>
         <div class="pv-row">
-          <span class="pv-role" style="background:var(--role-actor-bg)">actor</span>
-          <span class="pv-role" style="background:var(--role-director-bg)">director</span>
-          <span class="pv-role" style="background:var(--role-producer-bg)">producer</span>
+          <span class="pv-role" style="background:var(--role-actor-bg)">${T.preview_actor}</span>
+          <span class="pv-role" style="background:var(--role-director-bg)">${T.preview_director}</span>
+          <span class="pv-role" style="background:var(--role-producer-bg)">${T.preview_producer}</span>
         </div>`;
       return `
-        <div class="pv-h1">Heading</div>
-        <div class="pv-sub">Subtitle text with a <a href="#" onclick="return false">link</a> and <code>code</code>.</div>
+        <div class="pv-h1">${T.preview_heading}</div>
+        <div class="pv-sub">${T.preview_subtitle}</div>
         <div class="pv-row">
-          <button type="button" class="pa-btn pa-btn--primary">Primary</button>
-          <button type="button" class="pa-btn">Secondary</button>
-          <button type="button" class="pa-btn pa-btn--outline">Outline</button>
-          <button type="button" class="pa-btn pa-btn--success">Save</button>
-          <button type="button" class="pa-btn pa-btn--danger">Purge</button>
-          <button type="button" class="pa-btn pa-btn--primary" disabled>Disabled</button>
+          <button type="button" class="pa-btn pa-btn--primary">${T.preview_primary}</button>
+          <button type="button" class="pa-btn">${T.preview_secondary}</button>
+          <button type="button" class="pa-btn pa-btn--outline">${T.preview_outline}</button>
+          <button type="button" class="pa-btn pa-btn--success">${T.preview_save}</button>
+          <button type="button" class="pa-btn pa-btn--danger">${T.preview_purge}</button>
+          <button type="button" class="pa-btn pa-btn--primary" disabled>${T.preview_disabled}</button>
         </div>
-        <div class="pv-row"><input type="text" class="pa-input" value="Input text" readonly></div>
-        <div class="pa-card pv-card"><div class="pv-card-title">Card Title</div><div class="pv-card-meta">Card meta text · details</div></div>
+        <div class="pv-row"><input type="text" class="pa-input" value="${esc(T.preview_input)}" readonly></div>
+        <div class="pa-card pv-card"><div class="pv-card-title">${T.preview_card_title}</div><div class="pv-card-meta">${T.preview_card_meta}</div></div>
         <div class="pv-row">
-          <span class="pa-badge pa-badge--info">info</span><span class="pa-badge pa-badge--success">success</span>
-          <span class="pa-badge pa-badge--warning">warning</span><span class="pa-badge pa-badge--danger">danger</span>
-          <span class="pa-badge">neutral</span><span class="pa-chip">Chip</span>
+          <span class="pa-badge pa-badge--info">${T.preview_info}</span><span class="pa-badge pa-badge--success">${T.preview_success}</span>
+          <span class="pa-badge pa-badge--warning">${T.preview_warning}</span><span class="pa-badge pa-badge--danger">${T.preview_danger}</span>
+          <span class="pa-badge">${T.preview_neutral}</span><span class="pa-chip">${T.preview_chip}</span>
         </div>
         <div class="pv-status">
-          <span style="color:var(--status-ok-text)">✓ ok</span>
-          <span style="color:var(--status-warn-text)">⚠ warning</span>
-          <span style="color:var(--status-danger-text)">✗ error</span>
+          <span style="color:var(--status-ok-text)">${T.preview_ok}</span>
+          <span style="color:var(--status-warn-text)">${T.preview_warn}</span>
+          <span style="color:var(--status-danger-text)">${T.preview_error}</span>
         </div>
         <div class="pv-row"><div class="pa-progress-track pv-progress"><div class="pa-progress-fill" style="width: 55%"></div></div></div>
-        <div class="pv-banner warning">A warning banner</div>
-        <div class="pv-banner danger">A danger banner</div>
+        <div class="pv-banner warning">${T.preview_warning_banner}</div>
+        <div class="pv-banner danger">${T.preview_danger_banner}</div>
         ${gender}`;
     }
 
@@ -749,7 +729,7 @@
             <div class="pv-mode" style="background:var(--card-bg);color:var(--label-text)">${esc(mode)} · ${esc(name)}</div>
             <div class="pv-body" data-theme-preview="${esc(name)}"${page ? ' data-page="' + page + '"' : ''}>${previewSamples(page)}</div>
           </div>`;
-        return '<h2>' + esc(label) + '</h2><div class="pv-pair">' + box(light, 'Light') + box(dark, 'Dark') + '</div>';
+        return '<h2>' + esc(label) + '</h2><div class="pv-pair">' + box(light, T.preview_light) + box(dark, T.preview_dark) + '</div>';
       }).join('');
     }
 
@@ -785,19 +765,19 @@
 
     function renderVar(v) {
       const badges = []
-        .concat(v.overridden ? '<span class="pa-badge pa-badge--indigo">overridden</span>' : [])
-        .concat(v.requiresRestart ? '<span class="pa-badge pa-badge--warning">restart</span>' : [])
-        .concat(v.kind === 'secret' ? '<span class="pa-badge pa-badge--success">secret</span>' : [])
+        .concat(v.overridden ? '<span class="pa-badge pa-badge--indigo">' + T.badge_overridden + '</span>' : [])
+        .concat(v.requiresRestart ? '<span class="pa-badge pa-badge--warning">' + T.badge_restart + '</span>' : [])
+        .concat(v.kind === 'secret' ? '<span class="pa-badge pa-badge--success">' + T.badge_secret + '</span>' : [])
         .join(' ');
 
       let control;
       if (v.kind === 'boolean') {
         const initial = (v.value === 'true' || v.value === 'false') ? v.value : (v.defaultValue || 'false');
-        control = selectControl(v.key, initial, [['true', 'On'], ['false', 'Off']]);
+        control = selectControl(v.key, initial, [['true', T.on], ['false', T.off]]);
       } else if (v.kind === 'enum') {
         const opts = v.options || [];
         const initial = opts.indexOf(v.value) >= 0 ? v.value : (v.defaultValue || opts[0] || '');
-        control = selectControl(v.key, initial, opts.map((o) => [o, o]));
+        control = selectControl(v.key, initial, opts.map((o) => [o, (v.optionLabels || {})[o] || o]));
       } else if (v.kind === 'list') {
         control = '<div class="listwrap">'
           + '<input type="hidden" class="ctl" data-key="' + esc(v.key) + '" data-initial="' + esc(v.value)
@@ -807,22 +787,22 @@
           + '</div>';
       } else {
         const type = v.kind === 'secret' ? 'password' : 'text';
-        const ph = v.defaultValue ? 'default: ' + v.defaultValue : (v.kind === 'secret' ? (v.isSet ? '●●●●●●●●  set — click Show to reveal' : 'not set') : '');
+        const ph = v.defaultValue ? tr(T.default_placeholder, { value: v.defaultValue }) : (v.kind === 'secret' ? (v.isSet ? T.secret_set : T.secret_not_set) : '');
         const oninput = v.preview === 'image' ? 'onImgInput(this)' : 'refreshDirty()';
         control = '<input type="' + type + '" class="pa-input ctl" data-key="' + esc(v.key) + '" data-initial="'
           + esc(v.value) + '" value="' + esc(v.value) + '" placeholder="' + esc(ph) + '"'
           + ' autocomplete="off" spellcheck="false" oninput="' + oninput + '">';
         if (v.kind === 'secret') {
-          control += '<button type="button" class="pa-btn pa-btn--sm" onclick="toggleReveal(this)">Show</button>';
+          control += '<button type="button" class="pa-btn pa-btn--sm" onclick="toggleReveal(this)">' + T.show + '</button>';
         }
       }
 
       const resetBtn = '<button type="button" class="pa-btn pa-btn--sm" data-reset="' + esc(v.key) + '"'
-        + (v.overridden ? '' : ' disabled') + ' title="Clear This Override">Reset</button>';
+        + (v.overridden ? '' : ' disabled') + ' title="' + esc(T.clear_override_hint) + '">' + T.reset + '</button>';
       const imgPrev = v.preview === 'image'
-        ? '<img class="img-preview" id="imgprev-' + esc(v.key) + '" alt="preview">' : '';
+        ? '<img class="img-preview" id="imgprev-' + esc(v.key) + '" alt="' + esc(T.preview_alt) + '">' : '';
       const defHint = (!v.value && v.defaultValue && v.kind !== 'boolean' && v.kind !== 'enum' && v.kind !== 'list')
-        ? '<span class="pa-hint">using default</span>' : '';
+        ? '<span class="pa-hint">' + T.using_default + '</span>' : '';
 
       return '<div class="var">'
         + '<div class="var-head"><span class="var-label">' + esc(v.label) + '</span>'
@@ -848,10 +828,10 @@
         '<div class="srcitem" draggable="true" data-idx="' + i + '">'
         + '<span class="drag-grip">⠿</span>'
         + '<span class="srcitem-name" data-real="' + esc(item) + '">' + (mask ? '●●●●●●●●' : esc(item)) + '</span>'
-        + (mask ? '<button type="button" class="pa-btn pa-btn--sm" data-list-show="' + esc(key) + '">Show</button>' : '')
+        + (mask ? '<button type="button" class="pa-btn pa-btn--sm" data-list-show="' + esc(key) + '">' + T.show + '</button>' : '')
         + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-list-remove="' + esc(key) + '" data-idx="' + i + '"'
-        + ' title="Remove">×</button>'
-        + '</div>').join('') || '<span class="pa-hint">empty — add a source below</span>';
+        + ' title="' + esc(T.remove) + '">×</button>'
+        + '</div>').join('') || '<span class="pa-hint">' + T.list_empty + '</span>';
 
       const opts = v.options || [];
       const remaining = opts.filter((o) => arr.indexOf(o) < 0);
@@ -860,8 +840,8 @@
         add.innerHTML = remaining.length
           ? '<select class="pa-input src-add-select">'
             + remaining.map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
-            + '</select><button type="button" class="pa-btn pa-btn--sm" data-list-add="' + esc(key) + '">Add Source</button>'
-          : '<span class="pa-hint">all known sources added</span>';
+            + '</select><button type="button" class="pa-btn pa-btn--sm" data-list-add="' + esc(key) + '">' + T.add_source + '</button>'
+          : '<span class="pa-hint">' + T.all_sources_added + '</span>';
       } else {
         const dl = opts.length
           ? '<datalist id="dl-' + esc(key) + '">'
@@ -869,9 +849,9 @@
           : '';
         add.innerHTML = '<input type="text" class="pa-input src-add-select src-add-input"'
           + (opts.length ? ' list="dl-' + esc(key) + '"' : '')
-          + ' placeholder="' + (opts.length ? 'type to search…' : 'add value…') + '"'
+          + ' placeholder="' + esc(opts.length ? T.type_to_search : T.add_value) + '"'
           + ' autocomplete="off" spellcheck="false">' + dl
-          + '<button type="button" class="pa-btn pa-btn--sm" data-list-add="' + esc(key) + '">Add</button>';
+          + '<button type="button" class="pa-btn pa-btn--sm" data-list-add="' + esc(key) + '">' + T.add + '</button>';
       }
 
       inputFor(key).value = arr.join(',');
@@ -937,7 +917,7 @@
       const name = btn.closest('.srcitem').querySelector('.srcitem-name');
       const hidden = name.textContent.startsWith('●');
       name.textContent = hidden ? name.dataset.real : '●●●●●●●●';
-      btn.textContent = hidden ? 'Hide' : 'Show';
+      btn.textContent = hidden ? T.hide : T.show;
     }
 
     function listRemove(key, idx) {
@@ -1039,7 +1019,7 @@
       }
       const btn = document.getElementById('saveBtn');
       btn.disabled = n === 0;
-      btn.textContent = n ? 'Save ' + n + ' Change' + (n === 1 ? '' : 's') : 'Save Changes';
+      btn.textContent = n ? (n === 1 ? T.save_one_change : tr(T.save_n_changes, { count: n })) : T.save_changes;
     }
 
     async function toggleReveal(btn) {
@@ -1054,12 +1034,12 @@
           input.value = data.value;
           input.dataset.initial = data.value;
         } catch (err) {
-          setStatus('Reveal failed: ' + err.message, 'err');
+          setStatus(tr(T.reveal_failed, { reason: err.message }), 'err');
           return;
         }
       }
       input.type = reveal ? 'text' : 'password';
-      btn.textContent = reveal ? 'Hide' : 'Show';
+      btn.textContent = reveal ? T.hide : T.show;
     }
 
     function toggleToolbar() {
@@ -1067,7 +1047,7 @@
       const btn = document.getElementById('toolbarToggle');
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       btn.classList.toggle('on', open);
-      btn.textContent = open ? 'Fewer Actions' : 'More Actions';
+      btn.textContent = open ? T.fewer_actions : T.more_actions;
     }
 
     function setStatus(msg, kind) {
@@ -1099,7 +1079,7 @@
     async function save() {
       let changed = changedControls();
       if (!changed.length) return;
-      setStatus('Validating…');
+      setStatus(T.validating);
 
       // Image-URL fields: probe the URL before saving. A URL that doesn't
       // resolve to an image is reverted and reported.
@@ -1121,60 +1101,59 @@
           saved = changed.length;
           applyState(await postJSON(api('/config/api/save'), { updates }));
         } catch (err) {
-          setStatus('Save failed: ' + err.message, 'err');
+          setStatus(tr(T.save_failed, { reason: err.message }), 'err');
           return;
         }
       }
 
       if (failed.length) {
-        setStatus('Image URL did not resolve for ' + failed.join(', ') + ' — reverted.'
-          + (saved ? ' Saved ' + saved + ' other change(s).' : ''), 'err');
+        setStatus(tr(saved ? T.image_reverted_saved : T.image_reverted, { keys: failed.join(', '), count: saved }), 'err');
       } else {
-        setStatus('Saved ' + saved + ' change' + (saved === 1 ? '' : 's') + '.', 'ok');
+        setStatus(saved === 1 ? T.saved_one : tr(T.saved_n, { count: saved }), 'ok');
       }
     }
 
     async function resetOne(key) {
-      setStatus('Resetting ' + key + '…');
+      setStatus(tr(T.resetting, { key }));
       try {
         applyState(await postJSON(api('/config/api/reset'), { key: key }));
-        setStatus('Cleared override for ' + key + '.', 'ok');
+        setStatus(tr(T.cleared_override, { key }), 'ok');
       } catch (err) {
-        setStatus('Reset failed: ' + err.message, 'err');
+        setStatus(tr(T.reset_failed, { reason: err.message }), 'err');
       }
     }
 
     async function resetAll() {
-      if (!confirm('Clear ALL runtime overrides and restore startup values?')) return;
-      setStatus('Resetting all overrides…');
+      if (!confirm(T.reset_all_confirm)) return;
+      setStatus(T.resetting_all);
       try {
         applyState(await postJSON(api('/config/api/reset'), {}));
-        setStatus('All overrides cleared.', 'ok');
+        setStatus(T.all_cleared, 'ok');
       } catch (err) {
-        setStatus('Reset failed: ' + err.message, 'err');
+        setStatus(tr(T.reset_failed, { reason: err.message }), 'err');
       }
     }
 
     async function reload() {
-      setStatus('Reloading…');
+      setStatus(T.reloading);
       try {
         const res = await fetch(api('/config/api/state'));
         applyState(await res.json());
-        setStatus('Reloaded.', 'ok');
+        setStatus(T.reloaded, 'ok');
       } catch (err) {
-        setStatus('Reload failed: ' + err.message, 'err');
+        setStatus(tr(T.reload_failed, { reason: err.message }), 'err');
       }
     }
 
     async function restartServer() {
-      if (!confirm('Restart the server now? It will reload and the page will reconnect.')) return;
-      setStatus('Requesting restart…');
+      if (!confirm(T.restart_confirm)) return;
+      setStatus(T.requesting_restart);
       try {
         await postJSON(api('/config/api/restart'), {});
       } catch (err) {
         // The process may exit before the response flushes — expected.
       }
-      setStatus('Server restarting — waiting for it to come back…');
+      setStatus(T.restarting);
       waitForServer();
     }
 
@@ -1187,12 +1166,12 @@
           const res = await fetch(api('/config/api/state'), { cache: 'no-store' });
           if (res.ok) {
             applyState(await res.json());
-            setStatus('Server is back up.', 'ok');
+            setStatus(T.back_up, 'ok');
             return;
           }
         } catch (e) { /* still down — keep waiting */ }
         if (tries > 60) {
-          setStatus('Server has not come back after 60s — check the supervisor.', 'err');
+          setStatus(T.not_back, 'err');
           return;
         }
         setTimeout(tick, 1000);
@@ -1247,8 +1226,8 @@
       const data = await res.json().catch(() => ({ connections: [] }));
       CONNECTIONS = data.connections || [];
       const sel = document.getElementById('plex-conn-select');
-      sel.innerHTML = CONNECTIONS.map((c) => '<option value="' + c.id + '">' + esc(c.name) + (c.hasToken ? '' : ' (no token)') + '</option>').join('')
-        || '<option value="">No connections yet</option>';
+      sel.innerHTML = CONNECTIONS.map((c) => '<option value="' + c.id + '">' + esc(c.name) + (c.hasToken ? '' : esc(T.no_token_suffix)) + '</option>').join('')
+        || '<option value="">' + T.no_connections + '</option>';
       const target = preferId ?? (CONNECTIONS.some((c) => c.id === CONN_ID) ? CONN_ID : (CONNECTIONS[0] || {}).id);
       selectConnection(target);
       if (target != null) sel.value = String(target);
@@ -1258,7 +1237,7 @@
       CONN_ID = id == null || id === '' ? null : Number(id);
       const conn = currentConnection();
       document.getElementById('plex-conn-detail').style.display = conn ? '' : 'none';
-      if (!conn) { plexStatus('plex-conn-status', 'Add a connection to pair a Plex server.', ''); return; }
+      if (!conn) { plexStatus('plex-conn-status', esc(T.add_connection_hint), ''); return; }
       document.getElementById('conn-name').value = conn.name;
       document.getElementById('conn-url').value = conn.serverUrl;
       const imgBase = document.getElementById('conn-image-base');
@@ -1268,7 +1247,7 @@
       document.getElementById('plex-update-channel').value = conn.updateChannel || 'plex';
       renderAllowedClients();
       reattachJobs();
-      plexStatus('plex-conn-status', conn.hasToken ? 'Token saved.' : 'No token yet — fetch or paste one.', conn.hasToken ? 'ok' : '');
+      plexStatus('plex-conn-status', esc(conn.hasToken ? T.token_saved_status : T.no_token_status), conn.hasToken ? 'ok' : '');
       const releaseSel = document.getElementById('plex-update-release');
       if (conn.updateRelease && ![...releaseSel.options].some((o) => o.value === conn.updateRelease)) {
         releaseSel.insertAdjacentHTML('beforeend', '<option value="' + esc(conn.updateRelease) + '">' + esc(conn.updateRelease) + '</option>');
@@ -1285,13 +1264,13 @@
       const ids = conn ? conn.allowedClients : [];
       box.innerHTML = ids.map((cid) =>
         '<div class="srcitem"><span class="srcitem-name" data-real="' + esc(cid) + '">●●●●●●●●</span>'
-        + '<button type="button" class="pa-btn pa-btn--sm" data-list-show="conn">Show</button>'
-        + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-cid="' + esc(cid) + '" onclick="removeAllowedClient(this.dataset.cid)" title="Remove">×</button></div>'
-      ).join('') || '<span class="pa-hint">empty — any Plex server may call the provider</span>';
+        + '<button type="button" class="pa-btn pa-btn--sm" data-list-show="conn">' + T.show + '</button>'
+        + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-cid="' + esc(cid) + '" onclick="removeAllowedClient(this.dataset.cid)" title="' + esc(T.remove) + '">×</button></div>'
+      ).join('') || '<span class="pa-hint">' + T.allowed_empty + '</span>';
     }
 
     async function addConnection() {
-      const name = prompt('Name this connection (e.g. Home Server):');
+      const name = prompt(T.name_prompt);
       if (!name) return;
       try {
         const created = await postJSON(api('/plex/connections'), { name });
@@ -1303,7 +1282,7 @@
 
     async function deleteConnection() {
       const conn = currentConnection();
-      if (!conn || !confirm('Delete the "' + conn.name + '" connection? Its stored token is erased.')) return;
+      if (!conn || !confirm(tr(T.delete_connection_confirm, { name: conn.name }))) return;
       await postJSON(api(connPath('/delete')), {});
       CONN_ID = null;
       await loadConnections();
@@ -1322,7 +1301,7 @@
       try {
         await postJSON(api(connPath()), body);
         await loadConnections(CONN_ID);
-        plexStatus('plex-conn-status', 'Saved.', 'ok');
+        plexStatus('plex-conn-status', esc(T.saved), 'ok');
       } catch (err) {
         plexStatus('plex-conn-status', esc(err.message), 'err');
       }
@@ -1347,24 +1326,24 @@
 
     async function fetchPlexToken() {
       if (!CONN_ID) return;
-      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Contacting plex.tv…');
+      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> ' + esc(T.contacting_plex));
       let pin;
       try {
         pin = await postJSON(api(connPath('/pin')), {});
       } catch (err) {
-        plexStatus('plex-auth-status', 'Could not reach plex.tv: ' + esc(err.message), 'err');
+        plexStatus('plex-auth-status', esc(tr(T.plex_unreachable, { reason: err.message })), 'err');
         return;
       }
       const popup = window.open(pin.authUrl, 'plex-auth', 'width=600,height=700');
-      if (!popup) { plexStatus('plex-auth-status', 'Popup blocked — allow popups and retry.', 'err'); return; }
+      if (!popup) { plexStatus('plex-auth-status', esc(T.popup_blocked), 'err'); return; }
 
       let waited = 0;
       const poll = setInterval(async () => {
         waited += 2;
-        plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Waiting for authentication… ' + fmtTimer(waited));
+        plexStatus('plex-auth-status', '<span class="pa-spinner"></span> ' + esc(tr(T.waiting_auth, { time: fmtTimer(waited) })));
         if (waited >= 300) {
           clearInterval(poll);
-          plexStatus('plex-auth-status', 'Authentication timed out. Please try again.', 'err');
+          plexStatus('plex-auth-status', esc(T.auth_timeout), 'err');
           return;
         }
         try {
@@ -1373,7 +1352,7 @@
           if (data.saved) {
             clearInterval(poll);
             try { popup.close(); } catch (e) {}
-            plexStatus('plex-auth-status', 'Authentication successful — token saved.', 'ok');
+            plexStatus('plex-auth-status', esc(T.auth_ok), 'ok');
             await loadConnections(CONN_ID);
             loadPlexServers();
           }
@@ -1383,7 +1362,7 @@
 
     async function loadPlexServers() {
       if (!CONN_ID) return;
-      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Listing servers…');
+      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> ' + esc(T.listing_servers));
       try {
         const data = await postJSON(api(connPath('/servers')), {});
         const sel = document.getElementById('plex-server-select');
@@ -1391,13 +1370,13 @@
         for (const s of data.servers) {
           for (const c of s.connections) {
             opts.push('<option value="' + esc(c.uri) + '">' + esc(s.name) + ' — ' + esc(c.uri)
-              + (c.local ? ' (local)' : ' (remote)') + '</option>');
+              + esc(c.local ? T.local : T.remote) + '</option>');
           }
         }
-        if (!opts.length) { plexStatus('plex-auth-status', 'No servers found on this account.', 'err'); return; }
+        if (!opts.length) { plexStatus('plex-auth-status', esc(T.no_servers), 'err'); return; }
         sel.innerHTML = opts.join('');
         document.getElementById('plex-server-pick').style.display = 'flex';
-        plexStatus('plex-auth-status', 'Found ' + opts.length + ' address(es) — pick one to use.', 'ok');
+        plexStatus('plex-auth-status', esc(tr(T.found_addresses, { count: opts.length })), 'ok');
       } catch (err) {
         plexStatus('plex-auth-status', esc(err.message), 'err');
       }
@@ -1412,20 +1391,20 @@
 
     async function verifyPlexServer() {
       if (!CONN_ID) return;
-      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> Verifying…');
+      plexStatus('plex-auth-status', '<span class="pa-spinner"></span> ' + esc(T.verifying));
       const out = document.getElementById('plex-verify-out');
       out.style.display = 'none';
       try {
         const data = await postJSON(api(connPath('/verify')), { url: document.getElementById('conn-url').value.trim() });
         const idn = data.identity, auth = data.auth;
         out.innerHTML =
-          '<b>Server reachable</b><span>' + (idn.ok ? 'yes — v' + esc(idn.version) : 'NO — ' + esc(idn.error || '')) + '</span>'
-          + (idn.ok ? '<b>Machine ID</b><span>' + esc(idn.machineIdentifier) + '</span>' : '')
-          + '<b>Token accepted</b><span>' + (auth.ok ? 'yes — ' + auth.sections + ' libraries visible'
-              : 'NO — ' + esc(auth.error || '')) + '</span>';
+          '<b>' + T.server_reachable + '</b><span>' + esc(idn.ok ? tr(T.reachable_yes, { version: idn.version }) : tr(T.reachable_no, { reason: idn.error || '' })) + '</span>'
+          + (idn.ok ? '<b>' + T.machine_id + '</b><span>' + esc(idn.machineIdentifier) + '</span>' : '')
+          + '<b>' + T.token_accepted + '</b><span>' + esc(auth.ok ? tr(T.libraries_visible, { count: auth.sections })
+              : tr(T.reachable_no, { reason: auth.error || '' })) + '</span>';
         out.style.display = 'grid';
         plexStatus('plex-auth-status',
-          idn.ok && auth.ok ? 'Server verified.' : 'Verification failed.', idn.ok && auth.ok ? 'ok' : 'err');
+          esc(idn.ok && auth.ok ? T.verified : T.verify_failed), idn.ok && auth.ok ? 'ok' : 'err');
       } catch (err) {
         plexStatus('plex-auth-status', esc(err.message), 'err');
       }
@@ -1457,33 +1436,35 @@
     async function plexUpdateStatus(force) {
       if (!CONN_ID) return;
       const out = document.getElementById('plex-update-out');
-      if (force) plexStatus('plex-update-status', '<span class="pa-spinner"></span> Checking…');
+      if (force) plexStatus('plex-update-status', '<span class="pa-spinner"></span> ' + esc(T.checking));
       try {
         const res = await fetch(api(connPath('/update' + (force ? '?force=1' : ''))));
         const data = await res.json();
         if (data.error) { plexStatus('plex-update-status', esc(data.error), force ? 'err' : ''); return; }
         populateReleaseOptions(data);
         const date = fmtReleaseDate(data.releaseDate);
-        out.innerHTML = '<b>Installed</b><span>' + esc(data.current) + ' (' + esc(data.platform) + ')</span>'
-          + '<b>Latest</b><span>' + esc(data.latest) + (date ? ' — ' + esc(date) : '') + '</span>'
-          + '<b>Channel</b><span>' + esc(data.channel || '') + '</span>'
-          + (data.label ? '<b>Release</b><span>' + esc(data.label) + '</span>' : '')
+        out.innerHTML = '<b>' + T.installed + '</b><span>' + esc(data.current) + ' (' + esc(data.platform) + ')</span>'
+          + '<b>' + T.latest + '</b><span>' + esc(data.latest) + (date ? ' — ' + esc(date) : '') + '</span>'
+          + '<b>' + T.channel + '</b><span>' + esc(data.channel || '') + '</span>'
+          + (data.label ? '<b>' + T.release + '</b><span>' + esc(data.label) + '</span>' : '')
           + (data.downloadUrl
-            ? '<b>Download</b><span><a href="' + esc(data.downloadUrl) + '" target="_blank" rel="noopener">' + esc(data.downloadUrl) + '</a></span>' : '');
+            ? '<b>' + T.download + '</b><span><a href="' + esc(data.downloadUrl) + '" target="_blank" rel="noopener">' + esc(data.downloadUrl) + '</a></span>' : '');
         out.style.display = 'grid';
         plexStatus('plex-update-status',
-          data.updateAvailable ? 'Update available.' : 'Up to date.', data.updateAvailable ? 'err' : 'ok');
+          esc(data.updateAvailable ? T.update_available : T.up_to_date), data.updateAvailable ? 'err' : 'ok');
       } catch (err) {
-        if (force) plexStatus('plex-update-status', 'Check failed: ' + esc(err.message), 'err');
+        if (force) plexStatus('plex-update-status', esc(tr(T.check_failed, { reason: err.message })), 'err');
       }
     }
 
     var RECON_FIELDS = ['Collection', 'Genre', 'Role', 'Director', 'Producer'];
+    var RECON_LABELS = { Collection: T.field_collection, Genre: T.field_genre, Role: T.field_role, Director: T.field_director, Producer: T.field_producer };
+    function fieldLabel(f) { return RECON_LABELS[f] || f; }
 
     function initReconFields() {
       document.getElementById('plex-reconcile-fields').innerHTML =
-        '<span class="pa-hint">Types:</span>' + RECON_FIELDS.map((f) =>
-          '<label style="font-size:var(--text-sm)"><input type="checkbox" class="recon-field-cb" value="' + f + '" checked> ' + f + '</label>').join('');
+        '<span class="pa-hint">' + T.types + '</span>' + RECON_FIELDS.map((f) =>
+          '<label style="font-size:var(--text-sm)"><input type="checkbox" class="recon-field-cb" value="' + f + '" checked> ' + esc(fieldLabel(f)) + '</label>').join('');
     }
 
     function renderReconSites(items) {
@@ -1491,8 +1472,8 @@
       for (const i of items) if (i.site) seen[i.site] = true;
       const sites = Object.keys(seen).sort();
       const box = document.getElementById('plex-reconcile-sites');
-      if (!sites.length) { box.innerHTML = '<span class="pa-hint">no per-client breakdown available</span>'; return; }
-      box.innerHTML = '<span class="pa-hint">Clients:</span>' + sites.map((s) =>
+      if (!sites.length) { box.innerHTML = '<span class="pa-hint">' + T.no_client_breakdown + '</span>'; return; }
+      box.innerHTML = '<span class="pa-hint">' + T.clients_label + '</span>' + sites.map((s) =>
         '<label style="font-size:var(--text-sm)"><input type="checkbox" class="recon-site-cb" value="' + esc(s) + '" checked> ' + esc(s) + '</label>').join('');
     }
 
@@ -1508,18 +1489,18 @@
 
     function reasonHtml(reason) {
       const m = /^recased to "(.*)"$/.exec(reason || '');
-      if (m) return 'recased — now emitted as <span class="now">' + esc(m[1]) + '</span>';
-      return esc(reason || 'no longer emitted by the scraper');
+      if (m) return tr(T.reason_recased, { now: esc(m[1]) });
+      return T.reason_dropped;
     }
 
     function renderReconcile(data) {
       const counts = document.getElementById('plex-reconcile-counts');
       counts.innerHTML =
-        '<span><b>' + data.scanned + '</b>scanned</span>'
-        + '<span><b>' + data.matched + '</b>ours</span>'
-        + '<span><b>' + data.changed + '</b>' + (data.applied ? 'changed' : 'would change') + '</span>'
-        + '<span><b>' + data.skippedLocked + '</b>locked</span>'
-        + '<span><b>' + data.skippedNoSnapshot + '</b>no snapshot</span>';
+        '<span><b>' + data.scanned + '</b>' + T.count_scanned + '</span>'
+        + '<span><b>' + data.matched + '</b>' + T.count_ours + '</span>'
+        + '<span><b>' + data.changed + '</b>' + (data.applied ? T.count_changed : T.count_would_change) + '</span>'
+        + '<span><b>' + data.skippedLocked + '</b>' + T.count_locked + '</span>'
+        + '<span><b>' + data.skippedNoSnapshot + '</b>' + T.count_no_snapshot + '</span>';
       renderReconSites(data.items || []);
 
       // Summary: dedup removal values per field across every item, with reason + count.
@@ -1537,32 +1518,32 @@
         const vals = Object.values(agg).filter((a) => a.field === f);
         if (!vals.length) return '';
         vals.sort((a, b) => b.n - a.n || a.val.localeCompare(b.val));
-        return '<div class="recon-sumrow"><span class="recon-field">' + esc(f) + '</span><span class="recon-vals">'
+        return '<div class="recon-sumrow"><span class="recon-field">' + esc(fieldLabel(f)) + '</span><span class="recon-vals">'
           + vals.map((a) => '<span class="recon-chip"><span class="val">' + esc(a.val) + '</span>'
               + '<span class="why">' + reasonHtml(a.reason) + '</span>'
               + '<span class="n">×' + a.n + '</span></span>').join('')
           + '</span></div>';
       }).filter(Boolean).join('');
       const summary = document.getElementById('plex-reconcile-summary');
-      summary.innerHTML = rows ? '<h3>All Removals (Deduplicated)</h3>' + rows : '<h3>All Removals</h3><span class="pa-hint">nothing to remove — Plex matches the snapshots</span>';
+      summary.innerHTML = rows ? '<h3>' + T.all_removals_dedup + '</h3>' + rows : '<h3>' + T.all_removals + '</h3><span class="pa-hint">' + T.nothing_to_remove + '</span>';
 
       // Per-scene cards, removals first, then locked/skipped.
       const cards = data.items
         .filter((i) => Object.keys(i.removals || {}).length || (i.locked || []).length)
         .map((i) => {
           const fields = Object.keys(i.removals || {}).map((f) =>
-            '<div class="frow"><span class="recon-field">' + esc(f) + '</span>'
+            '<div class="frow"><span class="recon-field">' + esc(fieldLabel(f)) + '</span>'
             + i.removals[f].map((v) => '<span class="recon-chip"><span class="val">' + esc(v) + '</span>'
                 + '<span class="why">' + reasonHtml(i.reasons && i.reasons[f] && i.reasons[f][v]) + '</span></span>').join(' ')
             + '</div>').join('');
           const locked = (i.locked || []).length
-            ? '<div class="locked-note">locked in Plex (skipped): ' + i.locked.map(esc).join(', ') + '</div>' : '';
+            ? '<div class="locked-note">' + tr(T.locked_skipped, { fields: i.locked.map(esc).join(', ') }) + '</div>' : '';
           return '<div class="recon-card"><span class="t">' + esc(i.title) + '</span>'
             + '<span class="rk">' + esc(i.site) + ' · ' + esc(i.ratingKey) + ' · ' + esc(i.guid.split('/').pop() || '') + '</span>'
             + fields + locked + '</div>';
         }).join('');
       document.getElementById('plex-reconcile-items').innerHTML =
-        cards || '<span class="pa-hint">no per-scene changes</span>';
+        cards || '<span class="pa-hint">' + T.no_scene_changes + '</span>';
 
       RECASES = [];
       collectRecases(data);
@@ -1642,13 +1623,13 @@
 
     function ackCopy(btn) {
       const orig = btn.textContent;
-      btn.textContent = 'Copied!';
+      btn.textContent = T.copied;
       btn.classList.add('on');
       setTimeout(() => { btn.textContent = orig; btn.classList.remove('on'); }, 1500);
     }
 
     function copyRecaseScript(btn) {
-      clipboardCopy(buildRecaseScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
+      clipboardCopy(buildRecaseScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = T.copy_failed; });
     }
 
     function buildLogoPurgeScript() {
@@ -1679,13 +1660,13 @@
     }
 
     function copyLogoPurgeScript(btn) {
-      clipboardCopy(buildLogoPurgeScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
+      clipboardCopy(buildLogoPurgeScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = T.copy_failed; });
     }
 
     function copyReconcileJson(btn, ev) {
       if (ev) { ev.stopPropagation(); ev.preventDefault(); }
       const text = document.getElementById('plex-reconcile-json').textContent || '';
-      clipboardCopy(text).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
+      clipboardCopy(text).then(() => ackCopy(btn)).catch(() => { btn.textContent = T.copy_failed; });
     }
 
     var jobPollTimer = null;
@@ -1696,7 +1677,7 @@
       if (!job || !job.active) { if (wrap) wrap.style.display = 'none'; return; }
       wrap.style.display = 'block';
       const pct = job.total ? Math.min(100, Math.round((job.done / job.total) * 100)) : 0;
-      document.getElementById('plex-reconcile-progress-label').textContent = job.total ? (job.done + ' of ' + job.total + ' scenes inspected') : 'Collecting library…';
+      document.getElementById('plex-reconcile-progress-label').textContent = job.total ? tr(T.inspected, { done: job.done, total: job.total }) : T.collecting_library;
       document.getElementById('plex-reconcile-progress-pct').textContent = job.total ? pct + '%' : '';
       document.getElementById('plex-reconcile-progress-fill').style.width = pct + '%';
     }
@@ -1704,17 +1685,17 @@
     function applyJob(kind, job) {
       if (kind === 'reconcile') {
         reconcileBar(job);
-        if (job.active) plexStatus('plex-reconcile-status', '<span class="pa-spinner"></span> Working…');
+        if (job.active) plexStatus('plex-reconcile-status', '<span class="pa-spinner"></span> ' + esc(T.working));
         else if (job.error) plexStatus('plex-reconcile-status', esc(job.error), 'err');
-        else if (job.report) { renderReconcile(job.report); plexStatus('plex-reconcile-status', job.report.applied ? 'Applied.' : 'Dry run complete.', 'ok'); }
+        else if (job.report) { renderReconcile(job.report); plexStatus('plex-reconcile-status', esc(job.report.applied ? T.applied : T.dry_run_complete), 'ok'); }
       } else if (kind === 'import') {
-        if (job.active) plexStatus('plex-import-status', '<span class="pa-spinner"></span> Working…');
+        if (job.active) plexStatus('plex-import-status', '<span class="pa-spinner"></span> ' + esc(T.working));
         else if (job.error) plexStatus('plex-import-status', esc(job.error), 'err');
-        else if (job.report) { renderImport(job.report); plexStatus('plex-import-status', job.report.applied ? 'Import complete.' : 'Dry run complete.', 'ok'); }
+        else if (job.report) { renderImport(job.report); plexStatus('plex-import-status', esc(job.report.applied ? T.import_complete : T.dry_run_complete), 'ok'); }
       } else if (kind === 'collection-logos') {
-        if (job.active) plexStatus('plex-collogo-status', '<span class="pa-spinner"></span> Working…');
+        if (job.active) plexStatus('plex-collogo-status', '<span class="pa-spinner"></span> ' + esc(T.working));
         else if (job.error) plexStatus('plex-collogo-status', esc(job.error), 'err');
-        else if (job.report) { renderCollogo(job.report); plexStatus('plex-collogo-status', job.report.applied ? 'Applied.' : 'Dry run complete.', 'ok'); }
+        else if (job.report) { renderCollogo(job.report); plexStatus('plex-collogo-status', esc(job.report.applied ? T.applied : T.dry_run_complete), 'ok'); }
       }
     }
 
@@ -1751,11 +1732,11 @@
     }
 
     async function startJob(kind, path, statusId, working) {
-      if (!CONN_ID) { plexStatus(statusId, 'Pick a connection first.', 'err'); return false; }
-      plexStatus(statusId, '<span class="pa-spinner"></span> ' + working);
+      if (!CONN_ID) { plexStatus(statusId, esc(T.pick_connection), 'err'); return false; }
+      plexStatus(statusId, '<span class="pa-spinner"></span> ' + esc(working));
       try {
         const r = await fetch(api(connPath(path)), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
-        if (r.status === 409) { const d = await r.json().catch(() => ({})); plexStatus(statusId, d.error || 'Already running.', 'err'); startJobPoll(); return false; }
+        if (r.status === 409) { const d = await r.json().catch(() => ({})); plexStatus(statusId, esc(d.error || T.already_running), 'err'); startJobPoll(); return false; }
         if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || ('HTTP ' + r.status)); }
       } catch (err) { plexStatus(statusId, esc(err.message), 'err'); return false; }
       startJobPoll();
@@ -1763,29 +1744,28 @@
     }
 
     function runReconcile(apply) {
-      if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
+      if (apply && !confirm(T.apply_removals_confirm)) return;
       const limit = document.getElementById('plex-reconcile-limit').value.trim();
       const params = reconFilters();
       if (apply) params.push('apply=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
-      startJob('reconcile', '/reconcile' + (params.length ? '?' + params.join('&') : ''), 'plex-reconcile-status', apply ? 'Applying…' : 'Dry run…');
+      startJob('reconcile', '/reconcile' + (params.length ? '?' + params.join('&') : ''), 'plex-reconcile-status', apply ? T.applying : T.dry_running);
     }
 
     function renderCollogo(d) {
       const out = document.getElementById('plex-collogo-out');
-      const noun = d.applied ? 'set on' : 'would be set on';
       out.style.display = 'block';
-      out.innerHTML = `<div>${d.collections} collection(s) · ${d.matched} with a logo · <b>${d.pushed}</b> ${noun} · ${d.already} already done</div>`
+      out.innerHTML = `<div>${tr(d.applied ? T.collogo_summary : T.collogo_summary_dry, { collections: d.collections, matched: d.matched, pushed: d.pushed, already: d.already })}</div>`
         + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:220px;overflow:auto">' + d.items.map(i => `${esc(i.title)} <span style="color:var(--label-text)">← ${esc(i.logo)}</span>`).join('<br>') + '</div>' : '');
     }
 
     function runCollectionLogos(apply) {
-      if (apply && !confirm('Set clearLogos on matching Plex collections?')) return;
+      if (apply && !confirm(T.collogo_confirm)) return;
       const limit = document.getElementById('plex-collogo-limit').value.trim();
       const params = [];
       if (apply) params.push('apply=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
-      startJob('collection-logos', '/collection-logos' + (params.length ? '?' + params.join('&') : ''), 'plex-collogo-status', apply ? 'Applying…' : 'Dry run…');
+      startJob('collection-logos', '/collection-logos' + (params.length ? '?' + params.join('&') : ''), 'plex-collogo-status', apply ? T.applying : T.dry_running);
     }
 
     async function loadPlexLibraries() {
@@ -1798,22 +1778,24 @@
         const libs = d.libraries || [];
         sel.innerHTML = libs.length
           ? libs.map(l => `<option value="${esc(l.key)}">${esc(l.title)}</option>`).join('')
-          : '<option value="">No movie libraries found</option>';
+          : '<option value="">' + T.no_movie_libraries + '</option>';
       } catch (err) {
         sel.innerHTML = `<option value="">${esc(err.message)}</option>`;
       }
     }
 
+    var IMPORT_STATUS = { imported: T.status_imported, importable: T.status_importable, skipped: T.status_skipped, unresolved: T.status_unresolved, failed: T.status_failed, done: T.status_done };
+    function importStatus(status) { return IMPORT_STATUS[status] || status; }
+
     function renderImport(d) {
       const out = document.getElementById('plex-import-out');
-      const headline = d.applied ? `<b>${d.imported}</b> imported` : `<b>${d.importable}</b> would import`;
       out.style.display = 'block';
-      out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`
-        + (d.itemsTruncated ? `<div class="pa-hint">plus ${d.itemsTruncated} more not listed</div>` : '')
+      out.innerHTML = `<div>${tr(d.applied ? T.import_summary : T.import_summary_dry, { library: esc(d.library || d.section), scanned: d.scanned, imported: d.imported, importable: d.importable, existing: d.skippedExisting, unresolved: d.unresolved, failed: d.failed })}</div>`
+        + (d.itemsTruncated ? `<div class="pa-hint">${tr(T.more_not_listed, { count: d.itemsTruncated })}</div>` : '')
         + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map((i, n) => {
           const canImport = !d.applied && (i.status === 'importable' || i.status === 'skipped') && i.ratingKey;
-          const btn = canImport ? ` <button type="button" class="pa-btn" data-import-rk="${esc(i.ratingKey)}" data-row="imp-row-${n}">Import</button>` : '';
-          return `<span id="imp-row-${n}">${esc(i.status)}</span> — ${esc(i.title)} <span style="color:var(--label-text)">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>${btn}`;
+          const btn = canImport ? ` <button type="button" class="pa-btn" data-import-rk="${esc(i.ratingKey)}" data-row="imp-row-${n}">${T.import}</button>` : '';
+          return `<span id="imp-row-${n}">${esc(importStatus(i.status))}</span> — ${esc(i.title)} <span style="color:var(--label-text)">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>${btn}`;
         }).join('<br>') + '</div>' : '');
       out.onclick = importOneClicked;
     }
@@ -1822,7 +1804,7 @@
       const btn = e.target.closest('[data-import-rk]');
       if (!btn) return;
       btn.disabled = true;
-      btn.textContent = 'Importing…';
+      btn.textContent = T.importing;
       const params = ['ratingKey=' + encodeURIComponent(btn.dataset.importRk)];
       if (document.getElementById('plex-import-overwrite').checked) params.push('overwrite=1');
       try {
@@ -1830,32 +1812,32 @@
         const item = d.item || {};
         const row = document.getElementById(btn.dataset.row);
         if (row) {
-          row.textContent = item.status || 'done';
+          row.textContent = importStatus(item.status || 'done');
           if (item.detail) row.title = item.detail;
         }
         btn.remove();
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Import';
+        btn.textContent = T.import;
         plexStatus('plex-import-status', esc(err.message), 'err');
       }
     }
 
     function runPlexImport(apply) {
-      if (!CONN_ID) { plexStatus('plex-import-status', 'Pick a connection first.', 'err'); return; }
+      if (!CONN_ID) { plexStatus('plex-import-status', esc(T.pick_connection), 'err'); return; }
       const section = document.getElementById('plex-import-section').value;
-      if (!section) { plexStatus('plex-import-status', 'Pick a library first', 'err'); return; }
+      if (!section) { plexStatus('plex-import-status', esc(T.pick_library), 'err'); return; }
       const overwrite = document.getElementById('plex-import-overwrite').checked;
       const warning = overwrite
-        ? 'Import this library, REPLACING scenes already in the cache?'
-        : 'Import this library into the metadata cache? Existing snapshots are kept.';
+        ? T.import_overwrite_confirm
+        : T.import_confirm;
       if (apply && !confirm(warning)) return;
       const limit = document.getElementById('plex-import-limit').value.trim();
       const params = ['section=' + encodeURIComponent(section)];
       if (apply) params.push('apply=1');
       if (overwrite) params.push('overwrite=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
-      startJob('import', '/import?' + params.join('&'), 'plex-import-status', apply ? 'Importing…' : 'Dry run…');
+      startJob('import', '/import?' + params.join('&'), 'plex-import-status', apply ? T.importing : T.dry_running);
     }
 
     // ── Session Log ───────────────────────────────────────────────────────────
@@ -1925,11 +1907,11 @@
     }
 
     function logRefreshStatus() {
-      if (logPaused) { logStatus('Paused — new lines are dropped, not queued'); return; }
+      if (logPaused) { logStatus(T.log_paused); return; }
       const total = logRows().length;
       const shown = logView().querySelectorAll('.ln:not(.empty):not(.hide)').length;
-      const detail = logNeedle ? shown + ' of ' + total + ' line(s) match' : total + ' line(s)';
-      logStatus('Live · ' + detail, 'ok');
+      const detail = logNeedle ? tr(T.log_matches, { shown, total }) : tr(T.log_lines, { total });
+      logStatus(tr(T.log_live, { detail }), 'ok');
     }
 
     function logAppend(lines, reset) {
@@ -1940,7 +1922,7 @@
       if (placeholder) placeholder.remove();
       for (const line of lines) view.appendChild(logRow(line));
       while (view.childElementCount > logMax) view.firstElementChild.remove();
-      if (!view.childElementCount) logPlaceholder('Nothing logged yet.');
+      if (!view.childElementCount) logPlaceholder(T.log_empty);
       if (follow) logToEnd();
       logRefreshStatus();
     }
@@ -1958,7 +1940,7 @@
         if (data.lines.length || full) logAppend(data.lines, full || data.reset);
         else logRefreshStatus();
       } catch (err) {
-        logStatus('Log unavailable: ' + err.message, 'err');
+        logStatus(tr(T.log_unavailable, { reason: err.message }), 'err');
       } finally {
         logBusy = false;
       }
@@ -1998,14 +1980,14 @@
     function logTogglePause() {
       logPaused = !logPaused;
       const btn = document.getElementById('logPauseBtn');
-      btn.textContent = logPaused ? 'Resume' : 'Pause';
+      btn.textContent = logPaused ? T.resume : T.pause;
       btn.classList.toggle('on', logPaused);
       if (logPaused) { logStop(); logRefreshStatus(); return; }
       logPoll({ discard: true }).then(logStart);
     }
 
     function logClear() {
-      logPlaceholder('Cleared — new lines appear as they arrive.');
+      logPlaceholder(T.log_cleared);
       logRefreshStatus();
     }
 
@@ -2039,7 +2021,7 @@
         sel.addRange(range);
         try { ok = document.execCommand('copy'); } catch { ok = false; }
       }
-      btn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+      btn.textContent = ok ? T.copied_plain : T.press_ctrl_c;
       setTimeout(() => { btn.textContent = label; }, 1600);
     }
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"{% if theme_view().mode %} data-theme="{{ theme_view().mode }}" data-theme-name="{{ theme_view().name }}"{% endif %}>
+<html lang="{{ ui_language() }}"{% if theme_view().mode %} data-theme="{{ theme_view().mode }}" data-theme-name="{{ theme_view().name }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -151,6 +151,9 @@
       .pa-card--roomy { border: 0; border-radius: 0; padding: var(--space-5) 18px; background: none; }
     }
   </style>
+  <script>
+    function tr(text, values) { return String(text).replace(/\{(\w+)\}/g, (m, k) => (values && k in values ? values[k] : m)); }
+  </script>
   <meta name="pa-head" content="page">
   {% block head %}{% endblock %}
 </head>
@@ -167,7 +170,7 @@
       const show = field.type === 'password';
       field.type = show ? 'text' : 'password';
       field.classList.toggle('revealed', show);
-      toggle.textContent = show ? 'Hide' : 'Show';
+      toggle.textContent = show ? {{ _('common.hide')|tojson }} : {{ _('common.show')|tojson }};
     });
   </script>
   {% block scripts %}{% endblock %}

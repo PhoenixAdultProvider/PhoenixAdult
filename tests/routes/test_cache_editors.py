@@ -299,7 +299,7 @@ def test_bulk_fetch_streams_progress_per_person(client: TestClient) -> None:
 def test_bulk_fetch_page_renders_a_progress_bar(client: TestClient) -> None:
     page = client.get('/people')
     assert 'bulkProgress' in page.text
-    assert "'Fetching '+msg.done+' of '+msg.total+' from '+source" in page.text
+    assert 'tr(T.bulk_progress, {done: msg.done, total: msg.total, source})' in page.text
 
 
 def test_metadata_save_flags_a_hand_entered_data18_id(client: TestClient, tmp_path: Path) -> None:

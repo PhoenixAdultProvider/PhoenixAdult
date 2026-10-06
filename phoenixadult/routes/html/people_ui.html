@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% import 'toolbar.html' as toolbar %}
-{% block title %}People Cache{% endblock %}
+{% block title %}{{ _('people.title') }}{% endblock %}
 {% block page %}people{% endblock %}
 {% block head %}
     <style>
@@ -63,39 +63,40 @@
 {{ toolbar.styles() }}
 {% endblock %}
 {% block content %}
-    <h1>People Cache</h1>
-    <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.{% if is_admin() %}
-      "Use Original" restores the preserved pre-crop original (Plex may need a refresh).{% endif %}</div>
-    {% if not crop_available %}<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>{% endif %}
-    {% call toolbar.search_row('nameSearch', 'Search names…') %}
+    <h1>{{ _('people.title') }}</h1>
+    <div class="sub">{{ _('people.subtitle', summary=summary) }}{% if is_admin() %}
+      {{ _('people.subtitle_admin') }}{% endif %}</div>
+    {% if not crop_available %}<p class="warn">{{ _('people.no_opencv') }}</p>{% endif %}
+    {% call toolbar.search_row('nameSearch', _('people.search_placeholder')) %}
       <div class="filter-group sr-aux">
-        <label class="pa-label" for="sourceFilter">Source</label>
-        <select class="pa-input pa-input--lg" id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+        <label class="pa-label" for="sourceFilter">{{ _('people.source') }}</label>
+        <select class="pa-input pa-input--lg" id="sourceFilter"><option value="">{{ _('people.any_source') }}</option>{% if has_unrecorded %}<option value="__blank__">{{ _('people.unrecorded') }}</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
     {% endcall %}
   <div class="controls" id="controls">
     <div class="filters">
-      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn pa-btn--lg tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn pa-btn--lg tab croptoggle" id="cropToggle">Cropped Only</button>
-        <button class="pa-btn pa-btn--lg tab noupstream" id="upstreamToggle">No Upstream</button>
-        <button class="pa-btn pa-btn--lg tab genericonly" id="genericToggle">Generic Only</button>
-        <button class="pa-btn pa-btn--lg tab singleonly" id="singleToggle">Single Name</button></div>
+      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn pa-btn--lg tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn pa-btn--lg tab croptoggle" id="cropToggle">{{ _('people.cropped_only') }}</button>
+        <button class="pa-btn pa-btn--lg tab noupstream" id="upstreamToggle">{{ _('people.no_upstream') }}</button>
+        <button class="pa-btn pa-btn--lg tab genericonly" id="genericToggle">{{ _('people.generic_only') }}</button>
+        <button class="pa-btn pa-btn--lg tab singleonly" id="singleToggle">{{ _('people.single_name') }}</button></div>
     </div>
     {% call toolbar.bar('searchCount') %}
     <div class="tb-actions">
-{% if is_admin() %}      <button class="pa-btn pa-btn--lg bulk" id="bulkBtn">Fetch Images for Shown</button>
+{% if is_admin() %}      <button class="pa-btn pa-btn--lg bulk" id="bulkBtn">{{ _('people.fetch_shown') }}</button>
       <div class="pa-progress-track bulk-progress" id="bulkProgress" hidden><div class="pa-progress-fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span>
 {% endif %}    </div>
     {% endcall %}
   </div>
     <div class="people-grid" id="grid"></div>
-    <p class="pa-empty viewempty" style="display:none">No images in this category.</p>
-    {% if not entries %}<p class="pa-empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>{% endif %}
+    <p class="pa-empty viewempty" style="display:none">{{ _('people.view_empty') }}</p>
+    {% if not entries %}<p class="pa-empty">{{ _('people.none_cached') }}</p>{% endif %}
     
 {% endblock %}
 {% block scripts %}
 {{ toolbar.script() }}
   <script>
+      var T = {{ strings('people', 'common') | tojson }};
       var IS_ADMIN = {{ is_admin()|tojson }};
       async function post(url, body){
         const r = await fetch(url, {method:'POST', headers:hdrs(), body:JSON.stringify(body)});
@@ -103,16 +104,16 @@
       }
       async function restore(filename){
         const j = await post('/people/restore', {filename});
-        if(j.ok) location.reload(); else alert('Restore failed');
+        if(j.ok) location.reload(); else alert(T.restore_failed);
       }
       async function setGender(filename, gender){
         const j = await post('/people/gender', {filename, gender});
-        if(j.ok) location.reload(); else alert('Set gender failed');
+        if(j.ok) location.reload(); else alert(T.gender_failed);
       }
       async function purge(filename){
-        if(!confirm('Delete '+filename+' from the local cache?')) return;
+        if(!confirm(tr(T.purge_confirm, {file: filename}))) return;
         const j = await post('/people/purge', {filename});
-        if(j.ok) location.reload(); else alert('Purge failed');
+        if(j.ok) location.reload(); else alert(T.purge_failed);
       }
       function edit(filename){
         location.href = '/people/edit?' + new URLSearchParams({filename}).toString();
@@ -161,10 +162,10 @@
       function prevPage(){ if(offset > 0){ offset = Math.max(0, offset - PAGE_SIZE); refresh(); } }
       function nextPage(){ if(offset + PAGE_SIZE < TOTAL){ offset += PAGE_SIZE; refresh(); } }
       function cardHtml(e){
-        const badge = e.cropped ? '<span class="pa-badge crop">cropped</span>' : '<span class="pa-badge orig">original</span>';
+        const badge = e.cropped ? '<span class="pa-badge crop">' + T.badge_cropped + '</span>' : '<span class="pa-badge orig">' + T.badge_original + '</span>';
         const srcBadge = e.source ? '<span class="pa-badge src">' + esc(e.source) + '</span>' : '';
         const upstream = e.upstream_url
-          ? '<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url=' + esc(e.upstream_quoted) + '" loading="lazy" decoding="async"></figure>'
+          ? '<figure><figcaption>' + T.upstream_original + '</figcaption><img data-src="/images/proxy?url=' + esc(e.upstream_quoted) + '" loading="lazy" decoding="async"></figure>'
           : '';
         const gender = GENDERS.map(function (g) {
           const on = g[0] === e.gender_norm;
@@ -173,21 +174,21 @@
         }).join('');
         let restore = '';
         if (IS_ADMIN) {
-          if (!e.upstream_url) restore = '<button class="pa-btn pa-btn--primary restore" disabled>No Upstream Recorded</button>';
-          else if (e.cropped) restore = '<button class="pa-btn pa-btn--primary restore">Use Original</button>';
-          else restore = '<button class="pa-btn pa-btn--primary restore" disabled>Original Kept</button>';
+          if (!e.upstream_url) restore = '<button class="pa-btn pa-btn--primary restore" disabled>' + T.no_upstream_recorded + '</button>';
+          else if (e.cropped) restore = '<button class="pa-btn pa-btn--primary restore">' + T.use_original + '</button>';
+          else restore = '<button class="pa-btn pa-btn--primary restore" disabled>' + T.original_kept + '</button>';
         }
-        const purgeBtn = IS_ADMIN ? '<button class="pa-btn pa-btn--danger purge">Purge</button>' : '';
+        const purgeBtn = IS_ADMIN ? '<button class="pa-btn pa-btn--danger purge">' + T.purge + '</button>' : '';
         return '<div class="pa-card person-card ' + esc(e.gcss) + '" data-type="' + esc(e.type) + '" data-fn="' + esc(e.filename)
           + '" data-cropped="' + (e.cropped ? 1 : 0) + '" data-name="' + esc(e.search_key)
           + '" data-upstream="' + (e.upstream_url ? 1 : 0) + '" data-source="' + esc(e.source || '')
           + '" data-single="' + (e.single ? 1 : 0) + '" style="display:block">'
-          + '<div class="hd"><span class="pa-badge role ' + esc(e.role_css) + '">' + esc(e.role) + '</span><b>' + esc(e.name) + '</b> '
+          + '<div class="hd"><span class="pa-badge role ' + esc(e.role_css) + '">' + esc(e.role_label) + '</span><b>' + esc(e.name) + '</b> '
           + badge + srcBadge + '<span class="ts">' + esc(e.ts) + '</span></div>'
-          + '<div class="imgs"><figure><figcaption>Cached (Shown in Plex)</figcaption>'
+          + '<div class="imgs"><figure><figcaption>' + T.cached_in_plex + '</figcaption>'
           + '<img data-src="' + esc(e.local_src) + '" loading="lazy" decoding="async"></figure>' + upstream + '</div>'
-          + '<div class="gender"><span>Gender:</span>' + gender + '</div>'
-          + '<div class="actions">' + restore + '<button class="pa-btn pa-btn--outline edit">' + (IS_ADMIN ? 'Edit' : 'View') + '</button>' + purgeBtn + '</div>'
+          + '<div class="gender"><span>' + T.gender + '</span>' + gender + '</div>'
+          + '<div class="actions">' + restore + '<button class="pa-btn pa-btn--outline edit">' + (IS_ADMIN ? T.edit : T.view) + '</button>' + purgeBtn + '</div>'
           + '</div>';
       }
       function paintSourceOptions(present, blank){
@@ -206,7 +207,7 @@
         const pages = Math.max(1, Math.ceil(TOTAL / PAGE_SIZE));
         const page = Math.floor(offset / PAGE_SIZE) + 1;
         document.getElementById('pager').style.display = pages > 1 ? 'inline-flex' : 'none';
-        document.getElementById('pageInfo').textContent = 'Page ' + page + ' of ' + pages;
+        document.getElementById('pageInfo').textContent = tr(T.page_of, {page, pages});
         document.getElementById('prevBtn').disabled = offset <= 0;
         document.getElementById('nextBtn').disabled = offset + PAGE_SIZE >= TOTAL;
         const ve = document.querySelector('.viewempty');
@@ -231,7 +232,7 @@
         paintSourceOptions(j.sources || [], !!j.has_unrecorded);
         applyPage();
         const needle = document.getElementById('nameSearch').value.trim();
-        document.getElementById('searchCount').textContent = needle ? TOTAL + ' match' + (TOTAL === 1 ? '' : 'es') : '';
+        document.getElementById('searchCount').textContent = needle ? (TOTAL === 1 ? T.match : tr(T.matches, {count: TOTAL})) : '';
         updateFiltersToggle();
         saveFilters();
       }
@@ -267,9 +268,9 @@
         const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0) + (genericOnly?1:0) + (singleOnly?1:0)
           + (document.getElementById('sourceFilter').value?1:0);
         const tab = document.querySelector('.tab.active');
-        const label = tab ? tab.dataset.label : 'People';
+        const label = tab ? tab.dataset.label : T.everyone;
         const btn = document.getElementById('filtersToggle');
-        btn.textContent = label + ' · Filters' + (active ? ' ('+active+' Active)' : '');
+        btn.textContent = tr(active ? T.filters_active : T.filters_label, {label, count: active});
         btn.classList.toggle('on', active > 0);
       }
       document.getElementById('nameSearch').addEventListener('input', () => { offset = 0; refresh(); });
@@ -303,22 +304,22 @@
         const status = document.getElementById('bulkStatus');
         const source = BULK_SOURCE;
         const filenames = shownFilenames();
-        if(!filenames.length){ status.textContent = 'Nothing shown to fetch'; return; }
-        if(!confirm('Replace the cached image for '+filenames.length+' shown '+(filenames.length===1?'person':'people')+' using '+source+'?')) return;
+        if(!filenames.length){ status.textContent = T.nothing_shown; return; }
+        if(!confirm(tr(filenames.length === 1 ? T.bulk_confirm_one : T.bulk_confirm_many, {count: filenames.length, source}))) return;
         btn.disabled = true;
         setProgress(0, filenames.length);
-        status.textContent = 'Fetching 0 of '+filenames.length+' from '+source+'…';
+        status.textContent = tr(T.bulk_progress, {done: 0, total: filenames.length, source});
         let summary = null;
         try {
           const r = await fetch('/people/bulk-fetch', {method:'POST', headers:hdrs(), body:JSON.stringify({source, filenames})});
           if(!r.ok) {
             const err = await r.json().catch(()=>({}));
-            throw new Error(err.error || 'Bulk fetch failed');
+            throw new Error(err.error || T.bulk_failed);
           }
           for await (const msg of ndjson(r)){
             if(msg.done){
               setProgress(msg.done, msg.total);
-              status.textContent = 'Fetching '+msg.done+' of '+msg.total+' from '+source+'…';
+              status.textContent = tr(T.bulk_progress, {done: msg.done, total: msg.total, source});
             }
             if(msg.ok) summary = msg;
           }
@@ -329,11 +330,11 @@
           return;
         }
         btn.disabled = false;
-        if(!summary) { status.textContent = 'Bulk fetch ended early'; return; }
+        if(!summary) { status.textContent = T.bulk_ended; return; }
         setProgress(1, 1);
-        const parts = [summary.updated+' updated', summary.missed+' not found'];
-        if(summary.failed) parts.push(summary.failed+' failed');
-        if(summary.truncated) parts.push(summary.truncated+' skipped over the batch cap');
+        const parts = [tr(T.bulk_updated, {count: summary.updated}), tr(T.bulk_missed, {count: summary.missed})];
+        if(summary.failed) parts.push(tr(T.bulk_errors, {count: summary.failed}));
+        if(summary.truncated) parts.push(tr(T.bulk_truncated, {count: summary.truncated}));
         status.textContent = parts.join(', ');
         if(summary.updated) setTimeout(() => location.reload(), 1200);
       });

@@ -15,6 +15,7 @@ from PIL import Image
 from PIL.Image import Resampling
 
 from phoenixadult.config.env import env
+from phoenixadult.i18n import gettext
 from phoenixadult.utils import db
 from phoenixadult.utils.fs.paths import rel_to, safe_join
 from phoenixadult.utils.images.logo_trim import trim
@@ -371,10 +372,10 @@ def folders() -> list[str]:
 
 def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str:
     if not name_slug:
-        raise ValueError('a logo needs a name')
+        raise ValueError(gettext('logo_add.needs_name'))
     suffix = suffix.lower()
     if suffix not in (*_RASTER_EXTS, '.svg'):
-        raise ValueError(f'unsupported logo type {suffix}')
+        raise ValueError(gettext('logo_add.unsupported_type') % {'suffix': suffix})
     root = cache_dir()
     target_dir = (_folder_dir(folder_slug) or root / folder_slug) if folder_slug else root
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -386,7 +387,7 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
         converted = convert_svg(target)
         if converted is None:
             target.unlink(missing_ok=True)
-            raise ValueError('could not convert that SVG; install rsvg-convert, cairosvg or ImageMagick')
+            raise ValueError(gettext('logo_add.svg_failed'))
         target = converted
     trim(target)
     invalidate()

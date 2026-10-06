@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from phoenixadult import __version__
 from phoenixadult.config.env import env
+from phoenixadult.i18n import N_, gettext, ngettext, strings
 from phoenixadult.routes.assets import asset_version
 from phoenixadult.utils.auth.passwords import PASSWORD_RULE
 from phoenixadult.utils.auth.theme_view import THEMES_BY_MODE, theme_view, user_theme
@@ -19,19 +20,23 @@ THEME_NAMES = tuple(name for names in THEMES_BY_MODE.values() for name in names)
 FONT_NAMES = ('archivo-latin', 'jetbrains-mono-latin')
 
 _NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
-    ('metadata', 'Metadata', '/metadata'),
-    ('people', 'People', '/people'),
-    ('logos', 'Logos', '/logos'),
-    ('queue', 'Queue', '/queue'),
+    ('metadata', N_('nav.metadata'), '/metadata'),
+    ('people', N_('nav.people'), '/people'),
+    ('logos', N_('nav.logos'), '/logos'),
+    ('queue', N_('nav.queue'), '/queue'),
 )
-_NAV_SEARCHES_ITEM = ('searches', 'Searches', '/searches')
-_NAV_DEV_ITEM = ('dev', 'Dev', '/dev')
-_NAV_CONFIG_ITEM = ('config', 'Config', '/config')
+_NAV_SEARCHES_ITEM = ('searches', N_('nav.searches'), '/searches')
+_NAV_DEV_ITEM = ('dev', N_('nav.dev'), '/dev')
+_NAV_CONFIG_ITEM = ('config', N_('nav.config'), '/config')
 
 
 def nav_items() -> list[tuple[str, str, str]]:
     searches = (_NAV_SEARCHES_ITEM,) if is_admin() else ()
     return [*_NAV_ITEMS, *searches, *((_NAV_DEV_ITEM,) if env.dev_ui_enabled else ()), _NAV_CONFIG_ITEM]
+
+
+def ui_language() -> str:
+    return env.ui_language
 
 
 def app_version() -> str:
@@ -46,7 +51,12 @@ def theme_versions() -> dict[str, str]:
     return {name: theme_version(name) for name in THEME_NAMES}
 
 
-_jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__file__).parent / 'html'), autoescape=True, auto_reload=not env.is_production)
+_jinja = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(Path(__file__).parent / 'html'), autoescape=True, auto_reload=not env.is_production, extensions=['jinja2.ext.i18n']
+)
+_jinja.install_gettext_callables(gettext, ngettext, newstyle=True)  # type: ignore[attr-defined]
+_jinja.globals['ui_language'] = ui_language
+_jinja.globals['strings'] = strings
 _jinja.globals['nav_items'] = nav_items
 _jinja.globals['user_theme'] = user_theme
 _jinja.globals['theme_view'] = theme_view

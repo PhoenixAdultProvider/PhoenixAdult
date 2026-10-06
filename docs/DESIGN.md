@@ -783,6 +783,21 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 
 **Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation provides a "find scene URL via search engine" path used by ~36 clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Clients reach it through the single helper `web_search_urls` (`html_helpers`), which derives the `site:` operator from the client's own `base_url` and applies `include`/`exclude` substring filters; the engine chain itself lives in `phoenixadult/utils/searchengines/`. Only clients that search a *third-party* domain (`javlibrary`, `xart`) call the low-level `web_search` directly. Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy phoenixadult` → `pytest` (tests use **pytest + respx**). Coverage is opt-in (`pytest --cov`) because instrumenting the suite costs about as much as running it.
 
+### 13.1 Web UI Strings (Localization)
+
+Every string the web pages show lives in **one file, `phoenixadult/i18n/en.po`**, under a stable key and grouped by page with `# ── Section ──` comments. Code never holds display text, only keys. Scraped data (site, scene and performer names) is not translated.
+
+| Where the text is used | How it references a key |
+|---|---|
+| Jinja template markup | `{{ _('people.title') }}`; values as `{{ _('dev.n_sites', count=n) }}` with `%(count)s` in the text |
+| Page JavaScript | `var T = {{ strings('people', 'common') \| tojson }};` once per page, then `T.title`; values with `tr(T.progress, { done, total })` and `{done}` in the text |
+| Python (routes, services, validation) | `gettext('plex.no_connection') % {...}`; a key stored for later lookup is marked `N_('nav.metadata')` |
+| Config UI settings | derived as `settings.<KEY>.label` / `.description` (`EnvVarSpec.text_keys()`) |
+
+Rules: keys are `section.name` in lowercase; `strings()` exposes only single-level keys of the named sections; a literal `%` is written `%%`; page scripts declare `var`, never top-level `const`/`let`, because `nav_swap.html` re-runs them. `UI_LANGUAGE` picks the catalog (`<code>.po` beside `en.po`); missing keys fall back to English, then to the key itself.
+
+`python -m scripts.i18n check` reports keys used in code but missing from `en.po`, unused entries, bad `T.` references, bare `%` and placeholder mismatches in other languages; `init <code>` starts a new language file and `update` re-syncs existing ones. Two tests hold the line: `tests/framework/test_strings_file.py` runs the checker, and `tests/routes/test_untranslated_text.py` renders every page with a placeholder catalog and fails on any visible English left in the markup.
+
 ---
 
 ## 14. Directory Map (Orientation)
@@ -816,7 +831,8 @@ phoenixadult/
                              #   layout, listing, duplicates, integrity, locks, text_rules
     logging/, genres/, captcha/, cookies/, helpers/
   config/                    # env, env_catalog, env_overrides, __init__
-scripts/                     # generate_sitelist, site_health, start-with-tunnel.ps1
+  i18n/                      # en.po (every web UI string, keyed) + gettext/strings loaders
+scripts/                     # generate_sitelist, site_health, i18n, start-with-tunnel.ps1
 docs/DESIGN.md               # this document
 tests/                       # pytest + respx unit / client / selector / health fixtures
 ```

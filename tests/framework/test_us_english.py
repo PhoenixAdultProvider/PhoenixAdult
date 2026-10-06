@@ -58,7 +58,7 @@ def _tracked_text_files() -> list[Path]:
         out = subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError):
         pytest.skip('needs a git checkout to enumerate tracked files')
-    keep = ('.py', '.html', '.md', '.css', '.json', '.txt', '.toml', '.cfg')
+    keep = ('.py', '.html', '.md', '.css', '.json', '.txt', '.toml', '.cfg', '.po')
     return [ROOT / line for line in out.splitlines() if line.endswith(keep) and not any(part in line for part in EXEMPT)]
 
 

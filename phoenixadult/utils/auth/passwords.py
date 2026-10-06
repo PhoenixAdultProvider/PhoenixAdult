@@ -6,11 +6,13 @@ import secrets
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
+from phoenixadult.i18n import N_
+
 _API_KEY_PREFIX = 'pa_'
 _hasher = PasswordHasher()
 
 MIN_PASSWORD_LENGTH = 8
-PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.'
+PASSWORD_RULE = N_('password.rule')
 
 
 def password_error(password: str) -> str | None:

@@ -152,6 +152,12 @@ debug, and nothing is masked unless you opt in:
 | `LOG_REDACT_HOSTS` | off | Masks every IP address and the server's own host/FQDN (from `PHOENIX_BASE_URL`) in logs. |
 | `LOG_REDACT_TOKEN` | off | Masks credentials in logs: the hook-path key segment (`/api/hook/…/`), secret query values (`?token=…`, `?password=…`), and credential-bearing headers (`Authorization`, `Cookie`, `X-Plex-Token`, …) in verbose request dumps. |
 
+### Interface
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `UI_LANGUAGE` | `en` | Language of the web pages. `en` (English) is the only one available today; an unknown code falls back to English. Applies on the next page load. |
+
 ### Logging
 
 | Variable | Default | Description |

@@ -13,6 +13,7 @@ from PIL import Image as PILImage
 from pydantic import Field
 
 from phoenixadult.config.env import env
+from phoenixadult.i18n import gettext
 from phoenixadult.mappers.metadata_mapper import build_artwork
 from phoenixadult.models.camel import CamelModel
 from phoenixadult.models.metadata import CREDIT_FIELDS, PlexImage, PlexMetadataResponse
@@ -89,10 +90,10 @@ def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
 
 def _unresolved_detail(studio: str) -> str:
     if not studio:
-        return 'guid is not ours and the item has no studio to fall back on'
+        return gettext('plex.import_no_studio')
     if find_site(studio) is None:
-        return f'studio "{studio}" matches no site in the registry'
-    return 'guid carries no identifier to key a cache entry on'
+        return gettext('plex.import_unknown_studio') % {'studio': studio}
+    return gettext('plex.import_no_identifier')
 
 
 def _tags(item: dict[str, Any], key: str) -> list[dict[str, str]]:
@@ -223,7 +224,9 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
     site_name, cur_id = resolved
     if not overwrite and scene_store.has(scene_hash_for(site_name, cur_id)):
         report.skipped_existing += 1
-        report.add(ItemReport(rating_key=rating_key, title=title, status='skipped', site=site_name, cur_id=cur_id, detail='already cached'))
+        report.add(
+            ItemReport(rating_key=rating_key, title=title, status='skipped', site=site_name, cur_id=cur_id, detail=gettext('plex.import_already_cached'))
+        )
         return
     report.importable += 1
     if not apply:
@@ -241,10 +244,21 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         response = _build(item, site_name, cur_id, images)
         if await metadata_cache.write(site_name, cur_id, response):
             report.imported += 1
-            report.add(ItemReport(rating_key=rating_key, title=title, status='imported', site=site_name, cur_id=cur_id, detail=f'{len(images)} images'))
+            report.add(
+                ItemReport(
+                    rating_key=rating_key,
+                    title=title,
+                    status='imported',
+                    site=site_name,
+                    cur_id=cur_id,
+                    detail=gettext('plex.import_images') % {'count': len(images)},
+                )
+            )
         else:
             report.failed += 1
-            report.add(ItemReport(rating_key=rating_key, title=title, status='failed', site=site_name, cur_id=cur_id, detail='snapshot write rejected'))
+            report.add(
+                ItemReport(rating_key=rating_key, title=title, status='failed', site=site_name, cur_id=cur_id, detail=gettext('plex.import_write_rejected'))
+            )
     except (httpx2.HTTPError, OSError, ValueError) as err:
         report.failed += 1
         report.add(ItemReport(rating_key=rating_key, title=title, status='failed', site=site_name, cur_id=cur_id, detail=repr(err)))
@@ -261,7 +275,7 @@ async def import_item(connection: Connection, token: str, rating_key: str, overw
     try:
         item = await client.item(rating_key)
         if not item:
-            return ItemReport(rating_key=rating_key, title='', status='failed', detail='item not found in Plex')
+            return ItemReport(rating_key=rating_key, title='', status='failed', detail=gettext('plex.import_item_missing'))
         stub = {'ratingKey': rating_key, 'title': item.get('title'), 'guid': item.get('guid'), 'studio': item.get('studio')}
         await _import_one(client, stub, report, apply=True, overwrite=overwrite)
     finally:

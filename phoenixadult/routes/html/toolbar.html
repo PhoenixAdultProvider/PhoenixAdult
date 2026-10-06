@@ -46,12 +46,12 @@
       }
     </style>
 {% endmacro %}
-{% macro controls(sfw=True) %}<button class="pa-btn pa-btn--lg" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
+{% macro controls(sfw=True) %}<button class="pa-btn pa-btn--lg" id="resetBtn" onclick="resetFilters()">{{ _('toolbar.reset_filters') }}</button>
 {% if sfw %}    <button class="pa-btn pa-btn--lg" id="sfwToggle" onclick="toggleSfw()"></button>{% endif %}{% endmacro %}
 {% macro pager() %}<span id="pager">
-      <button class="pa-btn pa-btn--lg" id="prevBtn" onclick="prevPage()">Previous</button>
+      <button class="pa-btn pa-btn--lg" id="prevBtn" onclick="prevPage()">{{ _('toolbar.previous') }}</button>
       <span class="pa-page" id="pageInfo"></span>
-      <button class="pa-btn pa-btn--lg" id="nextBtn" onclick="nextPage()">Next</button>
+      <button class="pa-btn pa-btn--lg" id="nextBtn" onclick="nextPage()">{{ _('toolbar.next') }}</button>
     </span>{% endmacro %}
 {% macro bar(count_id='', sfw=True) %}<div class="toolbar">
     {{ controls(sfw) }}
@@ -59,13 +59,13 @@
 {% if count_id %}    <span class="count-badge" id="{{ count_id }}"></span>
 {% endif %}    {{ pager() }}
   </div>{% endmacro %}
-{% macro search_row(input_id, placeholder, label='Search') %}<div class="searchbar">
+{% macro search_row(input_id, placeholder, label=None) %}<div class="searchbar">
     <div class="filter-group">
-      <label class="pa-label" for="{{ input_id }}">{{ label }}</label>
+      <label class="pa-label" for="{{ input_id }}">{{ label or _('toolbar.search') }}</label>
       <input class="pa-input pa-input--lg" type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
     </div>
-{% if caller %}{{ caller() }}{% endif %}    <button class="pa-btn pa-btn--lg filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">Filters</button>
-    <button class="pa-btn pa-btn--lg actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">Actions</button>
+{% if caller %}{{ caller() }}{% endif %}    <button class="pa-btn pa-btn--lg filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">{{ _('toolbar.filters') }}</button>
+    <button class="pa-btn pa-btn--lg actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">{{ _('toolbar.actions') }}</button>
   </div>{% endmacro %}
 {% macro script() %}
     <script>

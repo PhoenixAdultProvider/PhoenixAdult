@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Provider Dev UI{% endblock %}
+{% block title %}{{ _('dev.page_title') }}{% endblock %}
 {% block page %}dev{% endblock %}
 {% block head %}
   <style>
@@ -165,49 +165,49 @@
 {% block content %}
   <div class="art-bg" id="artBg"></div>
 
-  <h1>🎬 Provider Dev UI</h1>
-  <p style="color:var(--label-text);margin-top:0.25rem;font-size:var(--text-base)">Test the full scraper pipeline — search, select a result, inspect metadata</p>
+  <h1>{{ _('dev.title') }}</h1>
+  <p style="color:var(--label-text);margin-top:0.25rem;font-size:var(--text-base)">{{ _('dev.subtitle') }}</p>
 
   <div class="pa-card dev-card" style="margin-top:1.25rem">
     <div class="row" style="align-items:flex-start">
       <div>
-        <label class="pa-label" for="filename">Filename</label>
+        <label class="pa-label" for="filename">{{ _('dev.filename') }}</label>
         <input class="pa-input" type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
         <div class="examples">
-          <span style="font-size:var(--text-xs);color:var(--hint-text);align-self:center">Examples:</span>
-          <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.24.03.15.scene.name.mp4')">Date Short</button>
-          <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">Date Long</button>
+          <span style="font-size:var(--text-xs);color:var(--hint-text);align-self:center">{{ _('dev.examples') }}</span>
+          <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.24.03.15.scene.name.mp4')">{{ _('dev.date_short') }}</button>
+          <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">{{ _('dev.date_long') }}</button>
         </div>
       </div>
       <div class="field-year">
-        <label class="pa-label" for="year-override">Year (Override)</label>
+        <label class="pa-label" for="year-override">{{ _('dev.year_override') }}</label>
         <input class="pa-input" type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
       </div>
       <div class="field-tight">
         <label class="pipeline-toggle">
-          <input type="checkbox" id="fullPipeline"> Full Pipeline (DB Round-Trip)
+          <input type="checkbox" id="fullPipeline"> {{ _('dev.full_pipeline') }}
         </label>
       </div>
       <div class="field-tight">
-        <button id="runBtn" class="pa-btn pa-btn--primary run-btn" onclick="runSearch()">▶ Search</button>
+        <button id="runBtn" class="pa-btn pa-btn--primary run-btn" onclick="runSearch()">{{ _('dev.search') }}</button>
       </div>
     </div>
   </div>
 
   <div id="search-output" style="display:none">
-    <h2>Search Pipeline</h2>
+    <h2>{{ _('dev.search_pipeline') }}</h2>
     <div id="search-steps"></div>
-    <h2>Pipeline Logs</h2>
+    <h2>{{ _('dev.pipeline_logs') }}</h2>
     <div class="pa-card dev-card log-box" id="search-logs"></div>
   </div>
 
   <div id="results-section" style="display:none">
-    <h2>Results — Click to Load Metadata</h2>
+    <h2>{{ _('dev.results') }}</h2>
     <div class="results-grid" id="results-grid"></div>
   </div>
 
   <div id="meta-panel">
-    <h2 id="meta-heading">Metadata</h2>
+    <h2 id="meta-heading">{{ _('dev.metadata') }}</h2>
 
     <div class="pa-card dev-card">
       <div class="meta-layout" id="meta-summary">
@@ -219,53 +219,53 @@
     </div>
 
     <div id="meta-images-section" style="display:none">
-      <h2>Images (<span id="img-count">0</span>)</h2>
+      <h2>{{ _('dev.images_heading') }}</h2>
       <div class="pa-card dev-card" style="padding:0.75rem">
         <div class="image-strip" id="image-strip"></div>
       </div>
     </div>
 
     <div id="roundtrip-section" style="display:none">
-      <h2>DB Round-Trip (Reassembled)</h2>
+      <h2>{{ _('dev.roundtrip_heading') }}</h2>
       <div class="capture">
         <div class="capture-header">
           <span class="pa-badge pa-badge--success" onclick="toggle('roundtrip-body')">JSON</span>
           <span class="capture-label" id="roundtrip-note" onclick="toggle('roundtrip-body')"></span>
-          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'roundtrip-pre', event)">Copy</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'roundtrip-pre', event)">{{ _('dev.copy') }}</button>
         </div>
         <div class="capture-body" id="roundtrip-body"><pre id="roundtrip-pre"></pre></div>
       </div>
     </div>
 
     <div id="fixture-section" style="display:none">
-      <h2>Fixture (paste into <code>tests/health/fixtures.json</code>)</h2>
+      <h2>{{ _('dev.fixture_heading') }}</h2>
       <div class="capture">
         <div class="capture-header">
           <span class="pa-badge pa-badge--success">JSON</span>
-          <span class="capture-label" style="cursor:default">Suggested fixture for this result</span>
-          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">Copy</button>
-          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy One-Liner</button>
+          <span class="capture-label" style="cursor:default">{{ _('dev.fixture_label') }}</span>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">{{ _('dev.copy') }}</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">{{ _('dev.copy_one_liner') }}</button>
         </div>
         <div class="capture-body open"><pre id="fixture-pre"></pre></div>
         <pre id="fixture-pre-oneline" style="display:none"></pre>
       </div>
     </div>
 
-    <h2>Metadata Pipeline</h2>
+    <h2>{{ _('dev.metadata_pipeline') }}</h2>
     <div id="meta-steps"></div>
-    <h2>Pipeline Logs</h2>
+    <h2>{{ _('dev.pipeline_logs') }}</h2>
     <div class="pa-card dev-card log-box" id="meta-logs"></div>
   </div>
 
-  <h2>Registered Sites</h2>
+  <h2>{{ _('dev.registered_sites') }}</h2>
   <div class="pa-card dev-card" style="padding:0;overflow:hidden">
     <table class="sites-table">
-      <thead><tr><th>Site</th><th>Content Type</th><th>Scraper</th><th>Aliases</th></tr></thead>
+      <thead><tr><th>{{ _('dev.col_site') }}</th><th>{{ _('dev.col_content_type') }}</th><th>{{ _('dev.col_scraper') }}</th><th>{{ _('dev.col_aliases') }}</th></tr></thead>
       <tbody>{% for s in sites %}<tr{% if s.grouped %} class="group-row"{% endif %}>
-      <td class="c-site">{% if s.grouped %}<strong>{{ s.name }}</strong> <span class="group-badge">{{ s.aliases|length }} sites</span>{% else %}{{ s.name }}{% endif %}</td>
-      <td class="c-type" data-label="Content Type"><code>{{ s.contentType }}</code></td>
-      <td class="c-scraper" data-label="Scraper"><code>{{ s.scraperType }}</code></td>
-      <td class="c-aliases" data-label="Aliases">{% if s.aliases %}<details><summary>{{ s.aliases|length }} {{ 'site' if s.grouped else 'alias' }}{{ ('' if s.aliases|length == 1 else 's' if s.grouped else 'es') }}</summary><div class="alias-list">{% for a in s.aliases %}<span class="alias-chip">{{ a }}</span>{% endfor %}</div></details>{% else %}—{% endif %}</td>
+      <td class="c-site">{% if s.grouped %}<strong>{{ s.name }}</strong> <span class="group-badge">{{ _('dev.n_sites', count=s.aliases|length) }}</span>{% else %}{{ s.name }}{% endif %}</td>
+      <td class="c-type" data-label="{{ _('dev.col_content_type') }}"><code>{{ s.contentType }}</code></td>
+      <td class="c-scraper" data-label="{{ _('dev.col_scraper') }}"><code>{{ s.scraperType }}</code></td>
+      <td class="c-aliases" data-label="{{ _('dev.col_aliases') }}">{% if s.aliases %}<details><summary>{% if s.aliases|length == 1 %}{{ _('dev.one_site') if s.grouped else _('dev.one_alias') }}{% else %}{{ _('dev.n_sites', count=s.aliases|length) if s.grouped else _('dev.n_aliases', count=s.aliases|length) }}{% endif %}</summary><div class="alias-list">{% for a in s.aliases %}<span class="alias-chip">{{ a }}</span>{% endfor %}</div></details>{% else %}—{% endif %}</td>
     </tr>{% endfor %}</tbody>
     </table>
   </div>
@@ -274,7 +274,7 @@
 {% endblock %}
 {% block scripts %}
   <script>
-
+    var T = {{ strings('dev') | tojson }};
     var NARROW = window.matchMedia('(max-width: 720px)');
     function apiUrl(path) { return path; }
 
@@ -320,7 +320,7 @@
 
       const copyUrlBtn = url
         ? '<button class="pa-btn pa-btn--sm" type="button" data-url="' + esc(url)
-          + '" onclick="copyText(this, event)">Copy URL</button>'
+          + '" onclick="copyText(this, event)">' + T.copy_url + '</button>'
         : '';
 
       return `<div class="capture">
@@ -329,7 +329,7 @@
           <span class="capture-label" onclick="toggle('${id}')">${labelHtml}</span>
           <span class="capture-size">${sizeHint}</span>
           ${copyUrlBtn}
-          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, '${id}-pre', event)">Copy Body</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, '${id}-pre', event)">${T.copy_body}</button>
         </div>
         <div class="capture-body" id="${id}"><pre id="${id}-pre">${esc(body)}</pre></div>
       </div>`;
@@ -338,7 +338,7 @@
     function clipboardWrite(btn, text) {
       const ack = () => {
         const orig = btn.textContent;
-        btn.textContent = 'Copied!';
+        btn.textContent = T.copied;
         btn.classList.add('on');
         setTimeout(() => {
           btn.textContent = orig;
@@ -347,7 +347,7 @@
       };
       const fail = (err) => {
         const orig = btn.textContent;
-        btn.textContent = 'Failed';
+        btn.textContent = T.copy_failed;
         btn.style.color = 'var(--soft-danger-text)';
         console.warn('clipboard copy failed:', err);
         setTimeout(() => {
@@ -415,7 +415,7 @@
       const box = document.getElementById(containerId);
       if (!box) return;
       if (!logs || !logs.length) {
-        box.innerHTML = '<p style="color:var(--hint-text);font-size:var(--text-sm)">No logs captured</p>';
+        box.innerHTML = '<p style="color:var(--hint-text);font-size:var(--text-sm)">' + T.no_logs + '</p>';
         return;
       }
       box.innerHTML = logs.map((l) => {
@@ -448,19 +448,19 @@
         if (s.error)    body += '<p class="step-error">⚠ ' + esc(s.error) + '</p>';
         if (cleanData)  body += '<pre>' + esc(JSON.stringify(cleanData, null, 2)) + '</pre>';
         if (captures.length) {
-          body += '<div class="captures-section"><div class="captures-label">Raw upstream responses (' + captures.length + ')</div>';
+          body += '<div class="captures-section"><div class="captures-label">' + esc(tr(T.raw_responses, {count: captures.length})) + '</div>';
           body += captures.map((c, ci) => renderCapture(c, id, ci)).join('');
           body += '</div>';
         }
 
         return `<div class="step">
           <div class="step-header" onclick="toggle('${id}')">
-            <span class="pa-badge ${s.ok ? 'pa-badge--success' : 'pa-badge--danger'}">${s.ok ? 'OK' : 'FAIL'}</span>
+            <span class="pa-badge ${s.ok ? 'pa-badge--success' : 'pa-badge--danger'}">${s.ok ? T.ok : T.fail}</span>
             <span class="step-title">${esc(s.step)}</span>
             <span class="step-duration">${s.durationMs != null ? s.durationMs + 'ms' : ''}</span>
           </div>
           <div class="step-body ${(NARROW.matches ? !s.ok : s.ok) ? 'open' : ''}" id="${id}">
-            ${body || '<p style="color:var(--hint-text);font-size:var(--text-sm)">No data</p>'}
+            ${body || '<p style="color:var(--hint-text);font-size:var(--text-sm)">' + T.no_data + '</p>'}
           </div>
         </div>`;
       }).join('');
@@ -476,7 +476,7 @@
 
       const btn = document.getElementById('runBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="pa-spinner"></span> Searching…';
+      btn.innerHTML = '<span class="pa-spinner"></span> ' + esc(T.searching);
 
       document.getElementById('search-output').style.display  = 'none';
       document.getElementById('results-section').style.display = 'none';
@@ -494,7 +494,7 @@
         renderLogs(data.logs, 'search-logs');
         document.getElementById('search-output').style.display = 'block';
 
-        const searchStep = data.steps.find(s => s.step.includes('Search results'));
+        const searchStep = data.steps.find(s => s.id === 'dev.step_search_results');
         if (searchStep?.ok && searchStep.data?.results?.length > 0) {
           lastResults = searchStep.data.results;
           renderResultCards(lastResults);
@@ -502,11 +502,11 @@
         }
       } catch (err) {
         document.getElementById('search-steps').innerHTML =
-          '<p style="color:var(--status-danger-text)">Request failed: ' + esc(err.message) + '</p>';
+          '<p style="color:var(--status-danger-text)">' + esc(tr(T.request_failed, {reason: err.message})) + '</p>';
         document.getElementById('search-output').style.display = 'block';
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '▶ Search';
+        btn.textContent = T.search;
       }
     }
 
@@ -520,7 +520,7 @@
           ${thumb}
           <div class="result-info">
             <div class="result-title">${esc(r.title)}</div>
-            <div class="result-score">Score: <span>${r.score}</span></div>
+            <div class="result-score">${tr(T.score, {score: r.score})}</div>
           </div>
         </div>`;
       }).join('');
@@ -537,12 +537,12 @@
 
       document.getElementById('meta-panel').style.display = 'none';
       document.getElementById('meta-steps').innerHTML = '';
-      document.getElementById('meta-fields').innerHTML = '<p style="color:var(--label-text);font-size:var(--text-base)"><span class="pa-spinner"></span> Fetching metadata…</p>';
+      document.getElementById('meta-fields').innerHTML = '<p style="color:var(--label-text);font-size:var(--text-base)"><span class="pa-spinner"></span> ' + esc(T.fetching_metadata) + '</p>';
       document.getElementById('meta-poster-wrap').innerHTML = '<div class="meta-poster-placeholder">🎬</div>';
       document.getElementById('fixture-section').style.display = 'none';
       document.getElementById('roundtrip-section').style.display = 'none';
       document.getElementById('meta-panel').style.display = 'block';
-      document.getElementById('meta-heading').textContent = 'Metadata — ' + result.title;
+      document.getElementById('meta-heading').textContent = tr(T.metadata_for, {title: result.title});
 
       document.getElementById('meta-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -564,10 +564,10 @@
         renderSteps(data.steps, 'meta-steps');
         renderLogs(data.logs, 'meta-logs');
 
-        const rtStep = data.steps.find(s => s.step.includes('DB round-trip'));
+        const rtStep = data.steps.find(s => s.id === 'dev.step_db_roundtrip');
         if (rtStep) renderRoundTrip(rtStep);
 
-        const metaStep = data.steps.find(s => s.step.includes('Fetch metadata'));
+        const metaStep = data.steps.find(s => s.id === 'dev.step_fetch_metadata');
         if (metaStep?.ok && metaStep.data) {
           renderMetaPanel(metaStep.data);
           if (metaStep.data.fixture) {
@@ -575,12 +575,12 @@
           }
         } else {
           document.getElementById('meta-fields').innerHTML =
-            '<p style="color:var(--status-danger-text)">Failed to fetch metadata — see pipeline steps below</p>';
+            '<p style="color:var(--status-danger-text)">' + T.metadata_failed + '</p>';
           document.getElementById('fixture-section').style.display = 'none';
         }
       } catch (err) {
         document.getElementById('meta-fields').innerHTML =
-          '<p style="color:var(--status-danger-text)">Request failed: ' + esc(err.message) + '</p>';
+          '<p style="color:var(--status-danger-text)">' + esc(tr(T.request_failed, {reason: err.message})) + '</p>';
       } finally {
         card.classList.remove('loading');
       }
@@ -600,22 +600,22 @@
       }
 
       const fields = [];
-      const refreshBtn = ' <button class="pa-btn pa-btn--sm pa-btn--primary" onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot">🔄 Fetch Upstream</button>';
+      const refreshBtn = ' <button class="pa-btn pa-btn--sm pa-btn--primary" onclick="selectResult(selectedIdx, true)" title="' + esc(T.fetch_upstream_hint) + '">' + T.fetch_upstream + '</button>';
       if (meta.servedFrom === 'snapshot') {
-        fields.push(field('Source', '<span class="meta-tag" style="background:var(--badge-success-bg);color:var(--badge-success-text);border-color:var(--badge-success-border);font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>' + refreshBtn));
+        fields.push(field(T.field_source, '<span class="meta-tag" style="background:var(--badge-success-bg);color:var(--badge-success-text);border-color:var(--badge-success-border);font-weight:700">' + T.served_snapshot + '</span>' + refreshBtn));
       } else if (meta.servedFrom === 'live') {
-        const snap = !meta.snapshotEnabled ? 'snapshot cache off' : meta.snapshotSaved ? '📦 snapshot saved' : 'snapshot NOT saved (error-looking title or write failed)';
-        fields.push(field('Source', '<span class="meta-tag">live scrape &middot; ' + esc(snap) + '</span>' + refreshBtn));
+        const snap = !meta.snapshotEnabled ? T.snapshot_off : meta.snapshotSaved ? T.snapshot_saved : T.snapshot_not_saved;
+        fields.push(field(T.field_source, '<span class="meta-tag">' + tr(T.live_scrape, {state: esc(snap)}) + '</span>' + refreshBtn));
       }
-      if (meta.title)         fields.push(field('Title', esc(meta.title)));
-      if (meta.studio)        fields.push(field('Studio (network)', esc(meta.studio)));
-      if (meta.tagline && meta.tagline !== meta.studio) fields.push(field('Tagline (sub-site)', esc(meta.tagline)));
+      if (meta.title)         fields.push(field(T.field_title, esc(meta.title)));
+      if (meta.studio)        fields.push(field(T.field_studio, esc(meta.studio)));
+      if (meta.tagline && meta.tagline !== meta.studio) fields.push(field(T.field_tagline, esc(meta.tagline)));
       const clearLogo = (meta.images || []).find((i) => i.type === 'clearLogo');
-      if (clearLogo) fields.push(field('Logo', `<img src="${esc(clearLogo.url)}" style="max-height:56px;max-width:100%;background:repeating-conic-gradient(var(--checkerboard-a) 0% 25%, var(--checkerboard-b) 0% 50%) 0 0 / 16px 16px;border:1px solid var(--panel-border);border-radius:6px;padding:6px" onerror="this.style.opacity='0.2'">`));
-      if (meta.contentRating) fields.push(field('Content Rating', '<span class="meta-tag" style="background:var(--badge-danger-bg);color:var(--badge-danger-text);border-color:var(--badge-danger-border);letter-spacing:0.04em;font-weight:700">' + esc(meta.contentRating).toUpperCase() + '</span>'));
-      if (meta.releaseDate)   fields.push(field('Released', esc(meta.releaseDate) + (meta.year ? ' &middot; ' + meta.year : '')));
-      if (meta.summary)       fields.push(field('Summary', '<span style="font-size:var(--text-sm);line-height:1.5;color:var(--muted-text)">' + esc(meta.summary) + '</span>'));
-      if (meta.genres?.length)      fields.push(field('Genres', tags(meta.genres)));
+      if (clearLogo) fields.push(field(T.field_logo, `<img src="${esc(clearLogo.url)}" style="max-height:56px;max-width:100%;background:repeating-conic-gradient(var(--checkerboard-a) 0% 25%, var(--checkerboard-b) 0% 50%) 0 0 / 16px 16px;border:1px solid var(--panel-border);border-radius:6px;padding:6px" onerror="this.style.opacity='0.2'">`));
+      if (meta.contentRating) fields.push(field(T.field_rating, '<span class="meta-tag" style="background:var(--badge-danger-bg);color:var(--badge-danger-text);border-color:var(--badge-danger-border);letter-spacing:0.04em;font-weight:700">' + esc(meta.contentRating).toUpperCase() + '</span>'));
+      if (meta.releaseDate)   fields.push(field(T.field_released, esc(meta.releaseDate) + (meta.year ? ' &middot; ' + meta.year : '')));
+      if (meta.summary)       fields.push(field(T.field_summary, '<span style="font-size:var(--text-sm);line-height:1.5;color:var(--muted-text)">' + esc(meta.summary) + '</span>'));
+      if (meta.genres?.length)      fields.push(field(T.field_genres, tags(meta.genres)));
       const personCards = (people) => '<div class="actor-cards">' + people.map((p) => {
         const border = p.gender === 'male'
           ? 'var(--male-ring)'
@@ -630,15 +630,15 @@
           : '<div class="actor-avatar-ph">👤</div>';
         return `<div class="actor-card">${avatar}<span class="actor-name">${esc(p.name)}${genderSuffix}</span></div>`;
       }).join('') + '</div>';
-      if (meta.actors?.length)    fields.push(field('Actors', personCards(meta.actors)));
-      if (meta.directors?.length) fields.push(field('Directors', personCards(meta.directors)));
-      if (meta.producers?.length) fields.push(field('Producers', personCards(meta.producers)));
-      if (meta.collections?.length) fields.push(field('Collections', tags(meta.collections)));
+      if (meta.actors?.length)    fields.push(field(T.field_actors, personCards(meta.actors)));
+      if (meta.directors?.length) fields.push(field(T.field_directors, personCards(meta.directors)));
+      if (meta.producers?.length) fields.push(field(T.field_producers, personCards(meta.producers)));
+      if (meta.collections?.length) fields.push(field(T.field_collections, tags(meta.collections)));
 
       const rawCount = meta.rawImageCount != null ? meta.rawImageCount : meta.images.length;
-      fields.push(field('Images', `${rawCount} raw → ${meta.images.length} mapped`));
-      if (meta.thumb) fields.push(field('Thumb URL', `<code style="word-break:break-all;font-size:var(--text-2xs)">${esc(meta.thumb)}</code>`));
-      if (meta.art)   fields.push(field('Art URL',   `<code style="word-break:break-all;font-size:var(--text-2xs)">${esc(meta.art)}</code>`));
+      fields.push(field(T.field_images, tr(T.images_mapped, {raw: rawCount, mapped: meta.images.length})));
+      if (meta.thumb) fields.push(field(T.field_thumb, `<code style="word-break:break-all;font-size:var(--text-2xs)">${esc(meta.thumb)}</code>`));
+      if (meta.art)   fields.push(field(T.field_art,   `<code style="word-break:break-all;font-size:var(--text-2xs)">${esc(meta.art)}</code>`));
 
       document.getElementById('meta-fields').innerHTML = fields.join('');
 
@@ -661,10 +661,10 @@
       const d    = step.data || {};
       let text;
       if (step.error) text = '⚠ ' + step.error;
-      else if (d.cacheEnabled === false) text = d.note || 'Snapshot cache disabled';
+      else if (d.cacheEnabled === false) text = d.note || T.cache_disabled;
       else if (d.note) text = d.note;
-      else if (d.identical) text = 'Reassembled output matches the directly-mapped response';
-      else text = 'Differs from the directly-mapped response in: ' + (d.diffFields || []).join(', ');
+      else if (d.identical) text = T.roundtrip_identical;
+      else text = tr(T.roundtrip_differs, {fields: (d.diffFields || []).join(', ')});
       note.textContent = text;
       pre.textContent = d.reassembled ? JSON.stringify(d.reassembled, null, 2) : '';
       document.getElementById('roundtrip-body').classList.remove('open');

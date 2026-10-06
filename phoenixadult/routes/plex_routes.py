@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from phoenixadult.config.env import TRUTHY
+from phoenixadult.i18n import gettext
 from phoenixadult.routes import read_json_body
 from phoenixadult.services import plex_account, plex_connections, plex_import, plex_jobs, plex_reconcile
 from phoenixadult.services.plex_connections import Connection
@@ -31,9 +32,9 @@ def _limit(request: Request) -> tuple[int | None, JSONResponse | None]:
     try:
         value = int(raw)
     except ValueError:
-        return None, JSONResponse({'error': 'limit must be an integer'}, status_code=400)
+        return None, JSONResponse({'error': gettext('plex.bad_limit')}, status_code=400)
     if value < 0:
-        return None, JSONResponse({'error': 'limit must be an integer'}, status_code=400)
+        return None, JSONResponse({'error': gettext('plex.bad_limit')}, status_code=400)
     return value, None
 
 
@@ -46,10 +47,10 @@ async def _owned(request: Request, connection_id: int) -> Connection | None:
 async def _with_token(request: Request, connection_id: int) -> tuple[Connection, str] | JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     token = await run_in('store', plex_connections.token_for, connection_id)
     if not connection.server_url or not token:
-        return JSONResponse({'error': 'This connection needs a server URL and a token first'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.needs_url_and_token')}, status_code=409)
     return connection, token
 
 
@@ -76,11 +77,11 @@ async def create_connection(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     name = str(body.get('name') or '').strip()
     if not name:
-        return JSONResponse({'error': 'A connection name is required'}, status_code=400)
+        return JSONResponse({'error': gettext('plex.name_required')}, status_code=400)
     try:
         connection_id = await run_in('store', plex_connections.create, user.id, name)
     except sqlite3.IntegrityError:
-        return JSONResponse({'error': 'You already have a connection with that name'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.name_taken')}, status_code=409)
     logger.info('plex-connections', f'created connection "{name}" for {user.username}')
     return JSONResponse({'id': connection_id})
 
@@ -89,11 +90,11 @@ async def create_connection(request: Request) -> JSONResponse:
 async def update_connection(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     body = await read_json_body(request)
     wanted = [str(c) for c in body['allowedClients']] if isinstance(body.get('allowedClients'), list) else None
     if wanted is not None and (taken := await run_in('store', plex_connections.claimed_by_other_users, connection_id, wanted)):
-        return JSONResponse({'error': f'Already registered by another user: {", ".join(taken)}'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.clients_taken') % {'clients': ', '.join(taken)}}, status_code=409)
     fields: dict[str, Any] = {k: v for k, v in body.items() if k != 'allowedClients'}
     if fields:
         await run_in('store', plex_connections.update_fields, connection_id, fields)
@@ -107,7 +108,7 @@ async def update_connection(connection_id: int, request: Request) -> JSONRespons
 async def delete_connection(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     await run_in('store', plex_connections.delete, connection_id)
     logger.info('plex-connections', f'deleted connection "{connection.name}"')
     return JSONResponse({'ok': True})
@@ -117,7 +118,7 @@ async def delete_connection(connection_id: int, request: Request) -> JSONRespons
 async def save_token(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     body = await read_json_body(request)
     await run_in('store', plex_connections.save_token, connection_id, str(body.get('token') or ''))
     return JSONResponse({'ok': True})
@@ -127,7 +128,7 @@ async def save_token(connection_id: int, request: Request) -> JSONResponse:
 async def create_pin(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     client_id = plex_account.client_id_or_new(connection.client_id)
     if client_id != connection.client_id:
         await run_in('store', plex_connections.update_fields, connection_id, {'clientId': client_id})
@@ -135,19 +136,19 @@ async def create_pin(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse(await plex_account.create_pin(client_id))
     except httpx2.HTTPError as err:
         logger.warn('plex-auth', f'plex.tv pin request failed: {err}')
-        return JSONResponse({'error': 'Could not reach plex.tv'}, status_code=502)
+        return JSONResponse({'error': gettext('plex.tv_unreachable')}, status_code=502)
 
 
 @router.get('/connections/{connection_id}/pin/{pin_id}')
 async def poll_pin(connection_id: int, pin_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     try:
         token = await plex_account.check_pin(pin_id, connection.client_id)
     except httpx2.HTTPError as err:
         logger.warn('plex-auth', f'plex.tv pin poll failed: {err}')
-        return JSONResponse({'error': 'Could not reach plex.tv'}, status_code=502)
+        return JSONResponse({'error': gettext('plex.tv_unreachable')}, status_code=502)
     if not token:
         return JSONResponse({'saved': False})
     await run_in('store', plex_connections.save_token, connection_id, token)
@@ -159,15 +160,15 @@ async def poll_pin(connection_id: int, pin_id: int, request: Request) -> JSONRes
 async def servers(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     token = await run_in('store', plex_connections.token_for, connection_id)
     if not token:
-        return JSONResponse({'error': 'Fetch or save a token first'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.token_first')}, status_code=409)
     try:
         return JSONResponse({'servers': await plex_account.list_servers(token, connection.client_id)})
     except httpx2.HTTPError as err:
         logger.warn('plex-auth', f'plex.tv resources failed: {err}')
-        return JSONResponse({'error': 'Could not list servers from plex.tv'}, status_code=502)
+        return JSONResponse({'error': gettext('plex.list_servers_failed')}, status_code=502)
 
 
 async def _advertised(url: str, token: str, client_id: str) -> bool:
@@ -185,15 +186,15 @@ async def _advertised(url: str, token: str, client_id: str) -> bool:
 async def verify(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     body = await read_json_body(request)
     override = str(body.get('url') or '').strip()
     url = override or connection.server_url
     if not url:
-        return JSONResponse({'error': 'This connection has no server URL'}, status_code=400)
+        return JSONResponse({'error': gettext('plex.no_server_url')}, status_code=400)
     token = await run_in('store', plex_connections.token_for, connection_id) or ''
     if override and override.rstrip('/') != connection.server_url.rstrip('/') and not await _advertised(override, token, connection.client_id):
-        return JSONResponse({'error': 'That address is not one your Plex account advertises for this server'}, status_code=400)
+        return JSONResponse({'error': gettext('plex.address_not_advertised')}, status_code=400)
     return JSONResponse(await plex_account.verify_server(url, token))
 
 
@@ -207,13 +208,13 @@ async def update(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse(await plex_account.update_status(connection, token, force=_truthy(request.query_params.get('force'))))
     except httpx2.HTTPError as err:
         logger.warn('plex-update', f'update check failed: {err}')
-        return JSONResponse({'error': 'Update check failed'}, status_code=502)
+        return JSONResponse({'error': gettext('plex.update_check_failed')}, status_code=502)
 
 
 @router.get('/connections/{connection_id}/jobs')
 async def jobs(connection_id: int, request: Request) -> JSONResponse:
     if await _owned(request, connection_id) is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
+        return JSONResponse({'error': gettext('plex.no_connection')}, status_code=404)
     return JSONResponse({'jobs': plex_jobs.status_for(connection_id)})
 
 
@@ -247,7 +248,7 @@ async def reconcile(connection_id: int, request: Request) -> JSONResponse:
         )
 
     if not plex_jobs.launch(connection_id, 'reconcile', _factory):
-        return JSONResponse({'error': 'A reconcile is already running for this connection'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.reconcile_running')}, status_code=409)
     return JSONResponse({'started': True, 'kind': 'reconcile'})
 
 
@@ -261,7 +262,7 @@ async def libraries(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse({'libraries': await plex_import.libraries(connection, token)})
     except httpx2.HTTPError as err:
         logger.warn('plex-import', f'library list failed: {err}')
-        return JSONResponse({'error': 'Could not list libraries from Plex'}, status_code=502)
+        return JSONResponse({'error': gettext('plex.list_libraries_failed')}, status_code=502)
 
 
 @router.post('/connections/{connection_id}/import', dependencies=_admin)
@@ -273,7 +274,7 @@ async def import_library(connection_id: int, request: Request) -> JSONResponse:
 
     section = (request.query_params.get('section') or '').strip()
     if not section:
-        return JSONResponse({'error': 'section is required'}, status_code=400)
+        return JSONResponse({'error': gettext('plex.section_required')}, status_code=400)
     limit, error = _limit(request)
     if error is not None:
         return error
@@ -285,7 +286,7 @@ async def import_library(connection_id: int, request: Request) -> JSONResponse:
         return plex_import.import_library(connection, token, section, apply=apply, limit=limit, overwrite=overwrite)
 
     if not plex_jobs.launch(connection_id, 'import', _factory):
-        return JSONResponse({'error': 'An import is already running for this connection'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.import_running')}, status_code=409)
     return JSONResponse({'started': True, 'kind': 'import'})
 
 
@@ -298,13 +299,13 @@ async def import_item(connection_id: int, request: Request) -> JSONResponse:
 
     rating_key = (request.query_params.get('ratingKey') or '').strip()
     if not rating_key:
-        return JSONResponse({'error': 'ratingKey is required'}, status_code=400)
+        return JSONResponse({'error': gettext('plex.rating_key_required')}, status_code=400)
     overwrite = _truthy(request.query_params.get('overwrite'))
     try:
         item = await plex_import.import_item(connection, token, rating_key, overwrite=overwrite)
     except httpx2.HTTPError as err:
         logger.warn('plex-import', f'single import failed for {rating_key}: {err}')
-        return JSONResponse({'error': 'Could not fetch the item from Plex'}, status_code=502)
+        return JSONResponse({'error': gettext('plex.item_fetch_failed')}, status_code=502)
     return JSONResponse({'item': item.as_dict()})
 
 
@@ -324,5 +325,5 @@ async def collection_logos(connection_id: int, request: Request) -> JSONResponse
         return plex_reconcile.push_collection_logos(connection, token, apply=apply, limit=limit)
 
     if not plex_jobs.launch(connection_id, 'collection-logos', _factory):
-        return JSONResponse({'error': 'A collection-logos run is already active for this connection'}, status_code=409)
+        return JSONResponse({'error': gettext('plex.collogo_running')}, status_code=409)
     return JSONResponse({'started': True, 'kind': 'collection-logos'})

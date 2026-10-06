@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from phoenixadult.i18n import gettext
 from phoenixadult.registry import canonical_site_display, find_site, get_all_providers, get_sites_for_provider
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
@@ -94,7 +95,9 @@ def _missing_for(subs: list[str], taken: set[str]) -> list[str]:
 def _add_state() -> dict[str, object]:
     taken = _taken_slugs()
     studios = [studio for studio, subs in _site_catalog().items() if logo_cache.logo_slug(studio) not in taken or _missing_for(subs, taken)]
-    return {'studios': sorted(studios, key=str.casefold), 'placeholders': [{'token': t, 'note': n} for t, n in logo_template.PLACEHOLDERS]}
+    exts = {'exts': ', '.join(logo_template.EXT_CANDIDATES)}
+    placeholders = [{'token': t, 'note': gettext(n) % exts} for t, n in logo_template.PLACEHOLDERS]
+    return {'studios': sorted(studios, key=str.casefold), 'placeholders': placeholders}
 
 
 @router.get('/add', response_class=HTMLResponse, dependencies=_admin)
@@ -131,9 +134,9 @@ async def expand(studio: str = '', template: str = '') -> JSONResponse:
         return {'rows': [{'alias': alias, 'urls': logo_template.expand(template, studio, alias, _base_url_for(alias))} for alias in subs]}
 
     if not studio:
-        return JSONResponse({'error': 'Pick a studio first.'}, status_code=400)
+        return JSONResponse({'error': gettext('logo_add.pick_studio')}, status_code=400)
     if not template.strip():
-        return JSONResponse({'error': 'Enter a template first.'}, status_code=400)
+        return JSONResponse({'error': gettext('logo_add.enter_template')}, status_code=400)
     try:
         return JSONResponse(await run_in('store', _build))
     except ValueError as err:
@@ -169,11 +172,11 @@ def _saved(rel: str) -> dict[str, object]:
 async def add_upload(studio: str = Form(''), alias: str = Form(''), file: UploadFile = _UPLOAD) -> JSONResponse:
     folder, name = _slugs(studio, alias)
     if not name:
-        return JSONResponse({'ok': False, 'error': 'Pick a studio first.'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('logo_add.pick_studio')}, status_code=400)
     suffix = Path(file.filename or '').suffix.lower()
     data = await file.read()
     if not data:
-        return JSONResponse({'ok': False, 'error': 'That file was empty.'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('logo_add.empty_file')}, status_code=400)
     try:
         rel = await run_in('store', logo_cache.save_logo, folder, name, data, suffix)
     except ValueError as err:
@@ -193,7 +196,7 @@ async def _first_image(urls: list[str]) -> tuple[bytes, str, str]:
             continue
         if got.data:
             return got.data, got.content_type, url
-        problems.append(f'{url} (empty image)')
+        problems.append(f'{url} ({gettext("logo_add.empty_image")})')
     raise ValueError('; '.join(problems))
 
 
@@ -212,13 +215,13 @@ async def add_url(request: Request) -> JSONResponse:
     urls = _requested_urls(body)
     folder, name = _slugs(studio, alias)
     if not name:
-        return JSONResponse({'ok': False, 'error': 'Pick a studio first.'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('logo_add.pick_studio')}, status_code=400)
     if not urls or not all(url.startswith(('http://', 'https://')) for url in urls):
-        return JSONResponse({'ok': False, 'error': 'Enter a http:// or https:// address.'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('logo_add.need_http')}, status_code=400)
     try:
         data, content_type, used = await _first_image(urls)
     except ValueError as err:
-        return JSONResponse({'ok': False, 'error': f'Could not fetch that URL: {err}'}, status_code=502)
+        return JSONResponse({'ok': False, 'error': gettext('logo_add.fetch_failed') % {'reason': err}}, status_code=502)
     suffix = Path(urlsplit(used).path).suffix.lower() or _SUFFIX_BY_TYPE.get(content_type.split(';')[0].strip(), '')
     try:
         rel = await run_in('store', logo_cache.save_logo, folder, name, data, suffix)

@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
+from phoenixadult.i18n import N_, gettext
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils import db
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
@@ -37,16 +38,35 @@ FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_st
 _BULK_CONCURRENCY = 3
 _BULK_MAX = 250
 
-_GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
+_GENDERS = [
+    ('', 'gn', N_('people.gender_none')),
+    ('male', 'gm', N_('people.gender_male')),
+    ('female', 'gf', N_('people.gender_female')),
+    ('trans', 'gt', N_('people.gender_trans')),
+]
+_ROLE_LABELS = {'actor': N_('people.role_actor'), 'director': N_('people.role_director'), 'producer': N_('people.role_producer')}
 _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-producer'}
 _TABS = [
-    ('actors-female', 'Female Actors'),
-    ('actors-male', 'Male Actors'),
-    ('actors-trans', 'Trans Actors'),
-    ('actors-unknown', 'Unknown Actors'),
-    ('directors', 'Directors'),
-    ('producers', 'Producers'),
+    ('actors-female', N_('people.tab_actors_female')),
+    ('actors-male', N_('people.tab_actors_male')),
+    ('actors-trans', N_('people.tab_actors_trans')),
+    ('actors-unknown', N_('people.tab_actors_unknown')),
+    ('directors', N_('people.tab_directors')),
+    ('producers', N_('people.tab_producers')),
 ]
+_TAB_COUNTS = {
+    'actors-female': N_('people.count_actors_female'),
+    'actors-male': N_('people.count_actors_male'),
+    'actors-trans': N_('people.count_actors_trans'),
+    'actors-unknown': N_('people.count_actors_unknown'),
+    'directors': N_('people.count_directors'),
+    'producers': N_('people.count_producers'),
+}
+
+
+def _role_label(role: str) -> str:
+    key = _ROLE_LABELS.get(role)
+    return gettext(key) if key else role
 
 
 @lru_cache(maxsize=8192)
@@ -110,6 +130,7 @@ def _display_entry(entry: dict[str, Any]) -> dict[str, Any]:
         'gender_norm': gender_norm,
         'gcss': next(css for key, css, _ in _GENDERS if key == gender_norm),
         'role_css': _ROLE_CSS.get(str(entry.get('role', '')), ''),
+        'role_label': _role_label(str(entry.get('role', ''))),
         'local_src': f'{LOCAL_IMAGES}{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}',
         'upstream_quoted': quote(str(entry.get('upstream_url', '')), safe=''),
         'search_key': name.casefold(),
@@ -222,14 +243,14 @@ async def page(request: Request) -> HTMLResponse:
     first = await run_in('store', _listing, PeopleFilters(), True)
     type_counts = dict(first['counts'])
     default_tab = str(first['tab'])
-    summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'
+    summary = ' · '.join(gettext(_TAB_COUNTS[t]) % {'count': type_counts[t]} for t, _label in _TABS if type_counts[t]) or gettext('people.summary_none')
     return HTMLResponse(
         render_page(
             'people_ui',
             active='people',
             username=nav_username(request),
             entries=first['entries'],
-            tabs=_TABS,
+            tabs=[(t, gettext(label)) for t, label in _TABS],
             type_counts=type_counts,
             default_tab=default_tab,
             summary=summary,
@@ -239,7 +260,7 @@ async def page(request: Request) -> HTMLResponse:
             img_base=image_base_url(),
             img_opt=env.image_base_url_raw,
             crop_available=face_crop.available(),
-            genders=_GENDERS,
+            genders=[(key, css, gettext(label)) for key, css, label in _GENDERS],
             fetchable_sources=[s.name for s in FETCHABLE_SOURCES],
             present_sources=first['sources'],
             has_unrecorded=first['has_unrecorded'],
@@ -284,7 +305,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
         entry = None
     if entry is None:
         return HTMLResponse(
-            '<p style="font-family:system-ui;color:var(--page-text);background:var(--page-bg)">No cached headshot for that person.</p>', status_code=404
+            f'<p style="font-family:system-ui;color:var(--page-text);background:var(--page-bg)">{gettext("people.not_found_page")}</p>', status_code=404
         )
     filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
@@ -296,9 +317,9 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
             active='people',
             username=nav_username(request),
             actor_name=str(entry['name']),
-            role=str(entry['role']),
+            role=_role_label(str(entry['role'])),
             relpath=relpath,
-            origin=str(entry.get('source', '')) or 'unrecorded',
+            origin=str(entry.get('source', '')) or gettext('people_edit.origin_unrecorded'),
             cached_src=cached_src,
             filename=filename,
             entry=entry,
@@ -317,18 +338,18 @@ async def lookup(request: Request) -> JSONResponse:
     wanted = str(data.get('source', ''))
     entry = await run_in('store', _find_entry, filename) if filename else None
     if entry is None:
-        return JSONResponse({'ok': False, 'error': 'unknown filename'}, status_code=404)
+        return JSONResponse({'ok': False, 'error': gettext('people.unknown_filename')}, status_code=404)
     source = next((s for s in FETCHABLE_SOURCES if s.name == wanted), None)
     if source is None:
-        return JSONResponse({'ok': False, 'error': 'unknown source'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.unknown_source')}, status_code=400)
     role: Any = entry['role']
     try:
         hit = await source.find(str(entry['name']), PersonLookupContext(type=role))
     except Exception as err:  # noqa: BLE001 - a failing source is a miss, not a 500
         logger.warn('people-cache', f'{source.name} lookup failed for {entry["name"]}: {err!r}')
-        return JSONResponse({'ok': False, 'error': f'{source.name} lookup failed'}, status_code=502)
+        return JSONResponse({'ok': False, 'error': gettext('people.lookup_failed') % {'source': source.name}}, status_code=502)
     if hit is None or not hit.url:
-        return JSONResponse({'ok': False, 'error': f'{source.name} has no image for "{entry["name"]}"'}, status_code=404)
+        return JSONResponse({'ok': False, 'error': gettext('people.no_image') % {'source': source.name, 'name': entry['name']}}, status_code=404)
     logger.info('people-cache', f'{source.name} offered an image for {entry["name"]}')
     return JSONResponse({'ok': True, 'url': hit.url, 'gender': hit.gender or '', 'source': source.name})
 
@@ -341,9 +362,9 @@ async def bulk_fetch(request: Request) -> Response:
     filenames = [str(f) for f in raw if isinstance(f, str)] if isinstance(raw, list) else []
     source = next((s for s in FETCHABLE_SOURCES if s.name == wanted), None)
     if source is None:
-        return JSONResponse({'ok': False, 'error': 'unknown source'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.unknown_source')}, status_code=400)
     if not filenames:
-        return JSONResponse({'ok': False, 'error': 'no people selected'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.none_selected')}, status_code=400)
 
     truncated = max(0, len(filenames) - _BULK_MAX)
     known = {e['filename']: e for e in await run_in('store', _list_people)}
@@ -430,14 +451,14 @@ async def save(request: Request) -> JSONResponse:
     relabel = str(data.get('recorded_source', ''))
     wants_crop = bool(data.get('cropped'))
     if not filename:
-        return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.missing_filename')}, status_code=400)
     entry = await run_in('store', _find_entry, filename)
     if entry is None:
-        return JSONResponse({'ok': False, 'error': 'unknown filename'}, status_code=404)
+        return JSONResponse({'ok': False, 'error': gettext('people.unknown_filename')}, status_code=404)
     if not upstream:
-        return JSONResponse({'ok': False, 'error': 'an upstream URL is required to re-cache the image'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.upstream_required')}, status_code=400)
     if relabel and relabel not in KNOWN_SOURCES:
-        return JSONResponse({'ok': False, 'error': f'unknown source "{relabel}"'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.unknown_named_source') % {'source': relabel}}, status_code=400)
     relabelled = await run_in('store', _relabel_source, entry, relabel)
     if upstream == entry['upstream_url'] and wants_crop == entry['cropped']:
         return JSONResponse({'ok': True, 'changed': relabelled})
@@ -445,7 +466,7 @@ async def save(request: Request) -> JSONResponse:
     source = picked if any(s.name == picked for s in FETCHABLE_SOURCES) else ''
     cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop, source=source)
     if cached is None:
-        return JSONResponse({'ok': False, 'error': 'could not download or store that image'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.store_failed')}, status_code=400)
     flagged = await run_in('store', scene_store.flag_people_changed, str(entry['name']))
     logger.info('people-cache', f'edited {filename}: upstream={upstream} cropped={wants_crop}; {len(flagged)} scene(s) flagged to re-push')
     return JSONResponse({'ok': True, 'changed': True, 'scenes': len(flagged)})
@@ -456,7 +477,7 @@ async def restore(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
     if not filename:
-        return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.missing_filename')}, status_code=400)
     ok = await restore_original(filename)
     return JSONResponse({'ok': ok})
 
@@ -466,7 +487,7 @@ async def purge_file(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
     if not filename:
-        return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.missing_filename')}, status_code=400)
     return JSONResponse({'ok': await run_in('fs', purge, filename)})
 
 
@@ -476,8 +497,8 @@ async def gender(request: Request) -> JSONResponse:
     filename = str(data.get('filename', ''))
     new_gender = str(data.get('gender', ''))
     if not filename:
-        return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.missing_filename')}, status_code=400)
     if new_gender not in get_args(Gender):
-        return JSONResponse({'ok': False, 'error': 'invalid gender'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('people.invalid_gender')}, status_code=400)
     new_filename = await run_in('fs', set_gender, filename, new_gender)
     return JSONResponse({'ok': new_filename is not None, 'filename': new_filename})

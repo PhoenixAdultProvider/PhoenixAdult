@@ -33,6 +33,7 @@ dependencies = [
     "filelock>=3.12",
     "ftfy>=6.1",
     "zxcvbn>=4.4",
+    "babel>=2.16",
 ]
 
 [project.optional-dependencies]
@@ -71,7 +72,7 @@ version = { attr = "phoenixadult.__version__" }
 include = ["phoenixadult*"]
 
 [tool.setuptools.package-data]
-phoenixadult = ["**/*.html", "**/*.css", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx", "**/*.woff2", "**/*.LICENSE"]
+phoenixadult = ["**/*.html", "**/*.po", "**/*.css", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx", "**/*.woff2", "**/*.LICENSE"]
 
 [tool.ruff]
 line-length = 160

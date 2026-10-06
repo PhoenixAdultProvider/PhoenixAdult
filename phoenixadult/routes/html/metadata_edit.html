@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Edit Snapshot{% endblock %}
+{% block title %}{{ _('metadata_edit.title') }}{% endblock %}
 {% block page %}metadata-edit{% endblock %}
 {% block head %}
   <style>
@@ -58,79 +58,78 @@
   </style>
 {% endblock %}
 {% block content %}
-  <h1>Edit Snapshot</h1>
-  <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ 'Listing ↗' if source_kind == 'listing' else 'Scene ↗' }}</a>{% endif %}<a class="srclink" id="data18Link" target="_blank" rel="noreferrer" hidden>Data18 ↗</a>
-  {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>Source JSON</summary><pre id="sourceJson">Loading…</pre></details>{% endif %}</div>
+  <h1>{{ _('metadata_edit.title') }}</h1>
+  <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ _('metadata_edit.listing_link') if source_kind == 'listing' else _('metadata_edit.scene_link') }}</a>{% endif %}<a class="srclink" id="data18Link" target="_blank" rel="noreferrer" hidden>{{ _('metadata_edit.data18_link') }}</a>
+  {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>{{ _('metadata_edit.source_json') }}</summary><pre id="sourceJson">{{ _('metadata_edit.loading') }}</pre></details>{% endif %}</div>
 
   <div class="cols">
       <fieldset class="pa-fieldset">
-        <legend>Scene</legend>
-        <label class="pa-label" for="f-title">Title</label>
+        <legend>{{ _('metadata_edit.scene') }}</legend>
+        <label class="pa-label" for="f-title">{{ _('metadata_edit.field_title') }}</label>
         <input class="pa-input" type="text" id="f-title"{% if not is_admin() %} readonly{% endif %}>
-        <label class="pa-label" for="f-titleSort">Sort Title</label>
+        <label class="pa-label" for="f-titleSort">{{ _('metadata_edit.sort_title') }}</label>
         <input class="pa-input" type="text" id="f-titleSort"{% if not is_admin() %} readonly{% endif %}>
-        <label class="pa-label" for="f-date">Date</label>
+        <label class="pa-label" for="f-date">{{ _('metadata_edit.date') }}</label>
         <input class="pa-input" type="date" id="f-date"{% if not is_admin() %} readonly{% endif %}>
-        <label class="pa-label" for="f-studio">Studio</label>
+        <label class="pa-label" for="f-studio">{{ _('metadata_edit.studio') }}</label>
         <input class="pa-input" type="text" id="f-studio"{% if not is_admin() %} readonly{% endif %}>
-        <div class="pa-hint">Changing Studio or Tagline moves the snapshot folder.</div>
-        <label class="pa-label" for="f-tagline">Tagline</label>
+        <div class="pa-hint">{{ _('metadata_edit.studio_hint') }}</div>
+        <label class="pa-label" for="f-tagline">{{ _('metadata_edit.tagline') }}</label>
         <input class="pa-input" type="text" id="f-tagline"{% if not is_admin() %} readonly{% endif %}>
-        <label class="pa-label" for="f-summary">Summary</label>
+        <label class="pa-label" for="f-summary">{{ _('metadata_edit.summary') }}</label>
         <textarea class="pa-input" id="f-summary"{% if not is_admin() %} readonly{% endif %}></textarea>
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Data18</legend>
-        <label class="pa-label" for="f-data18Id">Data18 ID</label>
-        <input class="pa-input" type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated"{% if not is_admin() %} readonly{% endif %}>
-        <label class="pa-label" for="f-data18Type">Data18 Type</label>
+        <legend>{{ _('metadata_edit.data18') }}</legend>
+        <label class="pa-label" for="f-data18Id">{{ _('metadata_edit.data18_id') }}</label>
+        <input class="pa-input" type="text" id="f-data18Id" placeholder="{{ _('metadata_edit.data18_id_placeholder') }}"{% if not is_admin() %} readonly{% endif %}>
+        <label class="pa-label" for="f-data18Type">{{ _('metadata_edit.data18_type') }}</label>
         <select class="pa-input" id="f-data18Type">
-          <option value="scene">scene</option>
-          <option value="movie">movie</option>
+          <option value="scene">{{ _('metadata_edit.type_scene') }}</option>
+          <option value="movie">{{ _('metadata_edit.type_movie') }}</option>
         </select>
-        <label class="pa-label">Mapping Slug</label>
-        <div class="slugrow"><code id="d18slug"></code><button type="button" class="pa-btn" id="d18slugCopy">Copy</button></div>
-        <div class="pa-hint">State: <span id="d18state"></span>. Typing an ID here marks it <b>manual</b>, which
-          the cache list can filter on so hand-made mappings export on their own. Clearing it drops the ref.</div>
+        <label class="pa-label">{{ _('metadata_edit.mapping_slug') }}</label>
+        <div class="slugrow"><code id="d18slug"></code><button type="button" class="pa-btn" id="d18slugCopy">{{ _('metadata_edit.copy') }}</button></div>
+        <div class="pa-hint">{{ _('metadata_edit.data18_hint') }}</div>
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Genres</legend>
+        <legend>{{ _('metadata_edit.genres') }}</legend>
         <div class="chips" id="c-Genre"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Genre" placeholder="Add a genre…"><button class="pa-btn" data-add="Genre">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Genre" placeholder="{{ _('metadata_edit.add_genre') }}"><button class="pa-btn" data-add="Genre">{{ _('metadata_edit.add') }}</button></div>{% endif %}
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Collections</legend>
+        <legend>{{ _('metadata_edit.collections') }}</legend>
         <div class="chips" id="c-Collection"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Collection" placeholder="Add a collection…"><button class="pa-btn" data-add="Collection">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Collection" placeholder="{{ _('metadata_edit.add_collection') }}"><button class="pa-btn" data-add="Collection">{{ _('metadata_edit.add') }}</button></div>{% endif %}
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Actors</legend>
+        <legend>{{ _('metadata_edit.actors') }}</legend>
         <div class="chips" id="c-Role"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Role" placeholder="Add an actor…"><button class="pa-btn" data-add="Role">Add</button></div>{% endif %}
-        <div class="pa-hint">A removed name loses its cached headshot link; a new one resolves on the next serve.</div>
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Role" placeholder="{{ _('metadata_edit.add_actor') }}"><button class="pa-btn" data-add="Role">{{ _('metadata_edit.add') }}</button></div>{% endif %}
+        <div class="pa-hint">{{ _('metadata_edit.actors_hint') }}</div>
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Directors</legend>
+        <legend>{{ _('metadata_edit.directors') }}</legend>
         <div class="chips" id="c-Director"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Director" placeholder="Add a director…"><button class="pa-btn" data-add="Director">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Director" placeholder="{{ _('metadata_edit.add_director') }}"><button class="pa-btn" data-add="Director">{{ _('metadata_edit.add') }}</button></div>{% endif %}
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Producers</legend>
+        <legend>{{ _('metadata_edit.producers') }}</legend>
         <div class="chips" id="c-Producer"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Producer" placeholder="Add a producer…"><button class="pa-btn" data-add="Producer">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Producer" placeholder="{{ _('metadata_edit.add_producer') }}"><button class="pa-btn" data-add="Producer">{{ _('metadata_edit.add') }}</button></div>{% endif %}
       </fieldset>
 
       <fieldset class="pa-fieldset">
-        <legend>Images</legend>
+        <legend>{{ _('metadata_edit.images') }}</legend>
         <div class="imgs" id="imgs"></div>
-        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-img" placeholder="https://… (downloaded on save)"><button class="pa-btn" id="addImg">Add</button></div>{% endif %}
-        <div class="pa-hint">Removed images are deleted from disk when the snapshot is rewritten.</div>
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-img" placeholder="{{ _('metadata_edit.add_image') }}"><button class="pa-btn" id="addImg">{{ _('metadata_edit.add') }}</button></div>{% endif %}
+        <div class="pa-hint">{{ _('metadata_edit.images_hint') }}</div>
       </fieldset>
   </div>
 
@@ -139,10 +138,10 @@
       <div class="pa-progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
       <div class="pa-progress-track"><div class="pa-progress-fill" id="progress-fill"></div></div>
     </div>
-{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--success" id="saveBtn" onclick="save()">Save</button>
-    <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--success" id="saveBtn" onclick="save()">{{ _('metadata_edit.save') }}</button>
+    <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshBtn" onclick="refreshMeta()">{{ _('metadata_edit.refresh_metadata') }}</button>
 {% endif %}    <button class="pa-btn pa-btn--lg" id="sfwToggle" onclick="toggleSfw()"></button>
-    <button class="pa-btn pa-btn--lg" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
+    <button class="pa-btn pa-btn--lg" onclick="leave()">{{ _('metadata_edit.cancel') if is_admin() else _('metadata_edit.back') }}</button>
     <span class="pa-status" id="status"></span>
   </div>
 
@@ -150,6 +149,7 @@
 {% endblock %}
 {% block scripts %}
   <script>
+    var T = {{ strings('metadata_edit') | tojson }};
     var IS_ADMIN = {{ is_admin()|tojson }};
     var KEY = {{ key|tojson }};
     var MD = {{ metadata|tojson }};
@@ -158,7 +158,7 @@
     var SOURCE_JSON = {{ source_json|tojson }};
 
     function paintSfwToggle() {
-      paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
+      paintSfwButton(SFW, T.sfw_on_hint, T.sfw_off_hint);
     }
 
     function repaintSfw() {
@@ -227,7 +227,7 @@
         const label = input.previousElementSibling;
         if (label && label.appendChild) {
           if (label.classList) label.classList.add('has-lock');
-          label.appendChild(makeLockEl(field, 'Locked values survive Refresh Metadata'));
+          label.appendChild(makeLockEl(field, T.lock_value));
         }
         input.addEventListener('input', () => dirty.add(field));
         input.addEventListener('change', () => dirty.add(field));
@@ -240,7 +240,7 @@
         const legend = fs && fs.querySelector ? fs.querySelector('legend') : null;
         if (legend && legend.appendChild) {
           if (legend.classList) legend.classList.add('has-lock');
-          legend.appendChild(makeLockEl(field, 'Locked lists survive Refresh Metadata'));
+          legend.appendChild(makeLockEl(field, T.lock_list));
         }
       }
       const imgsBox = qs('imgs');
@@ -250,7 +250,7 @@
         if (imgLegend.classList) imgLegend.classList.add('has-lock');
         setLockBtn = document.createElement(IS_ADMIN ? 'button' : 'span');
         setLockBtn.className = 'lock-toggle';
-        setLockBtn.title = 'Freezes the whole image set: refresh cannot add, remove, or replace anything. Removed images only stay gone while this is on.';
+        setLockBtn.title = T.lock_images;
         if (IS_ADMIN) {
           setLockBtn.type = 'button';
           setLockBtn.onclick = () => { imagesLocked = !imagesLocked; paintLocks(); renderImages(); };
@@ -295,7 +295,7 @@
         if (IS_ADMIN) {
           const drop = document.createElement('button');
           drop.textContent = '×';
-          drop.title = 'Remove';
+          drop.title = T.remove;
           drop.onclick = () => { LISTS[field].splice(idx, 1); dirty.add(field); renderChips(field); };
           chip.appendChild(drop);
         }
@@ -339,7 +339,7 @@
         card.appendChild(kind);
         const spin = document.createElement('div');
         spin.className = 'spin';
-        (IS_ADMIN ? [['↺', 270, 'Rotate 90° counter-clockwise'], ['↻', 90, 'Rotate 90° clockwise']] : []).forEach(([glyph, delta, label]) => {
+        (IS_ADMIN ? [['↺', 270, T.rotate_left], ['↻', 90, T.rotate_right]] : []).forEach(([glyph, delta, label]) => {
           const b = document.createElement('button');
           b.type = 'button';
           b.className = 'pa-btn pa-btn--sm';
@@ -356,7 +356,7 @@
           lockBtn.type = 'button';
           lockBtn.className = 'lockbtn' + (img.locked ? ' on' : '');
           lockBtn.textContent = img.locked ? '🔒' : '🔓';
-          lockBtn.title = 'A locked image survives Refresh Metadata while the rest of the set updates';
+          lockBtn.title = T.lock_image;
           lockBtn.onclick = () => { images[idx].locked = !images[idx].locked; renderImages(); };
           spin.appendChild(lockBtn);
         } else if (img.locked || imagesLocked) {
@@ -369,7 +369,7 @@
         if (IS_ADMIN) {
           const drop = document.createElement('button');
           drop.className = 'pa-btn pa-btn--sm pa-btn--danger drop';
-          drop.textContent = 'Remove';
+          drop.textContent = T.remove;
           drop.onclick = () => { images.splice(idx, 1); renderImages(); };
           card.appendChild(drop);
         }
@@ -392,22 +392,22 @@
 
     function initMappingSlug() {
       const el = qs('d18slug');
-      el.textContent = MAPPING_SLUG || '(no slug — title empty)';
+      el.textContent = MAPPING_SLUG || T.no_slug;
       qs('d18slugCopy').addEventListener('click', async () => {
         const btn = qs('d18slugCopy');
         try {
           await navigator.clipboard.writeText(MAPPING_SLUG);
-          btn.textContent = 'Copied';
+          btn.textContent = T.copied;
         } catch {
           const r = document.createRange();
           r.selectNodeContents(el);
           const s = getSelection();
           s.removeAllRanges();
           s.addRange(r);
-          btn.textContent = document.execCommand('copy') ? 'Copied' : 'Copy failed';
+          btn.textContent = document.execCommand('copy') ? T.copied : T.copy_failed;
           s.removeAllRanges();
         }
-        setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+        setTimeout(() => { btn.textContent = T.copy; }, 1200);
       });
     }
 
@@ -420,7 +420,7 @@
     function renderData18State() {
       const state = data18State();
       const box = qs('d18state');
-      box.textContent = state;
+      box.textContent = {blank: T.state_blank, manual: T.state_manual, filled: T.state_filled}[state];
       box.className = 'state ' + state;
       const link = qs('data18Link');
       const href = data18Url();
@@ -453,7 +453,7 @@
     async function save() {
       const btn = qs('saveBtn');
       btn.disabled = true;
-      qs('status').textContent = 'Saving…';
+      qs('status').textContent = T.saving;
       const body = {
         key: KEY,
         title: qs('f-title').value.trim(),
@@ -482,7 +482,7 @@
       }
       if (payload.ok) { leave(); return; }
       btn.disabled = false;
-      qs('status').textContent = 'Save failed: ' + (payload.error || 'unknown error');
+      qs('status').textContent = tr(T.save_failed, {reason: payload.error || T.unknown_error});
     }
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -515,11 +515,11 @@
       if (at.state === 'queued') {
         aheadAtStart = Math.max(aheadAtStart, at.ahead);
         const drained = aheadAtStart ? (aheadAtStart - at.ahead) / aheadAtStart : 0;
-        showProgress(Math.round(5 + drained * 55), at.ahead ? `Queued — ${at.ahead} job(s) ahead` : 'Queued — next up', false);
+        showProgress(Math.round(5 + drained * 55), at.ahead ? tr(T.queued_ahead, {count: at.ahead}) : T.queued_next, false);
       } else if (at.state === 'running') {
-        showProgress(80, 'Scraping the site…', true);
+        showProgress(80, T.scraping_site, true);
       } else {
-        showProgress(95, 'Writing the snapshot…', true);
+        showProgress(95, T.writing, true);
       }
       return at.state;
     }
@@ -549,11 +549,11 @@
     }
 
     async function refreshMeta() {
-      if (!confirm('Re-scrape this scene from the site?\n\nThe stored snapshot is replaced, so manual edits to it are lost.')) return;
+      if (!confirm(T.refresh_confirm)) return;
       const btn = qs('refreshBtn');
       btn.disabled = true;
       qs('saveBtn').disabled = true;
-      qs('status').textContent = 'Refreshing…';
+      qs('status').textContent = T.refreshing;
       let started = {};
       try {
         const r = await fetch('/metadata/refresh', {method: 'POST', headers: hdrs(), body: JSON.stringify({key: KEY})});
@@ -564,26 +564,26 @@
       if (!started.ok) {
         btn.disabled = false;
         qs('saveBtn').disabled = false;
-        qs('status').textContent = 'Refresh failed: ' + (started.error || 'unknown error');
+        qs('status').textContent = tr(T.refresh_failed, {reason: started.error || T.unknown_error});
         return;
       }
-      qs('status').textContent = started.queued ? 'Scraping…' : 'Scraping (already queued)…';
+      qs('status').textContent = started.queued ? T.scraping : T.scraping_queued;
       aheadAtStart = 0;
-      showProgress(5, 'Queued…', false);
+      showProgress(5, T.queued, false);
       const fresh = await pollSnapshot(started.site, started.cur_id, started.updated_at, started.queue_key);
       btn.disabled = false;
       qs('saveBtn').disabled = false;
       if (fresh === 'unchanged') {
         qs('progress').style.display = 'none';
-        qs('status').textContent = 'The scrape finished without changing this snapshot — the site returned nothing new.';
+        qs('status').textContent = T.unchanged;
         return;
       }
       if (!fresh) {
         qs('progress').style.display = 'none';
-        qs('status').textContent = 'Still scraping — the queue is busy or the site is paced. Reload later to see the result.';
+        qs('status').textContent = T.still_scraping;
         return;
       }
-      showProgress(100, 'Done', false);
+      showProgress(100, T.done, false);
       MD = fresh.metadata;
       KEY = fresh.key;
       if (fresh.locks) { LOCKS = fresh.locks; lockSet = new Set(LOCKS.fields || []); imagesLocked = !!LOCKS.imagesLocked; dirty.clear(); }
@@ -591,7 +591,7 @@
       const sub = qs('subKey');
       if (sub) sub.textContent = KEY;
       load();
-      qs('status').textContent = 'Refreshed from the site.';
+      qs('status').textContent = T.refreshed;
     }
 
     document.querySelectorAll('[data-add]').forEach(btn => {
@@ -623,9 +623,9 @@
         try {
           const r = await fetch('/metadata/source-json?' + new URLSearchParams({key: KEY}));
           const j = await r.json();
-          pre.textContent = j.ok ? JSON.stringify(j.json, null, 2) : 'Fetch failed: ' + (j.error || 'unknown error');
+          pre.textContent = j.ok ? JSON.stringify(j.json, null, 2) : tr(T.fetch_failed, {reason: j.error || T.unknown_error});
         } catch (err) {
-          pre.textContent = 'Fetch failed: ' + err;
+          pre.textContent = tr(T.fetch_failed, {reason: err});
         }
       });
     }

@@ -234,7 +234,7 @@ def test_page_offers_a_provider_filter(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_page_has_a_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
     page = authed_client().get('/metadata')
     assert '@media (max-width: 720px)' in page.text
-    assert 'data-label="Data18"' in page.text
+    assert 'data-label="${T.card_data18}"' in page.text
     assert 'class="c-title"' in page.text
     assert 'filtersToggle' in page.text
     assert '<div class="cards" id="cards"></div>' in page.text
@@ -245,8 +245,8 @@ def test_page_has_a_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cards_show_genre_counts_and_actor_names(monkeypatch: pytest.MonkeyPatch) -> None:
     page = authed_client().get('/metadata')
-    assert 'data-label="Genres"' in page.text
-    assert 'data-label="Actors"' in page.text
+    assert 'data-label="${T.card_genres}"' in page.text
+    assert 'data-label="${T.card_actors}"' in page.text
     assert 'personLink(a)' in page.text
     assert 'function personLink(' in page.text
     assert "'/people/edit?' + new URLSearchParams({name}).toString()" in page.text
@@ -259,7 +259,7 @@ def test_page_offers_an_actor_filter_and_bulk_refresh(monkeypatch: pytest.Monkey
     assert '>Actor<' in page.text
     assert "'f-actor': 'actor'" in page.text
     assert 'refreshShown()' in page.text
-    assert 'Refresh Filtered (${TOTAL})' in page.text
+    assert 'Refresh Filtered ({count})' in page.text
 
 
 def test_page_has_a_mobile_sort_control(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -814,7 +814,7 @@ def test_the_empty_thumbnail_is_a_centred_well() -> None:
     assert 'font-size: var(--text-sm)' in rule
     assert 'checkerboard-a' in rule
     assert '.scene-card .noimg::before' not in page.text
-    assert '>No image<' in page.text
+    assert '>${T.no_image}<' in page.text
 
 
 def test_the_card_subgrid_span_matches_its_row_count() -> None:

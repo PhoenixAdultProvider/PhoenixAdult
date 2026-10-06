@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Create Admin Account — PhoenixAdult{% endblock %}
+{% block title %}{{ _('setup.title') }} — PhoenixAdult{% endblock %}
 {% block page %}setup{% endblock %}
 {% block head %}
 <style>
@@ -17,25 +17,25 @@
 {% block chrome %}{% endblock %}
 {% block content %}
   <form class="pa-card pa-card--roomy auth-card" id="setupForm" method="post" action="/setup" autocomplete="on">
-    <h1>Create Admin Account</h1>
-    <div class="sub">First run — this account manages users and Plex connections.</div>
-    <label class="pa-label" for="username">Username</label>
+    <h1>{{ _('setup.title') }}</h1>
+    <div class="sub">{{ _('setup.subtitle') }}</div>
+    <label class="pa-label" for="username">{{ _('login.username') }}</label>
     <input class="pa-input" id="username" name="username" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" required autofocus>
     <div class="pa-field-head">
-      <label class="pa-label" for="password">Password</label>
-      <button type="button" class="pa-reveal" data-for="password">Show</button>
+      <label class="pa-label" for="password">{{ _('login.password') }}</label>
+      <button type="button" class="pa-reveal" data-for="password">{{ _('common.show') }}</button>
     </div>
     <input class="pa-input" id="password" name="password" type="password" autocomplete="new-password" enterkeyhint="next" required>
-    <div class="pa-hint">8+ characters with an uppercase letter, a number, and a special character.</div>
+    <div class="pa-hint">{{ _('password.hint') }}</div>
     <div class="pa-meter" id="pwMeter" hidden><div class="pa-meter-fill" id="pwMeterFill"></div></div>
     <div class="pa-hint" id="pwMeterText"></div>
     <div class="pa-field-head">
-      <label class="pa-label" for="confirm">Confirm Password</label>
-      <button type="button" class="pa-reveal" data-for="confirm">Show</button>
+      <label class="pa-label" for="confirm">{{ _('setup.confirm_password') }}</label>
+      <button type="button" class="pa-reveal" data-for="confirm">{{ _('common.show') }}</button>
     </div>
     <input class="pa-input" id="confirm" name="confirm" type="password" autocomplete="new-password" enterkeyhint="go" required>
-    <div class="pa-hint">Store this somewhere safe — recovery requires shell access to the server.</div>
-    <button class="pa-btn pa-btn--primary submit" type="submit" id="submitBtn">Create Account</button>
+    <div class="pa-hint">{{ _('setup.keep_safe') }}</div>
+    <button class="pa-btn pa-btn--primary submit" type="submit" id="submitBtn">{{ _('setup.submit') }}</button>
     <div class="err" id="err">{{ error }}</div>
   </form>
 {% endblock %}
@@ -51,7 +51,7 @@
 
     form.addEventListener('submit', (e) => {
       err.textContent = '';
-      const problem = policyError(pwField.value) || (pwField.value === confirmField.value ? '' : 'Passwords do not match.');
+      const problem = policyError(pwField.value) || (pwField.value === confirmField.value ? '' : {{ _('password.mismatch')|tojson }});
       if (problem) { e.preventDefault(); err.textContent = problem; return; }
       btn.disabled = true;
       setTimeout(() => { btn.disabled = false; }, 5000);

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config.env import env
+from phoenixadult.i18n import N_, gettext
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.metadata import PlexMetadata, PlexMetadataResponse, PlexRole
@@ -83,34 +84,34 @@ def _metadata_field_diff(direct: dict[str, Any], reassembled: dict[str, Any]) ->
 
 
 async def _db_roundtrip_step(site_name: str, cur_id: str, direct: dict[str, Any], written: bool, lap: Callable[[], int]) -> dict[str, Any]:
-    step = '6. DB round-trip'
+    step = _step(N_('dev.step_db_roundtrip'))
     if not env.metadata_cache_enabled:
         return {
-            'step': step,
+            **step,
             'ok': True,
-            'data': {'cacheEnabled': False, 'note': 'METADATA_CACHE_ENABLE is off — snapshot not written'},
+            'data': {'cacheEnabled': False, 'note': gettext('dev.cache_off_note')},
             'durationMs': lap(),
         }
     if not written:
         return {
-            'step': step,
+            **step,
             'ok': False,
             'data': {'cacheEnabled': True, 'written': False},
-            'error': 'Snapshot write failed or was skipped — nothing to re-read',
+            'error': gettext('dev.write_failed'),
             'durationMs': lap(),
         }
     reassembled = await run_in('store', metadata_cache.read, site_name, cur_id)
     if reassembled is None:
         return {
-            'step': step,
+            **step,
             'ok': False,
             'data': {'cacheEnabled': True, 'written': True},
-            'error': 'Snapshot re-read returned nothing',
+            'error': gettext('dev.reread_empty'),
             'durationMs': lap(),
         }
     diff = _metadata_field_diff(direct, reassembled)
     return {
-        'step': step,
+        **step,
         'ok': True,
         'data': {'cacheEnabled': True, 'written': True, 'identical': not diff, 'diffFields': diff, 'reassembled': reassembled},
         'durationMs': lap(),
@@ -156,6 +157,10 @@ def _score_results(raw_results: list[Any], *, site: Any, parsed: Any, query: str
     return scored
 
 
+def _step(key: str) -> dict[str, str]:
+    return {'id': key, 'step': gettext(key)}
+
+
 class _Steps:
     def __init__(self) -> None:
         self.items: list[dict[str, Any]] = []
@@ -163,7 +168,7 @@ class _Steps:
         self.lap = _lap_timer()
 
     def add(self, step: str, ok: bool, data: Any = None, error: str | None = None) -> None:
-        self.items.append({'step': step, 'ok': ok, 'data': data, 'error': error, 'durationMs': self.lap()})
+        self.items.append({**_step(step), 'ok': ok, 'data': data, 'error': error, 'durationMs': self.lap()})
 
     def fail(self, step: str, error: str, data: Any = None) -> None:
         self.add(step, False, data, error)
@@ -199,23 +204,23 @@ def _site_data(site: ResolvedSiteInfo) -> dict[str, Any]:
 def _plan_search(steps: _Steps, filename: str) -> _SearchPlan | None:
     parsed = get_site_name_from_registry(filename, lambda token: find_site(token) is not None)
     if parsed is None:
-        steps.fail('1. Parse filename', 'Could not parse filename — check format')
+        steps.fail(N_('dev.step_parse_filename'), gettext('dev.cannot_parse_filename'))
         return None
-    steps.add('1. Parse filename', True, dataclasses.asdict(parsed))
+    steps.add(N_('dev.step_parse_filename'), True, dataclasses.asdict(parsed))
     site = find_site(parsed.site_token)
     assert site is not None
-    steps.add('2. Site lookup', True, _site_data(site))
+    steps.add(N_('dev.step_site_lookup'), True, _site_data(site))
     provider = next((p for p in get_all_providers() if p.id == site.provider_id), None)
     if provider is None:
-        steps.fail('3. Provider lookup', f'Provider "{site.provider_id}" not found')
+        steps.fail(N_('dev.step_provider_lookup'), gettext('dev.provider_missing') % {'provider': site.provider_id})
         return None
-    steps.add('3. Provider lookup', True, {'id': provider.id, 'title': provider.title, 'plexIdentifier': provider.plex_identifier})
+    steps.add(N_('dev.step_provider_lookup'), True, {'id': provider.id, 'title': provider.title, 'plexIdentifier': provider.plex_identifier})
     pieces = build_search_pieces(site.content_type, parsed)
     query_data: dict[str, Any] = {'query': pieces.query, 'searchURL': ''}
     if not pieces.query:
-        steps.fail('4. Search query', 'Could not build search query from parsed filename', query_data)
+        steps.fail(N_('dev.step_search_query'), gettext('dev.no_query'), query_data)
         return None
-    steps.add('4. Search query', True, query_data)
+    steps.add(N_('dev.step_search_query'), True, query_data)
     return _SearchPlan(filename, parsed, site, provider, pieces, query_data)
 
 
@@ -261,15 +266,16 @@ async def _search_step(steps: _Steps, plan: _SearchPlan, year: int | None) -> No
         raw_results = await _run_search(plan, year, captures)
         plan.query_data['searchURL'] = _searched_url(raw_results, captures)
         if raw_results is None:
-            steps.add('5. Search results', False, {'captures': _serialize_captures(captures)}, f'No scraper registered for type "{site.scraper_config.type}"')
+            error = gettext('dev.no_scraper') % {'type': site.scraper_config.type}
+            steps.add(N_('dev.step_search_results'), False, {'captures': _serialize_captures(captures)}, error)
             return
         log_search_count(provider.id, site.name, query, len(raw_results))
         scored = _score_results(raw_results, site=site, parsed=plan.parsed, query=query, provider_id=provider.id)
         data = {'searchDate': plan.parsed.date, 'count': len(scored), 'results': scored, 'captures': _serialize_captures(captures)}
-        steps.add('5. Search results', len(scored) > 0, data, None if scored else 'No results returned from upstream')
+        steps.add(N_('dev.step_search_results'), len(scored) > 0, data, None if scored else gettext('dev.no_results'))
     except Exception:  # noqa: BLE001
         logger.error('dev', 'search step failed', exc_info=True)
-        steps.add('5. Search results', False, error='Internal error — see the server log')
+        steps.add(N_('dev.step_search_results'), False, error=gettext('dev.internal_error'))
 
 
 @router.post('/test')
@@ -310,19 +316,19 @@ class _MetadataOptions:
 def _resolve_lookups(steps: _Steps, rating_key: str, provider_id: str) -> tuple[dict[str, Any], ResolvedSiteInfo, ProviderInfo] | None:
     parsed = parse_rating_key(rating_key)
     if not parsed:
-        steps.fail('1. Parse ratingKey', f'Could not parse ratingKey: "{rating_key}"', parsed)
+        steps.fail(N_('dev.step_parse_rating_key'), gettext('dev.cannot_parse_rating_key') % {'key': rating_key}, parsed)
         return None
-    steps.add('1. Parse ratingKey', True, parsed)
+    steps.add(N_('dev.step_parse_rating_key'), True, parsed)
     site = find_site(parsed['site_name'] or '')
     if site is None:
-        steps.fail('2. Site lookup', f'No site found for "{parsed["site_name"]}"')
+        steps.fail(N_('dev.step_site_lookup'), gettext('dev.no_site') % {'site': parsed['site_name']})
         return None
-    steps.add('2. Site lookup', True, {'name': site.name, 'scraperType': site.scraper_config.type})
+    steps.add(N_('dev.step_site_lookup'), True, {'name': site.name, 'scraperType': site.scraper_config.type})
     provider = next((p for p in get_all_providers() if p.id == provider_id), None)
     if provider is None:
-        steps.fail('3. Provider lookup', f'Provider "{provider_id}" not found')
+        steps.fail(N_('dev.step_provider_lookup'), gettext('dev.provider_missing') % {'provider': provider_id})
         return None
-    steps.add('3. Provider lookup', True, {'id': provider.id, 'title': provider.title})
+    steps.add(N_('dev.step_provider_lookup'), True, {'id': provider.id, 'title': provider.title})
     return parsed, site, provider
 
 
@@ -334,13 +340,13 @@ async def _resolve_target(steps: _Steps, rating_key: str, provider_id: str) -> _
     log_update_provider(provider.id, site.name, site.scraper_config.type)
     cur_id = parsed['cur_id'] or ''
     scene_url, subsite = split_subsite(scraper.decode(cur_id))
-    steps.add('4. Decode identifier', bool(scene_url), {'curID': cur_id, 'sceneURL': scene_url})
+    steps.add(N_('dev.step_decode_identifier'), bool(scene_url), {'curID': cur_id, 'sceneURL': scene_url})
     if not scene_url:
         return None
     try:
         await ensure_fetchable_url(scene_url)
     except ValueError as err:
-        steps.add('4. Decode identifier', False, error=f'sceneURL blocked: {err}')
+        steps.add(N_('dev.step_decode_identifier'), False, error=gettext('dev.scene_url_blocked') % {'reason': err})
         return None
     return _MetadataTarget(rating_key, parsed, site, provider, cur_id, scene_url, subsite)
 
@@ -409,10 +415,10 @@ async def _cached_metadata_steps(response: PlexMetadataResponse, target: _Metada
     refreshed = await refresh_cached_snapshot(response, target.site, target.cur_id, fetch_detail=_fetch_detail)
     filter_male_actors(response)
     md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
-    steps: list[dict[str, Any]] = [{'step': '5. Fetch metadata', 'ok': True, 'data': _snapshot_summary(md, refreshed), 'durationMs': lap()}]
+    steps: list[dict[str, Any]] = [{**_step(N_('dev.step_fetch_metadata')), 'ok': True, 'data': _snapshot_summary(md, refreshed), 'durationMs': lap()}]
     if full_pipeline:
-        note = 'Served from snapshot — this response already came through the DB reassembly path'
-        steps.append({'step': '6. DB round-trip', 'ok': True, 'data': {'cacheEnabled': True, 'note': note}, 'durationMs': lap()})
+        note = gettext('dev.served_note')
+        steps.append({**_step(N_('dev.step_db_roundtrip')), 'ok': True, 'data': {'cacheEnabled': True, 'note': note}, 'durationMs': lap()})
     return steps
 
 
@@ -475,12 +481,14 @@ async def _live_metadata_steps(target: _MetadataTarget, options: _MetadataOption
     try:
         detail = await _fetch_live_detail(target, captures)
         if not detail:
-            error = 'Scraper returned no SceneDetail (transport error or unsupported flow). See captures for upstream responses.'
-            return [{'step': '5. Fetch metadata', 'ok': False, 'error': error, 'data': {'captures': _serialize_captures(captures)}, 'durationMs': lap()}]
+            error = gettext('dev.no_scene_detail')
+            return [
+                {**_step(N_('dev.step_fetch_metadata')), 'ok': False, 'error': error, 'data': {'captures': _serialize_captures(captures)}, 'durationMs': lap()}
+            ]
         return await _live_steps_for(detail, target, options, captures, lap)
     except Exception:  # noqa: BLE001
         logger.error('dev', 'metadata step failed', exc_info=True)
-        return [{'step': '5. Fetch metadata', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()}]
+        return [{**_step(N_('dev.step_fetch_metadata')), 'ok': False, 'error': gettext('dev.internal_error'), 'durationMs': lap()}]
 
 
 async def _live_steps_for(
@@ -499,7 +507,7 @@ async def _live_steps_for(
         'captures': _serialize_captures(captures),
         'fixture': _live_fixture(metadata, site, options.filename, options.result_score, roles),
     }
-    steps = [{'step': '5. Fetch metadata', 'ok': True, 'data': data, 'durationMs': lap()}]
+    steps = [{**_step(N_('dev.step_fetch_metadata')), 'ok': True, 'data': data, 'durationMs': lap()}]
     if options.full_pipeline:
         steps.append(await _db_roundtrip_step(site.name, target.cur_id, direct_payload or {}, snapshot_saved, lap))
     return steps

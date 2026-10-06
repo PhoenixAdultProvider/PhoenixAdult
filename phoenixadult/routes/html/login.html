@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Sign In — PhoenixAdult{% endblock %}
+{% block title %}{{ _('login.title') }} — PhoenixAdult{% endblock %}
 {% block page %}login{% endblock %}
 {% block head %}
 <style>
@@ -17,17 +17,17 @@
 {% block chrome %}{% endblock %}
 {% block content %}
   <form class="pa-card pa-card--roomy auth-card" id="loginForm" method="post" action="/login" autocomplete="on">
-    <h1>Sign In</h1>
+    <h1>{{ _('login.title') }}</h1>
     <div class="sub">{{ subtitle }}</div>
     <input type="hidden" name="next" value="{{ next }}">
-    <label class="pa-label" for="username">Username</label>
+    <label class="pa-label" for="username">{{ _('login.username') }}</label>
     <input class="pa-input" id="username" name="username" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" required autofocus>
     <div class="pa-field-head">
-      <label class="pa-label" for="password">Password</label>
-      <button type="button" class="pa-reveal" data-for="password">Show</button>
+      <label class="pa-label" for="password">{{ _('login.password') }}</label>
+      <button type="button" class="pa-reveal" data-for="password">{{ _('common.show') }}</button>
     </div>
     <input class="pa-input" id="password" name="password" type="password" autocomplete="current-password" enterkeyhint="go" required>
-    <button class="pa-btn pa-btn--primary submit" type="submit" id="submitBtn">Sign In</button>
+    <button class="pa-btn pa-btn--primary submit" type="submit" id="submitBtn">{{ _('login.submit') }}</button>
     <div class="err" id="err">{{ error }}</div>
   </form>
 {% endblock %}

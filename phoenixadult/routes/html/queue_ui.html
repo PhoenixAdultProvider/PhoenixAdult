@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Scrape Queue{% endblock %}
+{% block title %}{{ _('queue.title') }}{% endblock %}
 {% block page %}queue{% endblock %}
 {% block head %}
   <style>
@@ -56,8 +56,8 @@
   </style>
 {% endblock %}
 {% block content %}
-  <h1>Scrape Queue</h1>
-  <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>
+  <h1>{{ _('queue.title') }}</h1>
+  <div class="sub">{{ _('queue.subtitle') }}</div>
   <div class="eta" id="eta" style="display:none"></div>
   <div class="progress" id="progress" style="display:none">
     <div class="pa-progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
@@ -66,20 +66,20 @@
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
   <div class="queue-tabs" id="queueTabs">
-    <button type="button" class="pa-btn queue-tab active" data-kind="search" onclick="showQueue('search')">Searches <span class="count-badge" id="tab-search-count"></span></button>
-    <button type="button" class="pa-btn queue-tab" data-kind="update" onclick="showQueue('update')">Updates <span class="count-badge" id="tab-update-count"></span></button>
+    <button type="button" class="pa-btn queue-tab active" data-kind="search" onclick="showQueue('search')">{{ _('queue.searches') }} <span class="count-badge" id="tab-search-count"></span></button>
+    <button type="button" class="pa-btn queue-tab" data-kind="update" onclick="showQueue('update')">{{ _('queue.updates') }} <span class="count-badge" id="tab-update-count"></span></button>
   </div>
   <div class="queues" id="queues" data-active="search">
     <div class="queue-col" id="searches-col">
-      <h2>Searches <span class="count-badge" id="search-count"></span>
-{% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-search" onclick="togglePause('search')">Pause</button>
-      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('search')">Purge</button>{% endif %}</h2>
+      <h2>{{ _('queue.searches') }} <span class="count-badge" id="search-count"></span>
+{% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-search" onclick="togglePause('search')">{{ _('queue.pause') }}</button>
+      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('search')">{{ _('queue.purge') }}</button>{% endif %}</h2>
       <div class="list" id="searches"></div>
     </div>
     <div class="queue-col" id="updates-col">
-      <h2>Updates <span class="count-badge" id="update-count"></span>
-{% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-update" onclick="togglePause('update')">Pause</button>
-      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('update')">Purge</button>{% endif %}</h2>
+      <h2>{{ _('queue.updates') }} <span class="count-badge" id="update-count"></span>
+{% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-update" onclick="togglePause('update')">{{ _('queue.pause') }}</button>
+      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('update')">{{ _('queue.purge') }}</button>{% endif %}</h2>
       <div class="list" id="updates"></div>
     </div>
   </div>
@@ -88,6 +88,7 @@
 {% endblock %}
 {% block scripts %}
   <script>
+    var T = {{ strings('queue') | tojson }};
     var IS_ADMIN = {{ is_admin()|tojson }};
     var STATE = {{ state|tojson }};
     var LAST_ROWS = { search: [], update: [] };
@@ -109,22 +110,22 @@
     function render() {
       const drift = (Date.now() - fetchedAt) / 1000;
       const fl = STATE.fastLane;
-      const flTile = !fl ? '' : `<div class="pa-card pa-card--tight pacer"><span class="tag">unpaced sites</span>` +
-        `<span class="cd ${fl.busy < fl.slots ? 'ready' : ''}">${fl.busy}/${fl.slots} slots busy</span>` +
-        (fl.waiting ? `<span class="win">${fl.waiting} waiting for a slot</span>` : '') + '</div>';
+      const flTile = !fl ? '' : `<div class="pa-card pa-card--tight pacer"><span class="tag">${T.unpaced_sites}</span>` +
+        `<span class="cd ${fl.busy < fl.slots ? 'ready' : ''}">${tr(T.slots_busy, { busy: fl.busy, slots: fl.slots })}</span>` +
+        (fl.waiting ? `<span class="win">${tr(T.waiting_for_slot, { count: fl.waiting })}</span>` : '') + '</div>';
       document.getElementById('pacers').innerHTML = flTile + (STATE.pacers || []).map((p) => {
         const wait = Math.max(0, p.wait - drift);
         const ban = Math.max(0, (p.ban || 0) - drift);
         const ready = wait <= 0 && !p.busy;
-        const status = ban > 0 ? `<span class="cd banned">BANNED — ${fmtSecs(ban)}</span>`
-          : `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? 'working…' : ready ? 'ready' : 'next turn in ' + fmtSecs(wait)}</span>`;
+        const status = ban > 0 ? `<span class="cd banned">${tr(T.banned, { time: fmtSecs(ban) })}</span>`
+          : `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? T.working : ready ? T.ready : tr(T.next_turn, { time: fmtSecs(wait) })}</span>`;
         return `<div class="pa-card pa-card--tight pacer"><span class="tag">${esc(p.tag)}</span>` + status +
-          `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
-      }).join('') || '<div class="pa-empty">no paced scrapers registered</div>';
+          `<span class="win">${tr(T.scene_window, { used: p.window_used, max: p.window_max })}</span></div>`;
+      }).join('') || `<div class="pa-empty">${T.no_pacers}</div>`;
 
       const eta = STATE.etaSeconds == null ? null : Math.max(0, STATE.etaSeconds - drift);
       const etaBox = document.getElementById('eta');
-      etaBox.textContent = eta == null ? '' : `estimated ${fmtEta(eta)} to clear the queue`;
+      etaBox.textContent = eta == null ? '' : tr(T.eta, { eta: fmtEta(eta) });
       etaBox.style.display = eta == null ? 'none' : '';
 
       const total = STATE.total || 0;
@@ -133,7 +134,7 @@
       if (total > 0) {
         const pct = Math.round((done / total) * 100);
         document.getElementById('progress-label').textContent =
-          `${done} of ${total} done · ${STATE.running || 0} running · ${STATE.pending || 0} left` + (eta == null ? '' : ` · ${fmtEta(eta)} remaining`);
+          tr(eta == null ? T.progress : T.progress_eta, { done, total, running: STATE.running || 0, left: STATE.pending || 0, eta: eta == null ? '' : fmtEta(eta) });
         document.getElementById('progress-pct').textContent = pct + '%';
         document.getElementById('progress-fill').style.width = pct + '%';
         box.style.display = '';
@@ -144,8 +145,8 @@
       const banner = document.getElementById('pause-banner');
       if (STATE.paused) {
         const left = Math.max(0, (STATE.resumeIn || 0) - drift);
-        banner.innerHTML = `Queue paused — ${esc(STATE.pauseReason || 'ban detected')} · auto-resumes in ${fmtSecs(left)} ` +
-          (IS_ADMIN ? '<button type="button" class="pa-btn pa-btn--sm" onclick="resumeQueue()">Resume Now</button>' : '');
+        banner.innerHTML = esc(tr(T.paused_banner, { reason: STATE.pauseReason || T.ban_detected, time: fmtSecs(left) })) + ' ' +
+          (IS_ADMIN ? `<button type="button" class="pa-btn pa-btn--sm" onclick="resumeQueue()">${T.resume_now}</button>` : '');
         banner.style.display = 'flex';
       } else {
         banner.style.display = 'none';
@@ -155,17 +156,17 @@
         const rows = (STATE.entries || []).filter((e) => e.kind === kind);
         LAST_ROWS[kind] = rows;
         const kindPaused = (STATE.pausedKinds || []).includes(kind);
-        document.getElementById(countId).textContent = rows.length + ' queued' + (kindPaused ? ' — paused' : '');
+        document.getElementById(countId).textContent = tr(kindPaused ? T.queued_paused : T.queued, { count: rows.length });
         document.getElementById('tab-' + kind + '-count').textContent = '(' + rows.length + ')';
         const pauseBtn = document.getElementById('pause-' + kind);
-        if (pauseBtn) pauseBtn.textContent = kindPaused ? 'Resume' : 'Pause';
+        if (pauseBtn) pauseBtn.textContent = kindPaused ? T.resume : T.pause;
         document.getElementById(listId).innerHTML = rows.map((e, i) => `
           <div class="pa-card pa-card--tight item ${e.running ? 'running' : ''}">
             ${e.running ? '<div class="pa-spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
             <span class="label">${esc(e.label)}</span>
-            <span class="age">${e.running ? 'running ' + fmtSecs(e.running_for + drift) : 'waiting ' + fmtSecs(e.waited + drift)}</span>
-            ${IS_ADMIN && !e.running ? `<button type="button" class="pa-btn pa-btn--sm pa-btn--danger item-x" data-kind="${kind}" data-idx="${i}" title="Remove from queue">×</button>` : ''}
-          </div>`).join('') || '<div class="pa-empty">nothing queued</div>';
+            <span class="age">${e.running ? tr(T.running_for, { time: fmtSecs(e.running_for + drift) }) : tr(T.waiting_for, { time: fmtSecs(e.waited + drift) })}</span>
+            ${IS_ADMIN && !e.running ? `<button type="button" class="pa-btn pa-btn--sm pa-btn--danger item-x" data-kind="${kind}" data-idx="${i}" title="${T.remove}">×</button>` : ''}
+          </div>`).join('') || `<div class="pa-empty">${T.nothing_queued}</div>`;
       }
     }
 
@@ -201,7 +202,7 @@
     function flushKind(kind) {
       const n = (STATE.entries || []).filter((e) => e.kind === kind && !e.running).length;
       if (!n) return;
-      if (!confirm('Drop ' + n + ' pending ' + kind + ' job(s)? Persisted descriptors are removed too.')) return;
+      if (!confirm(tr(kind === 'search' ? T.flush_search_confirm : T.flush_update_confirm, { count: n }))) return;
       post('/queue/api/flush', { kind });
     }
 

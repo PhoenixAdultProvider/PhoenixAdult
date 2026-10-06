@@ -8,6 +8,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx2
 
+from phoenixadult.i18n import gettext
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.logging.logger import logger
@@ -89,7 +90,7 @@ async def verify_server(url: str, token: str) -> dict[str, Any]:
             identity = {'ok': True, 'machineIdentifier': container.get('machineIdentifier') or '', 'version': container.get('version') or ''}
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn('plex-auth', f'verify identity failed for {base}: {err}')
-            identity['error'] = 'Could not reach the server'
+            identity['error'] = gettext('plex.server_unreachable')
         try:
             res = await http.get(f'{base}/library/sections', headers={'X-Plex-Token': token})
             res.raise_for_status()
@@ -97,7 +98,7 @@ async def verify_server(url: str, token: str) -> dict[str, Any]:
             auth = {'ok': True, 'sections': len(sections)}
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn('plex-auth', f'verify auth failed for {base}: {err}')
-            auth['error'] = 'Server unreachable or token rejected'
+            auth['error'] = gettext('plex.token_rejected')
     return {'identity': identity, 'auth': auth}
 
 
@@ -193,14 +194,19 @@ async def update_status(connection: Connection, token: str, force: bool = False)
     if not force and cached and cached[1] == config and now - cached[0] < _UPDATE_TTL:
         return cached[2]
     if not (connection.server_url and token):
-        return {'error': 'This connection needs a server URL and a token first'}
+        return {'error': gettext('plex.needs_url_and_token')}
 
     server = await _server_version(connection, token)
     info = _platform_downloads(server)
     if not info:
         platform_name = _PLATFORM_NAME_OVERRIDES.get(server.platform, server.platform)
         logger.warn('plex-update', f'Could not match server platform: {platform_name}')
-        return {'error': f'Could not match server platform: {platform_name}', 'current': server.current, 'platform': server.platform, 'channel': server.channel}
+        return {
+            'error': gettext('plex.platform_unmatched') % {'platform': platform_name},
+            'current': server.current,
+            'platform': server.platform,
+            'channel': server.channel,
+        }
 
     result = _update_result(server, info, connection.update_release)
     _update_cache[connection.id] = (now, config, result)

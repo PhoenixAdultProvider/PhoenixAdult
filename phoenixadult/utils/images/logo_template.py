@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from phoenixadult.config.env import env
+from phoenixadult.i18n import N_, gettext
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.site_key import normalize_site_key
@@ -13,16 +14,16 @@ from phoenixadult.utils.processors.site_key import normalize_site_key
 EXT_CANDIDATES = ('.svg', '.png', '.webp', '.jpg')
 
 PLACEHOLDERS: tuple[tuple[str, str], ...] = (
-    ('{domain}', "the sub-site's own host, without www."),
-    ('{subsiteclean}', 'sub-site name, letters and digits only'),
-    ('{subsite-name}', 'sub-site name, hyphenated'),
-    ('{subsite_name}', 'sub-site name, underscored'),
-    ('{subsite}', 'sub-site name as written, URL-encoded'),
-    ('{studioclean}', 'studio name, letters and digits only'),
-    ('{studio-name}', 'studio name, hyphenated'),
-    ('{studio_name}', 'studio name, underscored'),
-    ('{studio}', 'studio name as written, URL-encoded'),
-    ('{ext}', 'tries ' + ', '.join(EXT_CANDIDATES) + ' in turn'),
+    ('{domain}', N_('logo_add.token_domain')),
+    ('{subsiteclean}', N_('logo_add.token_subsiteclean')),
+    ('{subsite-name}', N_('logo_add.token_subsite_hyphen')),
+    ('{subsite_name}', N_('logo_add.token_subsite_underscore')),
+    ('{subsite}', N_('logo_add.token_subsite')),
+    ('{studioclean}', N_('logo_add.token_studioclean')),
+    ('{studio-name}', N_('logo_add.token_studio_hyphen')),
+    ('{studio_name}', N_('logo_add.token_studio_underscore')),
+    ('{studio}', N_('logo_add.token_studio')),
+    ('{ext}', N_('logo_add.token_ext')),
 )
 
 _TOKEN = re.compile(r'\{([^{}]*)\}')
@@ -51,7 +52,7 @@ def expand(template: str, studio: str, subsite: str, base_url: str = '') -> list
     values = _values(studio, subsite, base_url)
     unknown = sorted({name for name in _TOKEN.findall(template) if name != 'ext' and name not in values})
     if unknown:
-        raise ValueError('unknown placeholder ' + ', '.join(f'{{{name}}}' for name in unknown))
+        raise ValueError(gettext('logo_add.unknown_placeholder') % {'names': ', '.join(f'{{{name}}}' for name in unknown)})
     filled = _TOKEN.sub(lambda m: values.get(m.group(1), m.group(0)), template)
     if '{ext}' not in filled:
         return [filled]

@@ -71,7 +71,7 @@ def test_people_hides_writes_and_the_serving_line(member: TestClient, _one_cache
     assert 'id="bulkBtn"' not in body
     assert 'id="bulkSource"' not in body
     assert 'Serving people images via' not in body
-    assert "(IS_ADMIN ? 'Edit' : 'View')" in body, 'the card builder decides Edit vs View from IS_ADMIN'
+    assert '(IS_ADMIN ? T.edit : T.view)' in body, 'the card builder decides Edit vs View from IS_ADMIN'
     assert 'purgeBtn = IS_ADMIN ?' in body and 'if (IS_ADMIN) {' in body, 'purge and restore are admin-gated'
 
     admin_body = authed_client().get('/people').text

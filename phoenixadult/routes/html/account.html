@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Account — PhoenixAdult{% endblock %}
+{% block title %}{{ _('account.title') }} — PhoenixAdult{% endblock %}
 {% block page %}account{% endblock %}
 {% block head %}
 <style>
@@ -39,60 +39,59 @@
 </style>
 {% endblock %}
 {% block content %}
-  <h1>Account</h1>
-  <div class="sub">Signed in as <strong>{{ username }}</strong></div>
+  <h1>{{ _('account.title') }}</h1>
+  <div class="sub">{{ _('account.signed_in_as', name=username) }}</div>
 
   <div class="pa-card account-card">
-    <h2>Password</h2>
-    <div class="pa-field-head"><label class="pa-label" for="curPw">Current Password</label><button type="button" class="pa-reveal" data-for="curPw">Show</button></div>
+    <h2>{{ _('account.password_heading') }}</h2>
+    <div class="pa-field-head"><label class="pa-label" for="curPw">{{ _('account.current_password') }}</label><button type="button" class="pa-reveal" data-for="curPw">{{ _('common.show') }}</button></div>
     <input class="pa-input" id="curPw" type="password" autocomplete="current-password">
-    <div class="pa-field-head"><label class="pa-label" for="newPw">New Password</label><button type="button" class="pa-reveal" data-for="newPw">Show</button></div>
+    <div class="pa-field-head"><label class="pa-label" for="newPw">{{ _('account.new_password') }}</label><button type="button" class="pa-reveal" data-for="newPw">{{ _('common.show') }}</button></div>
     <input class="pa-input" id="newPw" type="password" autocomplete="new-password">
-    <div class="pa-hint">8+ characters with an uppercase letter, a number, and a special character.</div>
+    <div class="pa-hint">{{ _('password.hint') }}</div>
     <div class="pa-meter" id="pwMeter" hidden><div class="pa-meter-fill" id="pwMeterFill"></div></div>
     <div class="pa-hint" id="pwMeterText"></div>
-    <div class="pa-field-head"><label class="pa-label" for="confPw">Confirm New Password</label><button type="button" class="pa-reveal" data-for="confPw">Show</button></div>
+    <div class="pa-field-head"><label class="pa-label" for="confPw">{{ _('account.confirm_new_password') }}</label><button type="button" class="pa-reveal" data-for="confPw">{{ _('common.show') }}</button></div>
     <input class="pa-input" id="confPw" type="password" autocomplete="new-password">
-    <div class="row"><button class="pa-btn pa-btn--primary" onclick="changePassword()">Change Password</button><span class="pa-status" id="pwStatus"></span></div>
-    <div class="pa-hint">Changing your password signs out every other session.</div>
+    <div class="row"><button class="pa-btn pa-btn--primary" onclick="changePassword()">{{ _('account.change_password') }}</button><span class="pa-status" id="pwStatus"></span></div>
+    <div class="pa-hint">{{ _('account.change_signs_out') }}</div>
   </div>
 
   <div class="pa-card account-card">
-    <h2>API Key</h2>
-    <div class="pa-status" id="keyHint" {% if api_key %}style="display:none"{% endif %}>No key generated yet.</div>
+    <h2>{{ _('account.api_key_heading') }}</h2>
+    <div class="pa-status" id="keyHint" {% if api_key %}style="display:none"{% endif %}>{{ _('account.no_key') }}</div>
     <div class="keybox" id="keyReveal" {% if not api_key %}style="display:none"{% endif %}>{{ api_key }}</div>
     <div class="row">
-      <button type="button" class="pa-btn" id="copyKeyBtn" onclick="copyText('keyReveal', 'keyStatus')" {% if not api_key %}style="display:none"{% endif %}>Copy Key</button>
-      <button type="button" class="pa-btn" onclick="regenKey()">Regenerate Key</button>
+      <button type="button" class="pa-btn" id="copyKeyBtn" onclick="copyText('keyReveal', 'keyStatus')" {% if not api_key %}style="display:none"{% endif %}>{{ _('account.copy_key') }}</button>
+      <button type="button" class="pa-btn" onclick="regenKey()">{{ _('account.regenerate_key') }}</button>
       <span class="pa-status" id="keyStatus"></span>
     </div>
-    <div class="pa-hint">Send it as <code>Authorization: Bearer &lt;key&gt;</code> or <code>x-api-key</code>. Regenerating invalidates the old key immediately.</div>
+    <div class="pa-hint">{{ _('account.key_usage') }}</div>
   </div>
 
   <div class="pa-card account-card">
-    <h2>Configure The Provider In Plex</h2>
+    <h2>{{ _('account.plex_heading') }}</h2>
     <ol class="steps">
-      <li>Go to <strong>Settings &rarr; Metadata Agents &rarr; Add Provider</strong> and enter the URL for this provider:
+      <li>{{ _('account.plex_step_url') }}
         <div class="keybox" id="providerUrl">{{ provider_url }}</div>
-        <div class="row"><button type="button" class="pa-btn" onclick="copyText('providerUrl', 'providerUrlStatus')">Copy URL</button><span class="pa-status" id="providerUrlStatus"></span></div>
+        <div class="row"><button type="button" class="pa-btn" onclick="copyText('providerUrl', 'providerUrlStatus')">{{ _('account.copy_url') }}</button><span class="pa-status" id="providerUrlStatus"></span></div>
         <div class="pa-hint" id="providerUrlNote">{{ provider_url_note }}</div>
       </li>
-      <li>Still under <strong>Metadata Agents</strong>, click <strong>Add Agent</strong>, give it any name you want, and make the
-        newly added provider the <strong>Primary</strong> metadata provider.</li>
-      <li>Add additional providers if needed. Adding <strong>Plex Local Media</strong> as well is generally recommended, so local
-        metadata and assets are picked up.</li>
+      <li>{{ _('account.plex_step_agent') }}</li>
+      <li>{{ _('account.plex_step_local') }}</li>
     </ol>
   </div>
 
   <div class="pa-card account-card">
-    <h2>Sessions</h2>
-    <table id="sessions"><thead><tr><th>Signed In</th><th>Last Seen</th><th>Device</th><th></th></tr></thead><tbody></tbody></table>
+    <h2>{{ _('account.sessions_heading') }}</h2>
+    <table id="sessions"><thead><tr><th>{{ _('account.signed_in') }}</th><th>{{ _('account.last_seen') }}</th><th>{{ _('account.device') }}</th><th></th></tr></thead><tbody></tbody></table>
   </div>
 
 {% endblock %}
 {% block scripts %}
   {% include 'password_tools.html' %}
   <script>
+    var T = {{ strings('account', 'common', 'password') | tojson }};
     var hdr = { 'Content-Type': 'application/json' };
     var HOOK_PREFIX = {{ hook_prefix | tojson }};
     var MOUNT_PATH = {{ mount_path | tojson }};
@@ -108,8 +107,8 @@
           document.body.appendChild(scratch); scratch.select();
           document.execCommand('copy'); scratch.remove();
         }
-        setStatus(statusId, 'Copied.', 'ok');
-      } catch (e) { setStatus(statusId, 'Copy failed — select it and copy by hand.', 'err'); }
+        setStatus(statusId, T.copied, 'ok');
+      } catch (e) { setStatus(statusId, T.copy_failed, 'err'); }
     }
     function fmt(ts) { return ts ? new Date(ts * 1000).toLocaleString() : '—'; }
     function setStatus(id, msg, kind) { const el = document.getElementById(id); el.textContent = msg; el.className = 'pa-status' + (kind ? ' ' + kind : ''); }
@@ -120,15 +119,15 @@
       const cur = document.getElementById('curPw').value, nw = document.getElementById('newPw').value, cf = document.getElementById('confPw').value;
       const problem = policyError(nw);
       if (problem) { setStatus('pwStatus', problem, 'err'); return; }
-      if (nw !== cf) { setStatus('pwStatus', 'Passwords do not match.', 'err'); return; }
+      if (nw !== cf) { setStatus('pwStatus', T.mismatch, 'err'); return; }
       const res = await fetch('/account/api/password', { method: 'POST', headers: hdr, body: JSON.stringify({ current: cur, new: nw }) });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) { setStatus('pwStatus', 'Password changed. Other sessions signed out.', 'ok'); ['curPw', 'newPw', 'confPw'].forEach((i) => document.getElementById(i).value = ''); loadSessions(); }
-      else setStatus('pwStatus', data.error || 'Failed.', 'err');
+      if (res.ok) { setStatus('pwStatus', T.password_changed, 'ok'); ['curPw', 'newPw', 'confPw'].forEach((i) => document.getElementById(i).value = ''); loadSessions(); }
+      else setStatus('pwStatus', data.error || T.failed, 'err');
     }
 
     async function regenKey() {
-      if (!confirm('Regenerate your API key? The old key stops working immediately.')) return;
+      if (!confirm(T.regenerate_confirm)) return;
       const res = await fetch('/account/api/key/regenerate', { method: 'POST', headers: hdr });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.key) {
@@ -136,12 +135,12 @@
         box.textContent = data.key; box.style.display = 'block';
         document.getElementById('keyHint').style.display = 'none';
         document.getElementById('copyKeyBtn').style.display = '';
-        setStatus('keyStatus', 'New key — the old one has stopped working.', 'ok');
+        setStatus('keyStatus', T.new_key, 'ok');
         if (TOKEN_AUTH) {
           document.getElementById('providerUrl').textContent = HOOK_PREFIX + data.key + MOUNT_PATH;
-          document.getElementById('providerUrlNote').textContent = 'This URL carries your new API key. Update it in Plex.';
+          document.getElementById('providerUrlNote').textContent = T.new_key_url;
         }
-      } else setStatus('keyStatus', data.error || 'Failed.', 'err');
+      } else setStatus('keyStatus', data.error || T.failed, 'err');
     }
 
     async function loadSessions() {
@@ -149,14 +148,14 @@
       const data = await res.json().catch(() => ({ sessions: [] }));
       const tb = document.querySelector('#sessions tbody');
       tb.innerHTML = (data.sessions || []).map((s) => {
-        const badge = s.current ? ' <span class="current-badge">this device</span>' : '';
-        const action = s.current ? '' : `<button class="pa-btn" onclick="revoke('${s.tokenHash}')">Revoke</button>`;
+        const badge = s.current ? ` <span class="current-badge">${T.this_device}</span>` : '';
+        const action = s.current ? '' : `<button class="pa-btn" onclick="revoke('${s.tokenHash}')">${T.revoke}</button>`;
         const ua = (s.userAgent || '').replace(/[<>&]/g, '');
-        return `<tr><td class="s-start" data-label="Signed In">${fmt(s.createdAt)}${badge}</td>`
-          + `<td class="s-seen" data-label="Last Seen">${fmt(s.lastSeenAt)}</td>`
-          + `<td class="s-device" data-label="Device">${ua || '—'}</td>`
+        return `<tr><td class="s-start" data-label="${T.signed_in}">${fmt(s.createdAt)}${badge}</td>`
+          + `<td class="s-seen" data-label="${T.last_seen}">${fmt(s.lastSeenAt)}</td>`
+          + `<td class="s-device" data-label="${T.device}">${ua || '—'}</td>`
           + `<td class="s-action">${action}</td></tr>`;
-      }).join('') || '<tr><td colspan="4" class="pa-status">No other sessions.</td></tr>';
+      }).join('') || `<tr><td colspan="4" class="pa-status">${T.no_sessions}</td></tr>`;
     }
 
     async function revoke(tokenHash) {

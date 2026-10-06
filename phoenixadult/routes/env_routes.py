@@ -15,6 +15,8 @@ from phoenixadult.config.env_catalog import (
     ENV_GROUP_ORDER,
     ENV_TABS,
     GROUP_TAB,
+    GROUP_TITLES,
+    TAB_TITLES,
     EnvVarSpec,
     find_env_var,
     humanize_bytes,
@@ -27,6 +29,7 @@ from phoenixadult.config.env_overrides import (
     is_overridden,
     set_override,
 )
+from phoenixadult.i18n import gettext
 from phoenixadult.registry import SITE_DEFINITIONS
 from phoenixadult.routes import THEME_NAMES, nav_username, read_json_body, render_page
 from phoenixadult.utils.auth import user_store, user_tokens
@@ -70,11 +73,13 @@ def _build_state(user: dict[str, Any] | None = None, has_metadataapi_token: bool
     for spec in ENV_CATALOG:
         if spec.key in hidden:
             continue
+        label_key, description_key = spec.text_keys()
         state = {
             'key': spec.key,
-            'label': spec.label,
-            'description': spec.description,
+            'label': gettext(label_key),
+            'description': gettext(description_key),
             'group': spec.group,
+            'optionLabels': spec.option_labels,
             'kind': spec.kind,
             'defaultValue': spec.default_value,
             'requiresRestart': spec.requires_restart,
@@ -92,11 +97,12 @@ def _build_state(user: dict[str, Any] | None = None, has_metadataapi_token: bool
     def rank(name: str) -> int:
         return ENV_GROUP_ORDER.index(name) if name in ENV_GROUP_ORDER else len(ENV_GROUP_ORDER)
 
-    groups = [{'name': name, 'tab': GROUP_TAB.get(name, 'System'), 'vars': vars_} for name, vars_ in sorted(by_group.items(), key=lambda kv: rank(kv[0]))]
+    ordered = sorted(by_group.items(), key=lambda kv: rank(kv[0]))
+    groups = [{'id': name, 'name': gettext(GROUP_TITLES[name]), 'tab': GROUP_TAB.get(name, 'system'), 'vars': vars_} for name, vars_ in ordered]
     return {
         'overridesPath': str(OVERRIDES_PATH),
         'groups': groups,
-        'tabs': [tab for tab, _tab_groups in ENV_TABS],
+        'tabs': [{'id': tab, 'title': gettext(TAB_TITLES[tab])} for tab, _tab_groups in ENV_TABS],
         'user': user or {},
         'metadataapi': {'hasToken': has_metadataapi_token},
     }
@@ -119,15 +125,15 @@ async def api_save(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     updates = body.get('updates')
     if not isinstance(updates, dict):
-        return JSONResponse({'error': 'Request body must be { updates: { KEY: value, … } }'}, status_code=400)
+        return JSONResponse({'error': gettext('settings_errors.bad_body')}, status_code=400)
 
     clean: list[tuple[str, str]] = []
     for key, raw in updates.items():
         spec = find_env_var(key)
         if not spec:
-            return JSONResponse({'error': f'"{key}" is not an editable variable'}, status_code=400)
+            return JSONResponse({'error': gettext('settings_errors.not_editable') % {'key': key}}, status_code=400)
         if not isinstance(raw, str):
-            return JSONResponse({'error': f'"{key}" value must be a string'}, status_code=400)
+            return JSONResponse({'error': gettext('settings_errors.not_string') % {'key': key}}, status_code=400)
         ok, value = normalize_env_value(spec, raw)
         if not ok:
             return JSONResponse({'error': value}, status_code=400)
@@ -150,7 +156,7 @@ async def api_reveal(request: Request) -> JSONResponse:
     key = str(body.get('key') or '')
     spec = next((s for s in ENV_CATALOG if s.key == key), None)
     if spec is None or spec.kind != 'secret':
-        return JSONResponse({'error': 'not a secret key'}, status_code=400)
+        return JSONResponse({'error': gettext('settings_errors.not_secret')}, status_code=400)
     return JSONResponse({'key': key, 'value': os.environ.get(key, '')})
 
 
@@ -159,14 +165,14 @@ async def api_reset(request: Request) -> JSONResponse:
     try:
         body = await request.json()
     except ValueError:
-        return JSONResponse({'error': 'invalid JSON body'}, status_code=400)
+        return JSONResponse({'error': gettext('settings_errors.bad_json')}, status_code=400)
     key = body.get('key') if isinstance(body, dict) else None
     if key is None:
         await asyncio.to_thread(clear_all_overrides)
         logger.info('config', 'cleared all overrides')
         return JSONResponse(await _state_for(request))
     if not isinstance(key, str) or not find_env_var(key):
-        return JSONResponse({'error': f'"{key}" is not an editable variable'}, status_code=400)
+        return JSONResponse({'error': gettext('settings_errors.not_editable') % {'key': key}}, status_code=400)
     await asyncio.to_thread(clear_override, key)
     logger.info('config', f'cleared override: {key}')
     return JSONResponse(await _state_for(request))
@@ -206,7 +212,7 @@ async def api_theme(request: Request) -> JSONResponse:
     dark = str(body.get('dark') or '')
     light = str(body.get('light') or '')
     if (dark and dark not in THEME_NAMES) or (light and light not in THEME_NAMES):
-        return JSONResponse({'error': 'unknown theme'}, status_code=400)
+        return JSONResponse({'error': gettext('settings_errors.unknown_theme')}, status_code=400)
     await run_in('store', user_store.set_theme, user.id, dark, light)
     return JSONResponse({'ok': True})
 

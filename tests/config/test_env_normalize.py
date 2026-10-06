@@ -6,7 +6,7 @@ from phoenixadult.config.env_catalog import EnvVarSpec, normalize_env_value
 
 
 def _spec(kind: str, **extra: object) -> EnvVarSpec:
-    return EnvVarSpec(key='X', label='X', description='', group='g', kind=kind, **extra)  # type: ignore[arg-type]
+    return EnvVarSpec(key='X', group='g', kind=kind, **extra)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

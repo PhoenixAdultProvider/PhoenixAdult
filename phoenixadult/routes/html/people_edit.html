@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Edit Headshot{% endblock %}
+{% block title %}{{ _('people_edit.title') }}{% endblock %}
 {% block page %}people-edit{% endblock %}
 {% block head %}
   <style>
@@ -42,45 +42,45 @@
   </style>
 {% endblock %}
 {% block content %}
-  <h1><span id="actorName">{{ actor_name }}</span><button class="pa-btn copy" id="copyName" title="Copy Name">Copy</button><a class="pa-btn copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="pa-btn copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
-  <div class="sub">{{ role }} · <code>{{ relpath }}</code> · from {{ origin }}</div>
+  <h1><span id="actorName">{{ actor_name }}</span><button class="pa-btn copy" id="copyName" title="{{ _('people_edit.copy_name') }}">{{ _('people_edit.copy') }}</button><a class="pa-btn copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">{{ _('people_edit.search_iafd') }}</a><button class="pa-btn copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
+  <div class="sub">{{ _('people_edit.subtitle', role=role, path=relpath, origin=origin) }}</div>
 
   <div class="wrap">
     <fieldset class="pa-fieldset">
-      <legend>Source</legend>
-      <label class="pa-label" for="f-upstream">Upstream Original URL</label>
+      <legend>{{ _('people_edit.source') }}</legend>
+      <label class="pa-label" for="f-upstream">{{ _('people_edit.upstream_url') }}</label>
       <input class="pa-input" type="text" id="f-upstream" placeholder="https://…"{% if not is_admin() %} readonly{% endif %}>
 {% if is_admin() %}      <div class="fetchrow">
         <select class="pa-input" id="f-source"></select>
-        <button class="pa-btn fetch" id="fetchBtn">Fetch From</button>
+        <button class="pa-btn fetch" id="fetchBtn">{{ _('people_edit.fetch_from') }}</button>
         <span class="pa-status" id="fetchStatus"></span>
       </div>
-      <div class="pa-hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
-{% endif %}      <div class="toggle"><input type="checkbox" id="f-cropped"{% if not is_admin() %} disabled{% endif %}><label for="f-cropped">Cropped Status — face-crop the image</label></div>
+      <div class="pa-hint">{{ _('people_edit.fetch_hint') }}</div>
+{% endif %}      <div class="toggle"><input type="checkbox" id="f-cropped"{% if not is_admin() %} disabled{% endif %}><label for="f-cropped">{{ _('people_edit.cropped_status') }}</label></div>
       <div class="pa-hint" id="cropHint"></div>
-      <label class="pa-label" for="f-recorded">Recorded Source</label>
+      <label class="pa-label" for="f-recorded">{{ _('people_edit.recorded_source') }}</label>
       <select id="f-recorded" class="pa-input recorded"{% if not is_admin() %} disabled{% endif %}></select>
-{% if is_admin() %}      <div class="pa-hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>{% endif %}
+{% if is_admin() %}      <div class="pa-hint">{{ _('people_edit.recorded_hint') }}</div>{% endif %}
     </fieldset>
 
     <fieldset class="pa-fieldset" id="previewCard">
-      <legend>Preview</legend>
+      <legend>{{ _('people_edit.preview') }}</legend>
       <div class="imgs">
-        <figure><figcaption>Cached (Shown in Plex)</figcaption><img id="cachedImg" data-src="{{ cached_src }}" alt=""></figure>
-        <figure><figcaption>Upstream Original</figcaption><img id="upstreamImg" alt=""></figure>
+        <figure><figcaption>{{ _('people.cached_in_plex') }}</figcaption><img id="cachedImg" data-src="{{ cached_src }}" alt=""></figure>
+        <figure><figcaption>{{ _('people.upstream_original') }}</figcaption><img id="upstreamImg" alt=""></figure>
       </div>
     </fieldset>
 
     <fieldset class="pa-fieldset">
-      <legend>Scenes</legend>
-      {% if scenes is none %}<div class="pa-hint">The snapshot cache is off, so there is nothing to list. Set <code>METADATA_CACHE_ENABLE</code> to turn it on.</div>
-      {% elif not scenes %}<div class="pa-hint">No cached snapshot credits this person.</div>
-      {% else %}<div class="scenewrap"><table class="scenes"><thead><tr><th>Title</th><th>Date</th><th>Studio</th><th>Sub-Site</th></tr></thead><tbody>{% for scene in scenes %}<tr><td><a href="/metadata/edit?key={{ scene.key_quoted }}">{{ scene.title }}</a></td><td class="nowrap">{{ scene.date or '—' }}</td><td>{{ scene.studio or '—' }}</td><td>{{ scene.tagline or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+      <legend>{{ _('people_edit.scenes') }}</legend>
+      {% if scenes is none %}<div class="pa-hint">{{ _('people_edit.cache_off') }}</div>
+      {% elif not scenes %}<div class="pa-hint">{{ _('people_edit.no_credits') }}</div>
+      {% else %}<div class="scenewrap"><table class="scenes"><thead><tr><th>{{ _('people_edit.col_title') }}</th><th>{{ _('people_edit.col_date') }}</th><th>{{ _('people_edit.col_studio') }}</th><th>{{ _('people_edit.col_subsite') }}</th></tr></thead><tbody>{% for scene in scenes %}<tr><td><a href="/metadata/edit?key={{ scene.key_quoted }}">{{ scene.title }}</a></td><td class="nowrap">{{ scene.date or '—' }}</td><td>{{ scene.studio or '—' }}</td><td>{{ scene.tagline or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
     </fieldset>
 
     <div class="bar">
-{% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--success" id="saveBtn" onclick="save()">Save</button>
-{% endif %}      <button class="pa-btn pa-btn--lg" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
+{% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--success" id="saveBtn" onclick="save()">{{ _('people_edit.save') }}</button>
+{% endif %}      <button class="pa-btn pa-btn--lg" onclick="leave()">{{ _('people_edit.cancel') if is_admin() else _('people_edit.back') }}</button>
       <span class="pa-status" id="status"></span>
     </div>
   </div>
@@ -89,6 +89,7 @@
 {% endblock %}
 {% block scripts %}
   <script>
+    var T = {{ strings('people_edit') | tojson }};
     var FILENAME = {{ filename|tojson }};
     var ENTRY = {{ entry|tojson }};
     var SOURCES = {{ sources|tojson }};
@@ -113,7 +114,7 @@
     async function save() {
       const btn = qs('saveBtn');
       btn.disabled = true;
-      qs('status').textContent = 'Saving…';
+      qs('status').textContent = T.saving;
       const upstream = qs('f-upstream').value.trim();
       const body = {
         filename: FILENAME,
@@ -131,14 +132,14 @@
       }
       if (payload.ok) { leave(); return; }
       btn.disabled = false;
-      qs('status').textContent = 'Save failed: ' + (payload.error || 'unknown error');
+      qs('status').textContent = tr(T.save_failed, {reason: payload.error || T.unknown_error});
     }
 
     qs('f-upstream').value = ENTRY.upstream_url || '';
     qs('f-cropped').checked = !!ENTRY.cropped;
     if (!CROP_AVAILABLE) {
       qs('f-cropped').disabled = true;
-      qs('cropHint').textContent = 'opencv-python-headless is not installed — cropping is unavailable.';
+      qs('cropHint').textContent = T.no_opencv;
     }
     qs('f-upstream').addEventListener('change', refreshUpstream);
     refreshUpstream();
@@ -150,7 +151,7 @@
       qs('f-source').appendChild(opt);
     });
 
-    for (const [value, label] of [['', 'Unrecorded'], ...RECORDED_SOURCES.map(n => [n, n])]) {
+    for (const [value, label] of [['', T.unrecorded], ...RECORDED_SOURCES.map(n => [n, n])]) {
       const opt = document.createElement('option');
       opt.value = value;
       opt.textContent = label;
@@ -162,7 +163,7 @@
       const button = qs('fetchBtn');
       const source = qs('f-source').value;
       button.disabled = true;
-      qs('fetchStatus').textContent = 'Searching ' + source + '…';
+      qs('fetchStatus').textContent = tr(T.searching, {source});
       let payload = {};
       try {
         const r = await fetch('/people/lookup', {method: 'POST', headers: hdrs(), body: JSON.stringify({filename: FILENAME, source})});
@@ -171,23 +172,23 @@
         payload = {ok: false, error: String(err)};
       }
       button.disabled = false;
-      if (!payload.ok) { qs('fetchStatus').textContent = payload.error || 'Lookup failed'; return; }
+      if (!payload.ok) { qs('fetchStatus').textContent = payload.error || T.lookup_failed; return; }
       qs('f-upstream').value = payload.url;
       fetched.url = payload.url;
       fetched.source = payload.source;
       qs('f-recorded').value = [...qs('f-recorded').options].some(o => o.value === payload.source) ? payload.source : '';
-      let note = '';
+      let uncropped = false;
       if (UNCROPPED_SOURCES.includes(payload.source) && qs('f-cropped').checked) {
         qs('f-cropped').checked = false;
-        note = ' — cropping turned off';
+        uncropped = true;
       }
       refreshUpstream();
-      qs('fetchStatus').textContent = 'Found at ' + payload.source + ' — save to apply' + note;
+      qs('fetchStatus').textContent = tr(uncropped ? T.found_uncropped : T.found, {source: payload.source});
     };
 
     function repaintSfw() {
       document.body.classList.toggle('sfw', SFW);
-      paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide the preview images');
+      paintSfwButton(SFW, T.sfw_on_hint, T.sfw_off_hint);
       const cached = qs('cachedImg');
       if (SFW) {
         cached.removeAttribute('src');
@@ -215,9 +216,9 @@
         document.execCommand('copy');
         field.remove();
       }
-      button.textContent = 'Copied';
+      button.textContent = T.copied;
       button.classList.add('on');
-      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('on'); }, 1200);
+      setTimeout(() => { button.textContent = T.copy; button.classList.remove('on'); }, 1200);
     };
   </script>
 {% endblock %}

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Add Logo{% endblock %}
+{% block title %}{{ _('logo_add.title') }}{% endblock %}
 {% block page %}logos{% endblock %}
 {% block head %}
   <style>
@@ -46,38 +46,39 @@
   </style>
 {% endblock %}
 {% block content %}
-  <h1>Add Logo</h1>
-  <div class="sub">Every supported site is listed. Anything that already has a logo is left out, so what you see is what is still missing.</div>
+  <h1>{{ _('logo_add.title') }}</h1>
+  <div class="sub">{{ _('logo_add.subtitle') }}</div>
 
   <div class="pa-card add-card">
     <div class="head">
       <div class="field">
-        <label class="pa-label" for="studio">Studio</label>
+        <label class="pa-label" for="studio">{{ _('logo_add.studio') }}</label>
         <select class="pa-input" id="studio" onchange="studioChanged()"></select>
       </div>
-      <button type="button" class="pa-btn pa-btn--primary" id="fetchAll" onclick="fetchAll()">Fetch Every URL</button>
+      <button type="button" class="pa-btn pa-btn--primary" id="fetchAll" onclick="fetchAll()">{{ _('logo_add.fetch_every_url') }}</button>
       <span class="pa-status tally" id="tally"></span>
       <div class="field wide">
-        <label class="pa-label" for="template">Logo URL Template</label>
+        <label class="pa-label" for="template">{{ _('logo_add.template') }}</label>
         <input class="pa-input" type="text" id="template" autocomplete="off"
                placeholder="https://static.example.com/media/{domain}/images/site-logo.svg">
         <div class="pa-hint tokens">
           {%- for p in state.placeholders %}<code title="{{ p.note }}">{{ p.token }}</code>{% endfor %}
         </div>
       </div>
-      <button type="button" class="pa-btn" id="tryAll" onclick="tryAllSubsites()">Try All Subsites</button>
+      <button type="button" class="pa-btn" id="tryAll" onclick="tryAllSubsites()">{{ _('logo_add.try_all_subsites') }}</button>
       <span class="pa-status tally" id="tstate"></span>
     </div>
   </div>
 
   <div class="pa-card add-card">
     <div class="rows" id="rows"></div>
-    <div class="pa-empty" id="empty">Pick a studio to list what still needs a logo.</div>
+    <div class="pa-empty" id="empty">{{ _('logo_add.pick_studio_list') }}</div>
   </div>
   <input type="file" id="picker" accept=".png,.jpg,.jpeg,.webp,.svg" hidden>
 {% endblock %}
 {% block scripts %}
   <script>
+    var T = {{ strings('logo_add') | tojson }};
     var STATE = {{ state|tojson }};
     var ROWS = [];
     var pending = null;
@@ -100,7 +101,7 @@
 
     function paintTally() {
       const left = ROWS.filter((r) => !r.done).length;
-      document.getElementById('tally').textContent = ROWS.length ? `${left} of ${ROWS.length} still missing a logo` : '';
+      document.getElementById('tally').textContent = ROWS.length ? tr(T.missing_tally, { left, total: ROWS.length }) : '';
       document.getElementById('fetchAll').disabled = !left;
     }
 
@@ -108,10 +109,10 @@
       document.getElementById('empty').style.display = ROWS.length ? 'none' : 'block';
       document.getElementById('rows').innerHTML = ROWS.map((r) => `
         <div class="lrow" data-alias="${esc(r.alias)}">
-          <div class="lname">${r.alias ? esc(r.alias) : '<span class="whole">Whole studio</span>'}</div>
+          <div class="lname">${r.alias ? esc(r.alias) : `<span class="whole">${T.whole_studio}</span>`}</div>
           <input class="pa-input" type="text" placeholder="https://example.com/logo.png" autocomplete="off" data-url>
-          <button type="button" class="pa-btn" data-fetch>Fetch</button>
-          <div class="ldrop" data-drop tabindex="0" role="button" aria-label="Drop or Choose a file">Drop / Choose</div>
+          <button type="button" class="pa-btn" data-fetch>${T.fetch}</button>
+          <div class="ldrop" data-drop tabindex="0" role="button" aria-label="${T.drop_hint}">${T.drop}</div>
           <div class="lstate"></div>
         </div>`).join('');
       paintTally();
@@ -120,44 +121,44 @@
     async function studioChanged() {
       ROWS = [];
       render();
-      if (!studio()) { document.getElementById('empty').textContent = 'Pick a studio to list what still needs a logo.'; return; }
+      if (!studio()) { document.getElementById('empty').textContent = T.pick_studio_list; return; }
       const r = await fetch('/logos/api/aliases?studio=' + encodeURIComponent(studio()));
       const j = await r.json();
       ROWS = (j.studioTaken ? [] : [{ alias: '', done: false }]).concat((j.aliases || []).map((a) => ({ alias: a, done: false })));
       document.getElementById('template').value = j.template || '';
       tstate('');
-      document.getElementById('empty').textContent = 'Every site under this studio already has a logo.';
+      document.getElementById('empty').textContent = T.all_have_logos;
       render();
     }
 
-    function markDone(alias, url, how) {
+    function markDone(alias, url, file) {
       const row = ROWS.find((r) => r.alias === alias);
       if (row) row.done = true;
       const el = rowFor(alias);
       el.classList.add('done');
       el.querySelectorAll('input, button, .ldrop').forEach((n) => { n.disabled = true; n.style.pointerEvents = 'none'; });
-      state(alias, `Added from ${how}`, 'ok', url);
+      state(alias, file ? tr(T.added_from_file, { file }) : T.added_from_url, 'ok', url);
       paintTally();
     }
 
-    async function send(alias, path, init, how) {
-      state(alias, how === 'a URL' ? 'Fetching — a blocked host is retried through the bypass chain…' : 'Uploading…');
+    async function send(alias, path, init, file) {
+      state(alias, file ? T.uploading : T.fetching);
       const r = await fetch('/logos/api/' + path, init);
       const j = await r.json().catch(() => ({}));
-      if (j.ok) markDone(alias, j.url, how);
-      else state(alias, j.error || 'That did not work. Check the logs and try again.', 'err');
+      if (j.ok) markDone(alias, j.url, file);
+      else state(alias, j.error || T.failed, 'err');
       return !!j.ok;
     }
 
     function fromUrl(alias) {
       const url = rowFor(alias).querySelector('[data-url]').value.trim();
-      if (!url) { state(alias, 'Enter a URL first.', 'err'); return Promise.resolve(false); }
+      if (!url) { state(alias, T.enter_url, 'err'); return Promise.resolve(false); }
       const row = ROWS.find((r) => r.alias === alias);
       const urls = row && row.urls && row.urls[0] === url ? row.urls : [url];
       return send(alias, 'add-url', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studio: studio(), alias, urls }),
-      }, 'a URL');
+      }, '');
     }
 
     function upload(alias, file) {
@@ -170,23 +171,23 @@
 
     async function tryAllSubsites() {
       const tpl = template();
-      if (!studio()) { tstate('Pick a studio first.', 'err'); return; }
-      if (!tpl) { tstate('Enter a template first.', 'err'); return; }
+      if (!studio()) { tstate(T.pick_studio, 'err'); return; }
+      if (!tpl) { tstate(T.enter_template, 'err'); return; }
       document.getElementById('tryAll').disabled = true;
       try {
         const r = await fetch(`/logos/api/expand?studio=${encodeURIComponent(studio())}&template=${encodeURIComponent(tpl)}`);
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) { tstate(j.error || 'That template could not be expanded.', 'err'); return; }
+        if (!r.ok) { tstate(j.error || T.template_failed, 'err'); return; }
         const rows = (j.rows || []).filter((e) => rowFor(e.alias) && !ROWS.find((x) => x.alias === e.alias).done);
-        if (!rows.length) { tstate('Nothing left to fill in.'); return; }
+        if (!rows.length) { tstate(T.nothing_left); return; }
         rows.forEach((e) => {
           ROWS.find((x) => x.alias === e.alias).urls = e.urls;
           rowFor(e.alias).querySelector('[data-url]').value = e.urls[0];
         });
-        tstate(`Filled ${rows.length} sub-site(s), fetching…`);
+        tstate(tr(T.filled, { count: rows.length }));
         await fetchAll();
         const won = rows.filter((e) => ROWS.find((x) => x.alias === e.alias).done).length;
-        tstate(`${won} of ${rows.length} sub-site(s) fetched`, won ? 'ok' : 'err');
+        tstate(tr(T.fetched, { won, total: rows.length }), won ? 'ok' : 'err');
         if (won) {
           await fetch('/logos/api/template', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -252,7 +253,7 @@
     });
 
     document.getElementById('studio').innerHTML =
-      '<option value="">Choose a studio…</option>' + (STATE.studios || []).map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      `<option value="">${T.choose_studio}</option>` + (STATE.studios || []).map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
     render();
   </script>
 {% endblock %}

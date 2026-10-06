@@ -147,7 +147,7 @@ def test_the_add_page_stays_put_and_works_a_studio_at_a_time() -> None:
     page = authed_client().get('/logos/add').text
     assert 'window.location.href' not in page, 'adding a logo must not navigate away'
     assert 'id="fetchAll"' in page and 'for (const r of queued) await fromUrl(r.alias);' in page
-    assert 'markDone(alias, j.url, how)' in page, 'a finished row shows what landed'
+    assert 'markDone(alias, j.url, file)' in page, 'a finished row shows what landed'
 
 
 def test_upload_files_the_logo_under_the_studio_and_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -311,7 +311,8 @@ def test_sfw_mode_keeps_the_logo_artwork_off_the_page() -> None:
     page = authed_client().get('/logos').text
     assert 'var SFW = readSfw();' in page
     assert "${SFW ? '' : `<div class=\"logo-box" in page, 'SFW must skip the img entirely, not just hide it'
-    assert "paintSfwButton(SFW, 'Logo artwork is hidden and never downloaded'" in page
+    assert 'paintSfwButton(SFW, T.sfw_on_hint, T.sfw_off_hint)' in page
+    assert 'Logo artwork is hidden and never downloaded' in page
 
 
 def test_the_logo_page_uses_the_shared_toolbar_with_a_reset() -> None:

@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config import config
 from phoenixadult.config.env import env
+from phoenixadult.i18n import gettext
 from phoenixadult.registry import get_all_providers
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth import rate_limit, user_store
@@ -50,7 +51,7 @@ async def login_page(request: Request) -> HTMLResponse:
 
 
 def _login_html(next_path: str, error: str = '') -> str:
-    return render_page('login', subtitle='Enter your credentials to continue.', next=_safe_next(next_path), error=error)
+    return render_page('login', subtitle=gettext('login.subtitle'), next=_safe_next(next_path), error=error)
 
 
 async def _credentials(request: Request) -> tuple[dict[str, str], bool]:
@@ -75,14 +76,14 @@ async def login(request: Request) -> Response:
     scope, key = 'login', f'{ip}|{username.casefold()}'
     wait = max(rate_limit.retry_after(scope, key), rate_limit.retry_after(scope, ip))
     if wait > 0:
-        return fail(f'Too many attempts — wait {int(wait) + 1}s.', 429, {'Retry-After': str(int(wait) + 1)})
+        return fail(gettext('common.too_many_attempts') % {'seconds': int(wait) + 1}, 429, {'Retry-After': str(int(wait) + 1)})
     if not username or not password:
-        return fail('Username and password are required.', 400)
+        return fail(gettext('login.missing_fields'), 400)
     user = await run_in('store', user_store.verify_login, username, password)
     if user is None:
         rate_limit.record_failure(scope, key)
         rate_limit.record_failure(scope, ip)
-        return fail('Invalid username or password.', 401)
+        return fail(gettext('login.invalid'), 401)
     rate_limit.record_success(scope, key)
     token = await run_in('store', user_store.create_session, user.id, request.headers.get('user-agent', ''))
     target = _safe_next(fields['next'])
@@ -101,7 +102,7 @@ async def password_strength_api(request: Request) -> JSONResponse:
 @public_router.get('/setup', response_class=HTMLResponse)
 async def setup_page(request: Request) -> HTMLResponse:
     if await _seeded():
-        return HTMLResponse('Setup already complete.', status_code=404)
+        return HTMLResponse(gettext('setup.already_complete'), status_code=404)
     return HTMLResponse(render_page('setup', error=''))
 
 
@@ -117,11 +118,11 @@ async def setup(request: Request) -> Response:
 
     wait = rate_limit.retry_after('setup', _client_ip(request))
     if wait > 0:
-        return fail(f'Too many attempts — wait {int(wait) + 1}s.', 429, {'Retry-After': str(int(wait) + 1)})
+        return fail(gettext('common.too_many_attempts') % {'seconds': int(wait) + 1}, 429, {'Retry-After': str(int(wait) + 1)})
     if len(username) < 3:
-        return fail('Username must be at least 3 characters.', 400)
+        return fail(gettext('users.username_too_short'), 400)
     if (problem := password_error(password)) is not None:
-        return fail(problem, 400)
+        return fail(gettext(problem), 400)
 
     def _create() -> int | None:
         if user_store.user_count() > 0:
@@ -131,7 +132,7 @@ async def setup(request: Request) -> Response:
     user_id = await run_in('store', _create)
     if user_id is None:
         rate_limit.record_failure('setup', _client_ip(request))
-        return fail('An account already exists.', 409)
+        return fail(gettext('setup.account_exists'), 409)
     token = await run_in('store', user_store.create_session, user_id, request.headers.get('user-agent', ''))
     response: Response = Response(status_code=303, headers={'Location': '/config'}) if from_form else JSONResponse({'redirect': '/config'})
     _set_session_cookie(response, token, request)
@@ -153,12 +154,12 @@ def _provider_url_fields(api_key: str) -> dict[str, str]:
     mount = provider_mount_path(get_all_providers()[0])
     fields = {'hook_prefix': f'{config.base_url}/api/hook/', 'mount_path': mount}
     if not env.token_based_auth:
-        note = 'Plex must reach this address; behind a proxy or tunnel, set PHOENIX_BASE_URL to the URL Plex should use.'
+        note = gettext('account.url_note_open')
         return {'provider_url': f'{config.base_url}{mount}', 'provider_url_note': note, 'token_auth': 'false', **fields}
     if api_key:
-        note = 'This URL carries your API key in its path.'
+        note = gettext('account.url_note_key')
         return {'provider_url': f'{config.base_url}/api/hook/{api_key}{mount}', 'provider_url_note': note, 'token_auth': 'true', **fields}
-    note = 'This install requires a key in the URL. Generate one above and it will be filled in.'
+    note = gettext('account.url_note_needs_key')
     return {'provider_url': f'{config.base_url}/api/hook/YOUR_API_KEY{mount}', 'provider_url_note': note, 'token_auth': 'true', **fields}
 
 
@@ -178,14 +179,15 @@ async def change_password(request: Request) -> JSONResponse:
     current = str(body.get('current') or '')
     new = str(body.get('new') or '')
     if (problem := password_error(new)) is not None:
-        return JSONResponse({'error': problem}, status_code=400)
+        return JSONResponse({'error': gettext(problem)}, status_code=400)
     scope, key = 'password', str(user.id)
     if (wait := rate_limit.retry_after(scope, key)) > 0:
-        return JSONResponse({'error': f'Too many attempts — wait {int(wait) + 1}s.'}, status_code=429, headers={'Retry-After': str(int(wait) + 1)})
+        message = gettext('common.too_many_attempts') % {'seconds': int(wait) + 1}
+        return JSONResponse({'error': message}, status_code=429, headers={'Retry-After': str(int(wait) + 1)})
     verified = await run_in('store', user_store.verify_login, user.username, current)
     if verified is None:
         rate_limit.record_failure(scope, key)
-        return JSONResponse({'error': 'Current password is incorrect.'}, status_code=403)
+        return JSONResponse({'error': gettext('account.current_incorrect')}, status_code=403)
     rate_limit.record_success(scope, key)
     keep_hash = hash_token(request.cookies.get(SESSION_COOKIE, '')) if user.via == 'session' else None
     await run_in('store', user_store.set_password, user.id, new, keep_hash)

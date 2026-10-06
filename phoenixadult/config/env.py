@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from phoenixadult.i18n import current_language
+
 
 def _cwd() -> Path:
     return Path.cwd()
@@ -32,6 +34,10 @@ class _Env:
     @property
     def dev_ui_enabled(self) -> bool:
         return _on('DEV_UI_ENABLE')
+
+    @property
+    def ui_language(self) -> str:
+        return current_language()
 
     @property
     def log_dir(self) -> str:

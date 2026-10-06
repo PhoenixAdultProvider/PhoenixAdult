@@ -186,7 +186,7 @@ def test_dev_ui_is_a_documented_config_toggle() -> None:
     spec = next(entry for entry in ENV_CATALOG if entry.key == 'DEV_UI_ENABLE')
     assert spec.kind == 'boolean'
     assert spec.default_value == 'false'
-    assert GROUP_TAB[spec.group] == 'System'
+    assert GROUP_TAB[spec.group] == 'system'
 
 
 def _steps(response: Any) -> dict[str, dict[str, Any]]:

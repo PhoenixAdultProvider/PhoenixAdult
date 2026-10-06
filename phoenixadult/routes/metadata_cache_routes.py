@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.clients import get_client
 from phoenixadult.config.env import env
+from phoenixadult.i18n import N_, gettext
 from phoenixadult.registry import find_site
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.routes.provider_router import service_for
@@ -37,6 +38,16 @@ _EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyA
 _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 
 
+_PRUNED_LABELS = {
+    'people': N_('metadata.pruned_people'),
+    'studios': N_('metadata.pruned_studios'),
+    'taglines': N_('metadata.pruned_taglines'),
+    'collections': N_('metadata.pruned_collections'),
+    'genres': N_('metadata.pruned_genres'),
+    'countries': N_('metadata.pruned_countries'),
+}
+
+
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
@@ -49,7 +60,7 @@ async def page(request: Request) -> HTMLResponse:
         )
 
     (entries, total), dup_keys, studios, facets = await run_in('store', _bundle)
-    status = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
+    status = gettext('metadata.status_on') if env.metadata_cache_enabled else gettext('metadata.status_off')
     return HTMLResponse(
         render_page(
             'metadata_cache',
@@ -83,7 +94,8 @@ def _source_context(identity: tuple[str, str] | None, md: dict[str, Any]) -> tup
 async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     loaded = await run_in('store', metadata_cache.load_for_edit, key) if '/' in key else None
     if loaded is None:
-        return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
+        message = gettext('metadata_edit.not_found_page')
+        return HTMLResponse(f'<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">{message}</p>', status_code=404)
     md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
@@ -109,10 +121,10 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
 @router.get('/source-json', dependencies=_admin)
 async def source_json(key: str = '') -> JSONResponse:
     if '/' not in key:
-        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.bad_key')}, status_code=400)
     identity = await run_in('store', scene_store.identity_for, key)
     if identity is None:
-        return JSONResponse({'ok': False, 'error': 'unknown key'}, status_code=404)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.unknown_key')}, status_code=404)
     loaded = await run_in('store', metadata_cache.load_for_edit, key)
     md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
     stored = (md[0].get('sourceRef') or {}).get('data')
@@ -123,7 +135,7 @@ async def source_json(key: str = '') -> JSONResponse:
     if source.payload is not None:
         return JSONResponse({'ok': True, 'json': source.payload})
     if source.kind != 'api' or not source.url:
-        return JSONResponse({'ok': False, 'error': 'no source payload for this scene'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.no_source_payload')}, status_code=400)
     try:
         await ensure_fetchable_url(source.url)
     except ValueError as err:
@@ -131,7 +143,7 @@ async def source_json(key: str = '') -> JSONResponse:
     client = get_client(site.scraper_config.type) if site else None
     data = await client.fetch_json(source.url) if client else None
     if data is None:
-        return JSONResponse({'ok': False, 'error': 'the source API did not return JSON (it may need auth or be rate-limited)'}, status_code=502)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.source_not_json')}, status_code=502)
     return JSONResponse({'ok': True, 'json': data})
 
 
@@ -140,7 +152,7 @@ async def save(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     key = str(data.get('key', ''))
     if '/' not in key:
-        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.bad_key')}, status_code=400)
     fields: dict[str, Any] = {name: data[name] for name in _EDIT_TEXT if name in data}
     for name in _EDIT_TAGS:
         if isinstance(data.get(name), list):
@@ -152,10 +164,10 @@ async def save(request: Request) -> JSONResponse:
     if 'imagesLocked' in data:
         fields['imagesLocked'] = bool(data['imagesLocked'])
     if not str(fields.get('title', '')).strip():
-        return JSONResponse({'ok': False, 'error': 'title is required'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.title_required')}, status_code=400)
     moved = await metadata_cache.save_edits(key, fields)
     if moved is None:
-        return JSONResponse({'ok': False, 'error': 'snapshot not written — check the title and METADATA_CACHE_ENABLE'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.not_written')}, status_code=400)
     return JSONResponse({'ok': True, 'key': moved})
 
 
@@ -164,16 +176,16 @@ async def refresh(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     key = str(data.get('key', ''))
     if '/' not in key:
-        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.bad_key')}, status_code=400)
 
     target = await run_in('store', scene_store.scrape_target, key)
     if target is None:
-        return JSONResponse({'ok': False, 'error': 'no scene stored for that key'}, status_code=404)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.no_scene')}, status_code=404)
 
     site = find_site(target['site'])
     resolved = service_for(site.provider_id) if site else None
     if resolved is None:
-        return JSONResponse({'ok': False, 'error': f'no provider serving site "{target["site"]}"'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.no_provider') % {'site': target['site']}}, status_code=400)
 
     provider, metadata_service = resolved
     metadata_service.drop_memo(target['rating_key'], provider)
@@ -196,7 +208,7 @@ async def refresh_bulk(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     keys = data.get('keys')
     if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
-        return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.bad_keys')}, status_code=400)
 
     def _targets() -> list[tuple[dict[str, Any] | None, str]]:
         found = [scene_store.scrape_target(key) for key in keys]
@@ -225,10 +237,10 @@ async def refresh_bulk(request: Request) -> JSONResponse:
 @router.get('/snapshot')
 async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
     if not site or not cur_id:
-        return JSONResponse({'ok': False, 'error': 'site and cur_id are required'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.site_required')}, status_code=400)
     snap = await run_in('store', scene_store.snapshot_state, site, cur_id)
     if snap is None:
-        return JSONResponse({'ok': False, 'error': 'not snapshotted'}, status_code=404)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.not_snapshotted')}, status_code=404)
     loaded = await run_in('store', metadata_cache.load_for_edit, snap['key'])
     md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
     locks = await run_in('store', scene_store.locks, cache_layout.scene_hash_for(site, cur_id))
@@ -325,7 +337,7 @@ async def purge(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     key = str(data.get('key', ''))
     if '/' not in key:
-        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.bad_key')}, status_code=400)
     ok = await run_in('store', cache_listing.purge, key)
     return JSONResponse({'ok': ok})
 
@@ -335,7 +347,7 @@ async def purge_bulk(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     keys = data.get('keys')
     if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
-        return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
+        return JSONResponse({'ok': False, 'error': gettext('metadata_edit.bad_keys')}, status_code=400)
     purged = await run_in('store', lambda: sum(1 for key in keys if cache_listing.purge(key)))
     return JSONResponse({'ok': True, 'purged': purged})
 
@@ -348,4 +360,5 @@ async def purge_duplicates() -> JSONResponse:
 @router.post('/prune-names', dependencies=_admin)
 async def prune_names() -> JSONResponse:
     pruned = await run_in('store', scene_store.prune_orphan_names)
-    return JSONResponse({'ok': True, 'pruned': pruned, 'total': sum(pruned.values())})
+    detail = ', '.join(gettext(_PRUNED_LABELS[table]) % {'count': count} for table, count in pruned.items() if table in _PRUNED_LABELS)
+    return JSONResponse({'ok': True, 'pruned': pruned, 'total': sum(pruned.values()), 'detail': detail})
