@@ -44,6 +44,7 @@ from phoenixadult.utils.concurrency import pools
 from phoenixadult.utils.concurrency.gate import limits
 from phoenixadult.utils.concurrency.pools import sizes
 from phoenixadult.utils.db import maintenance
+from phoenixadult.utils.fs import atomic
 from phoenixadult.utils.http import client as http_client
 from phoenixadult.utils.http.security_headers import SecurityHeadersMiddleware
 from phoenixadult.utils.images import face_crop, image_fetcher, logo_cache
@@ -121,6 +122,12 @@ def _warn_on_legacy_snapshots() -> None:
         logger.warn(f'{stale} snapshot(s) still use the pre-{BUNDLE_ROOT} folder layout — run scripts/migrate_snapshot_layout.py --apply')
 
 
+def _sweep_partial_writes() -> None:
+    removed = atomic.sweep_partials(env.people_cache_dir, logo_cache.cache_dir())
+    if removed:
+        logger.info('startup', f'removed {removed} partial image write(s) left by an interrupted run')
+
+
 async def close_http_clients() -> None:
     await http_client.close_shared()
     await image_fetcher.close_shared()
@@ -149,10 +156,12 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     backup = asyncio.create_task(_backup_task())
     warm = asyncio.create_task(pools.run_in('image', face_crop.available)) if env.people_cache_face_enabled else None
+    sweep = asyncio.create_task(pools.run_in('fs', _sweep_partial_writes))
     try:
         yield
     finally:
         backup.cancel()
+        sweep.cancel()
         if warm is not None:
             warm.cancel()
         await close_http_clients()

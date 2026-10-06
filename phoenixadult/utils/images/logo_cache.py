@@ -17,6 +17,7 @@ from PIL.Image import Resampling
 from phoenixadult.config.env import env
 from phoenixadult.i18n import gettext
 from phoenixadult.utils import db
+from phoenixadult.utils.fs.atomic import write_bytes_atomic
 from phoenixadult.utils.fs.paths import rel_to, safe_join
 from phoenixadult.utils.images.logo_trim import trim
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
@@ -382,7 +383,7 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
     for existing in target_dir.glob(f'logo.{name_slug}.*'):
         existing.unlink(missing_ok=True)
     target = target_dir / f'logo.{name_slug}{suffix}'
-    target.write_bytes(data)
+    write_bytes_atomic(target, data)
     if suffix == '.svg':
         converted = convert_svg(target)
         if converted is None:

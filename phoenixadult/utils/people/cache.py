@@ -17,6 +17,7 @@ from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.concurrency.pools import run_in
+from phoenixadult.utils.fs.atomic import write_bytes_atomic
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.http.client import read_capped, shared_http
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
@@ -257,10 +258,10 @@ async def _crop(shot: _Headshot) -> None:
 
 def _write_headshot(filepath: Path, orig_path: Path | None, shot: _Headshot, log: dict[str, Any]) -> None:
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    filepath.write_bytes(shot.data)
+    write_bytes_atomic(filepath, shot.data)
     if orig_path is not None:
         orig_path.parent.mkdir(parents=True, exist_ok=True)
-        orig_path.write_bytes(shot.original)
+        write_bytes_atomic(orig_path, shot.original)
     face_crop_log.record(str(filepath.parent), orig_ext=shot.orig_ext, cropped=shot.cropped, **log)
 
 
@@ -330,7 +331,7 @@ async def _original_bytes(directory: str, entry: dict[str, Any]) -> bytes | None
 
 def _swap_in_original(directory: str, subdir: str, filename: str, target: Path, target_name: str, payload: bytes, log_dir: str) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(payload)
+    write_bytes_atomic(target, payload)
     if target_name != filename:
         stale = safe_join(directory, subdir, filename)
         if stale is not None and stale != target and stale.exists():
