@@ -7,6 +7,7 @@ from urllib.parse import unquote
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.metadata import CAST_FIELDS, PlexMetadataResponse, PlexRole
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
@@ -115,7 +116,7 @@ async def backfill_people_images(
         return False
 
     groups: list[_Group] = [(md.Role or [], 'actor', 'actors'), (md.Director or [], 'director', 'directors'), (md.Producer or [], 'producer', 'producers')]
-    missing, changed = _clear_stale_thumbs(groups)
+    missing, changed = await run_in('fs', _clear_stale_thumbs, groups)
     if not missing:
         logger.debug('meta-cache', f'backfill skip "{md.title}": all cast/crew already have thumbs')
         return False

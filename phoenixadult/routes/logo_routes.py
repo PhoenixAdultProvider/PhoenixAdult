@@ -182,7 +182,7 @@ async def add_upload(studio: str = Form(''), alias: str = Form(''), file: Upload
     except ValueError as err:
         return JSONResponse({'ok': False, 'error': str(err)}, status_code=400)
     logger.info('logo-cache', f'added {rel} from an upload')
-    return JSONResponse(_saved(rel))
+    return JSONResponse(await run_in('fs', _saved, rel))
 
 
 async def _first_image(urls: list[str]) -> tuple[bytes, str, str]:
@@ -228,4 +228,4 @@ async def add_url(request: Request) -> JSONResponse:
     except ValueError as err:
         return JSONResponse({'ok': False, 'error': str(err)}, status_code=400)
     logger.info('logo-cache', f'added {rel} from {used}')
-    return JSONResponse(_saved(rel))
+    return JSONResponse(await run_in('fs', _saved, rel))

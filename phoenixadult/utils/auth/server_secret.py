@@ -40,7 +40,7 @@ def _load_or_create(path: Path) -> bytes:
 
 def server_secret() -> bytes:
     global _cache
-    key = str(secret_path())
+    key = env.state_db_path
     with _lock:
         if _cache is None or _cache[0] != key:
             _cache = (key, _load_or_create(secret_path()))
@@ -54,7 +54,7 @@ def signing_key() -> bytes:
 def fernet() -> Fernet:
     global _fernet_cache
     secret = server_secret()
-    key = str(secret_path())
+    key = env.state_db_path
     with _lock:
         if _fernet_cache is None or _fernet_cache[0] != key:
             material = hashlib.sha256(b'phoenixadult.fernet.v1' + secret).digest()

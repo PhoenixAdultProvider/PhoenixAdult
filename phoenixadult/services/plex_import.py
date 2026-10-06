@@ -173,7 +173,7 @@ async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> 
             image_class = classify_image(width, height).image_class
             hint = _NAME_BY_CLASS.get(image_class) or ('poster' if height > width else 'art')
             counts[hint] = counts.get(hint, 0) + 1
-            url = _stage_image(staging, f'{hint}-{counts[hint] - 1:02d}', content, ext)
+            url = await run_in('fs', _stage_image, staging, f'{hint}-{counts[hint] - 1:02d}', content, ext)
             probed.append({'url': url, 'dims': {'width': width, 'height': height}, 'image_class': image_class})
     return build_artwork(probed)
 
@@ -265,7 +265,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key=rating_key, title=title, status='failed', site=site_name, cur_id=cur_id, detail=repr(err)))
     finally:
         if staging is not None:
-            shutil.rmtree(staging, ignore_errors=True)
+            await run_in('fs', shutil.rmtree, staging, True)
 
 
 async def import_item(connection: Connection, token: str, rating_key: str, overwrite: bool = False) -> ItemReport:
