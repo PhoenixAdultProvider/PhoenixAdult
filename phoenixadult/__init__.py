@@ -1,6 +1,6 @@
 import re
 
-__version__ = '1.0.0a498'
+__version__ = '1.0.0a499'
 
 
 def provider_version() -> str:
