@@ -344,7 +344,7 @@ async def restore_original(filename: str) -> bool:
     directory = env.people_cache_dir
     subdir = _subdir_for(filename)
     subdir_path = safe_join(directory, subdir)
-    entry = face_crop_log.entry_for(str(subdir_path), filename) if subdir_path is not None else None
+    entry = await run_in('store', face_crop_log.entry_for, str(subdir_path), filename) if subdir_path is not None else None
     if not entry:
         return False
     data = await _original_bytes(directory, entry)

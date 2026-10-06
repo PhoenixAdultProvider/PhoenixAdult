@@ -23,6 +23,7 @@ from phoenixadult.services.plex_reconcile import PlexClient, our_rating_key
 from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.layout import scene_hash_for
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -222,7 +223,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key=rating_key, title=title, status='unresolved', detail=_unresolved_detail(studio)))
         return
     site_name, cur_id = resolved
-    if not overwrite and scene_store.has(scene_hash_for(site_name, cur_id)):
+    if not overwrite and await run_in('store', scene_store.has, scene_hash_for(site_name, cur_id)):
         report.skipped_existing += 1
         report.add(
             ItemReport(rating_key=rating_key, title=title, status='skipped', site=site_name, cur_id=cur_id, detail=gettext('plex.import_already_cached'))
