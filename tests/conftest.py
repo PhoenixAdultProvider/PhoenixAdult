@@ -102,6 +102,19 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)
 
 
+@pytest.fixture(autouse=True)
+def _network_up(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    from phoenixadult.utils.http import connectivity
+
+    async def reachable() -> bool:
+        return True
+
+    monkeypatch.setattr(connectivity, '_probe_once', reachable)
+    connectivity.reset_network_state()
+    yield
+    connectivity.reset_network_state()
+
+
 @pytest.fixture
 def no_web_search() -> object:
 

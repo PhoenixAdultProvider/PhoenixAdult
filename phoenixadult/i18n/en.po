@@ -66,6 +66,8 @@ msgid "nav.theme_auto"
 msgstr "Auto"
 msgid "nav.theme_dark"
 msgstr "Dark theme"
+msgid "nav.network_down"
+msgstr "Network is down: sites and images cannot be reached. Cached data still works, and this clears on its own once the connection returns."
 
 # ── List Toolbar ──
 msgid "toolbar.reset_filters"

@@ -10,6 +10,7 @@
   </div>
 </nav>
 <div class="app-nav-spacer" aria-hidden="true"></div>
+<div class="net-banner" id="netBanner" role="status"{% if not network_down() %} hidden{% endif %}>{{ _('nav.network_down') }}</div>
 <script type="speculationrules">
 { "prerender": [{ "where": { "selector_matches": ".app-nav a" }, "eagerness": "moderate" }] }
 </script>
@@ -28,5 +29,15 @@
     for (const b of buttons) b.addEventListener('click', () => window.paTheme.set(b.dataset.set));
     document.addEventListener('pa-theme-change', paint);
     paint();
+    (function watchNetwork() {
+      const banner = document.getElementById('netBanner');
+      setTimeout(async () => {
+        try {
+          const r = await fetch('/api/network');
+          if (r.ok) banner.hidden = !(await r.json()).down;
+        } catch (e) {}
+        watchNetwork();
+      }, banner.hidden ? 60000 : 15000);
+    })();
   })();
 </script>

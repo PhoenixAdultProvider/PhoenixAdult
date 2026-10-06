@@ -7,8 +7,8 @@ from typing import Any
 import httpx2
 
 from phoenixadult.config.env import env
-from phoenixadult.utils.http.connectivity import note_transport_failure
-from phoenixadult.utils.http.ssrf_guard import guard_target
+from phoenixadult.utils.http.connectivity import internet_reachable, network_usable, note_transport_failure
+from phoenixadult.utils.http.ssrf_guard import guard_target, is_local_host
 from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
 
@@ -42,10 +42,16 @@ async def _guard_redirect(response: httpx2.Response) -> None:
 
 class _WatchedTransport(httpx2.AsyncHTTPTransport):
     async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        public = not is_local_host(request.url.host)
+        if public and not await network_usable():
+            note_transport_failure(f'{request.url.host}: network down')
+            raise httpx2.ConnectError('network is down', request=request)
         try:
             return await super().handle_async_request(request)
         except httpx2.TransportError as err:
             note_transport_failure(f'{request.url.host}: {type(err).__name__}')
+            if public and isinstance(err, httpx2.ConnectError | httpx2.ConnectTimeout):
+                await internet_reachable()
             raise
 
 

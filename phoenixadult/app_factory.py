@@ -169,10 +169,10 @@ def _install_middleware(app: FastAPI) -> None:
     async def plex_client_middleware(request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
         client_id = request.headers.get('x-plex-client-identifier')
         if client_id and request.url.path.startswith(mounts):
-            await asyncio.to_thread(client_hits.record, client_id, request.headers, request.url.path)
-            owner = await asyncio.to_thread(plex_connections.owner_for_client, client_id)
+            await pools.run_in('store', client_hits.record, client_id, request.headers, request.url.path)
+            owner = await pools.run_in('store', plex_connections.owner_for_client, client_id)
             if owner is not None:
-                token = await asyncio.to_thread(user_tokens.token_for_user, owner)
+                token = await pools.run_in('auth', user_tokens.token_for_user, owner)
                 user_tokens.current_metadataapi_token.set(token)
         return await call_next(request)  # type: ignore[no-any-return]
 
@@ -238,7 +238,7 @@ def _install_error_pages(app: FastAPI) -> None:
         wants_html = request.method in ('GET', 'HEAD') and 'text/html' in (request.headers.get('accept') or '')
         if not wants_html:
             return JSONResponse({'error': 'Unauthorized'}, status_code=401)
-        if await asyncio.to_thread(user_store.user_count) == 0:
+        if await pools.run_in('auth', user_store.user_count) == 0:
             return Response(status_code=302, headers={'Location': '/setup'})
         target = request.url.path + (f'?{request.url.query}' if request.url.query else '')
         return Response(status_code=302, headers={'Location': f'/login?next={quote(target)}'})

@@ -14,6 +14,7 @@ from phoenixadult.utils.auth import rate_limit, user_store
 from phoenixadult.utils.auth.passwords import hash_token, password_error, password_strength
 from phoenixadult.utils.auth.user_auth import SESSION_COOKIE, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
+from phoenixadult.utils.http.connectivity import network_usable
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.media_type import provider_mount_path
 
@@ -161,6 +162,11 @@ def _provider_url_fields(api_key: str) -> dict[str, str]:
         return {'provider_url': f'{config.base_url}/api/hook/{api_key}{mount}', 'provider_url_note': note, 'token_auth': 'true', **fields}
     note = gettext('account.url_note_needs_key')
     return {'provider_url': f'{config.base_url}/api/hook/YOUR_API_KEY{mount}', 'provider_url_note': note, 'token_auth': 'true', **fields}
+
+
+@router.get('/api/network')
+async def network_state() -> JSONResponse:
+    return JSONResponse({'down': not await network_usable()})
 
 
 @router.get('/account', response_class=HTMLResponse)

@@ -5,7 +5,9 @@ import ipaddress
 from urllib.parse import urlsplit
 
 from phoenixadult.config.env import env
+from phoenixadult.utils.http.connectivity import internet_reachable, network_usable
 
+_RESOLVE_TIMEOUT = 5.0
 _DOC_NETS = tuple(ipaddress.ip_network(n) for n in ('192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24'))
 
 
@@ -60,9 +62,18 @@ def is_blocked_hostname(host: str) -> bool:
     return False
 
 
+def is_local_host(host: str) -> bool:
+    return is_blocked_hostname(host.strip('[]'))
+
+
 async def _resolve(host: str) -> list[str]:
-    loop = asyncio.get_running_loop()
-    infos = await loop.getaddrinfo(host, None)
+    if not await network_usable():
+        raise OSError('network is down')
+    try:
+        infos = await asyncio.wait_for(asyncio.get_running_loop().getaddrinfo(host, None), _RESOLVE_TIMEOUT)
+    except OSError:
+        await internet_reachable()
+        raise
     return [str(info[4][0]) for info in infos]
 
 

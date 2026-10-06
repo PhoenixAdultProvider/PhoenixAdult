@@ -10,6 +10,7 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.auth.image_guard import image_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
+from phoenixadult.utils.http.connectivity import network_usable
 from phoenixadult.utils.http.ssrf_guard import assert_fetchable_url
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -89,6 +90,8 @@ async def _proxy(request: Request, send_body: bool, *, classify: bool = False) -
     raw_url = request.query_params.get('url')
     if not raw_url:
         return JSONResponse({'error': 'Missing url'}, status_code=400)
+    if not await network_usable():
+        return JSONResponse({'error': 'Network is down'}, status_code=503)
     try:
         target = await assert_fetchable_url(raw_url)
     except ValueError as err:

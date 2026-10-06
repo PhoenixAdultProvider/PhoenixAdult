@@ -15,6 +15,7 @@ from phoenixadult.routes.assets import asset_version
 from phoenixadult.utils.auth.passwords import PASSWORD_RULE
 from phoenixadult.utils.auth.theme_view import THEMES_BY_MODE, theme_view, user_theme
 from phoenixadult.utils.auth.user_auth import is_admin
+from phoenixadult.utils.http.connectivity import network_down
 
 THEME_NAMES = tuple(name for names in THEMES_BY_MODE.values() for name in names)
 FONT_NAMES = ('archivo-latin', 'jetbrains-mono-latin')
@@ -58,6 +59,7 @@ _jinja.install_gettext_callables(gettext, ngettext, newstyle=True)  # type: igno
 _jinja.globals['ui_language'] = ui_language
 _jinja.globals['strings'] = strings
 _jinja.globals['nav_items'] = nav_items
+_jinja.globals['network_down'] = network_down
 _jinja.globals['user_theme'] = user_theme
 _jinja.globals['theme_view'] = theme_view
 _jinja.globals['theme_version'] = theme_version
