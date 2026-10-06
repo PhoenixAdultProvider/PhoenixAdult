@@ -119,15 +119,49 @@
         location.href = '/people/edit?' + new URLSearchParams({filename}).toString();
       }
       var STORE_KEY = 'people-cache-filters';
+      var UPSTREAM_SLOTS = 2;
+      var UPSTREAM_GIVE_UP_MS = 20000;
+      var upstreamQueue = [];
+      var upstreamActive = 0;
+      var upstreamSeen = new IntersectionObserver(entries => {
+        entries.forEach(en => {
+          if(!en.isIntersecting) return;
+          upstreamSeen.unobserve(en.target);
+          upstreamQueue.push(en.target);
+        });
+        pumpUpstream();
+      }, { rootMargin: '200px' });
+      function pumpUpstream(){
+        while(upstreamActive < UPSTREAM_SLOTS && upstreamQueue.length){
+          const img = upstreamQueue.shift();
+          if(SFW || !img.isConnected || img.getAttribute('src') === img.dataset.src) continue;
+          upstreamActive++;
+          let released = false;
+          const release = () => {
+            if(released) return;
+            released = true;
+            upstreamActive--;
+            pumpUpstream();
+          };
+          img.addEventListener('load', release, { once: true });
+          img.addEventListener('error', release, { once: true });
+          setTimeout(release, UPSTREAM_GIVE_UP_MS);
+          img.src = img.dataset.src;
+        }
+      }
       function paintImages(){
         document.body.classList.toggle('sfw', SFW);
         // Only the cards on the current page get a src, so a big library never
         // hydrates thousands of images at once.
+        upstreamQueue = [];
+        upstreamSeen.disconnect();
         document.querySelectorAll('.person-card').forEach(card => {
           const shown = card.style.display === 'block';
           card.querySelectorAll('.imgs img').forEach(img => {
             if(SFW || !shown) img.removeAttribute('src');
-            else if(img.dataset.src && img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+            else if(!img.dataset.src || img.getAttribute('src') === img.dataset.src) return;
+            else if(img.dataset.upstream) upstreamSeen.observe(img);
+            else img.src = img.dataset.src;
           });
         });
         paintSfwButton(SFW);
@@ -165,7 +199,7 @@
         const badge = e.cropped ? '<span class="pa-badge crop">' + T.badge_cropped + '</span>' : '<span class="pa-badge orig">' + T.badge_original + '</span>';
         const srcBadge = e.source ? '<span class="pa-badge src">' + esc(e.source) + '</span>' : '';
         const upstream = e.upstream_url
-          ? '<figure><figcaption>' + T.upstream_original + '</figcaption><img data-src="/images/proxy?url=' + esc(e.upstream_quoted) + '" loading="lazy" decoding="async"></figure>'
+          ? '<figure><figcaption>' + T.upstream_original + '</figcaption><img data-src="/images/proxy?url=' + esc(e.upstream_quoted) + '" data-upstream="1" decoding="async"></figure>'
           : '';
         const gender = GENDERS.map(function (g) {
           const on = g[0] === e.gender_norm;

@@ -183,6 +183,14 @@ def test_only_the_current_page_of_people_images_is_hydrated() -> None:
     assert "if(SFW || !shown) img.removeAttribute('src');" in page.text
 
 
+def test_upstream_originals_load_two_at_a_time_once_visible() -> None:
+    page = authed_client().get('/people').text
+    assert 'data-upstream="1" decoding="async"' in page, 'upstream images skip native lazy loading; the observer queues them'
+    assert 'var UPSTREAM_SLOTS = 2;' in page, 'four of the browser six connections stay free for the rest of the UI'
+    assert 'else if(img.dataset.upstream) upstreamSeen.observe(img);' in page
+    assert 'setTimeout(release, UPSTREAM_GIVE_UP_MS);' in page, 'a stalled fetch must not hold its slot forever'
+
+
 def test_paging_reset_and_sfw_stay_visible_on_mobile_on_both_pages() -> None:
     client = authed_client()
     for path in ('/people', '/metadata', '/logos', '/searches'):
