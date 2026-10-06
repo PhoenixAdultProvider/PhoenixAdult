@@ -46,7 +46,7 @@ from phoenixadult.utils.concurrency.pools import sizes
 from phoenixadult.utils.db import maintenance
 from phoenixadult.utils.http import client as http_client
 from phoenixadult.utils.http.security_headers import SecurityHeadersMiddleware
-from phoenixadult.utils.images import image_fetcher, logo_cache
+from phoenixadult.utils.images import face_crop, image_fetcher, logo_cache
 from phoenixadult.utils.logging.logger import configure_logging, logger
 from phoenixadult.utils.logging.request_context import RequestContextMiddleware
 from phoenixadult.utils.logging.response_trace import dump_dir, tracing_wanted
@@ -148,10 +148,13 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
         logger.error(f'startup step "restore-queue" failed (continuing): {err!r}')
 
     backup = asyncio.create_task(_backup_task())
+    warm = asyncio.create_task(pools.run_in('image', face_crop.available)) if env.people_cache_face_enabled else None
     try:
         yield
     finally:
         backup.cancel()
+        if warm is not None:
+            warm.cancel()
         await close_http_clients()
         pools.shutdown()
 

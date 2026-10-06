@@ -259,7 +259,7 @@ async def page(request: Request) -> HTMLResponse:
             library=first['library'],
             img_base=image_base_url(),
             img_opt=env.image_base_url_raw,
-            crop_available=face_crop.available(),
+            crop_available=await run_in('image', face_crop.available),
             genders=[(key, css, gettext(label)) for key, css, label in _GENDERS],
             fetchable_sources=[s.name for s in FETCHABLE_SOURCES],
             present_sources=first['sources'],
@@ -324,7 +324,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
             filename=filename,
             entry=entry,
             sources=[source.name for source in FETCHABLE_SOURCES],
-            crop_available=face_crop.available(),
+            crop_available=await run_in('image', face_crop.available),
             recorded_sources=list(KNOWN_SOURCES),
             scenes=scenes,
         )

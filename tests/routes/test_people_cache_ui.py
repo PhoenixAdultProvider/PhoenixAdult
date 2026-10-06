@@ -533,3 +533,19 @@ def test_the_listing_pages_in_sql_instead_of_loading_the_library(_person_cache: 
     assert body['total'] == 1 and body['entries'][0]['name'] == 'Jane Doe'
     assert body['counts']['actors-female'] == 1 and body['has_unrecorded']
     assert people_cache_routes.index_conn().execute('SELECT count(*) FROM people_images').fetchone()[0] == 1, 'the SQL path ran'
+
+
+def test_the_face_crop_check_never_runs_on_the_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+
+    from phoenixadult.utils.images import face_crop
+
+    threads: list[str] = []
+
+    def available() -> bool:
+        threads.append(threading.current_thread().name)
+        return False
+
+    monkeypatch.setattr(face_crop, 'available', available)
+    authed_client().get('/people')
+    assert threads and all(name.startswith('pa-image') for name in threads), 'the first call imports OpenCV, which would freeze every request'
