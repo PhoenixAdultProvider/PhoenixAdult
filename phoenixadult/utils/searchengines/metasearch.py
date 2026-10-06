@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import asyncio
-
 from ddgs import DDGS
 from ddgs.exceptions import DDGSException
 
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import configured_https_proxy
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines.types import SearchOptions
@@ -33,7 +32,7 @@ class MetasearchClient:
         safesearch = 'moderate' if opts.safe_search else 'off'
         logger.debug('search:meta', f'ddgs auto q="{query}"')
         try:
-            urls = await asyncio.to_thread(self._run, query, num, safesearch)
+            urls = await run_in('search', self._run, query, num, safesearch)
         except DDGSException as err:
             logger.debug('search:meta', f'no results: {err}')
             return []

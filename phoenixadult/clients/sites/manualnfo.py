@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import re
 import threading
 import time
@@ -18,6 +17,7 @@ from phoenixadult.config import config
 from phoenixadult.config.env import env
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.auth.url_signing import sign_url
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.data18 import scene_url_from_ref
 from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.ids import pack_cur_id
@@ -330,17 +330,17 @@ class ManualNfoClient(Client):
         if not basename:
             return
 
-        located = await asyncio.to_thread(_locate_nfo, basename)
+        located = await run_in('fs', _locate_nfo, basename)
         if not located:
             logger.debug(tag, f'search: no NFO for basename="{basename}" under {_manual_nfo_root()}')
             return
 
-        nfo = await asyncio.to_thread(_load_and_parse, located)
+        nfo = await run_in('fs', _load_and_parse, located)
         if not nfo:
             return
 
         title = nfo.title or basename
-        thumb = await asyncio.to_thread(_find_sibling_image, located, '-poster')
+        thumb = await run_in('fs', _find_sibling_image, located, '-poster')
 
         results.append(
             build_search_result(
@@ -361,12 +361,12 @@ class ManualNfoClient(Client):
 
     async def load_scene_context(self, payload: str, site: Any, ctx: SceneContext | None = None) -> LoadedScene | None:
         basename = payload.strip()
-        located = await asyncio.to_thread(_locate_nfo, basename)
+        located = await run_in('fs', _locate_nfo, basename)
         if not located:
             logger.warn(site.name, f'loadSceneContext: NFO missing for basename="{basename}"')
             return None
 
-        nfo = await asyncio.to_thread(_load_and_parse, located)
+        nfo = await run_in('fs', _load_and_parse, located)
         if not nfo:
             logger.warn(site.name, f'loadSceneContext: NFO parse failed at {located.nfo_path}')
             return None
@@ -446,11 +446,11 @@ class ManualNfoClient(Client):
             return
 
         images: list[str] = []
-        poster = await asyncio.to_thread(_find_sibling_image, located, '-poster') or (nfo.thumb if _is_http(nfo.thumb) else None)
+        poster = await run_in('fs', _find_sibling_image, located, '-poster') or (nfo.thumb if _is_http(nfo.thumb) else None)
         if poster:
             images.append(poster)
 
-        fanart = await asyncio.to_thread(_find_sibling_image, located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
+        fanart = await run_in('fs', _find_sibling_image, located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
         if fanart and fanart != poster:
             images.append(fanart)
 

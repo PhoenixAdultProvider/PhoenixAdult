@@ -14,5 +14,5 @@ def test_authentication_cannot_be_starved_by_reporting_queries() -> None:
 
 
 def test_every_named_pool_is_reachable() -> None:
-    for name in ('store', 'image', 'fs', 'auth'):
+    for name in ('store', 'image', 'fs', 'auth', 'queue', 'search', 'cpu'):
         assert pools.pool(name)._max_workers == pools.sizes()[name]

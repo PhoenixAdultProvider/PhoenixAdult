@@ -598,6 +598,10 @@ Every route is `async def`, so anything synchronous runs on the event loop unles
 | `fs` | 4 | People-cache file writes |
 | `auth` | 4 | Session and API-key lookups, kept off `store` so a reporting query cannot delay sign-in |
 | `queue` | 1 | Scrape-queue replay rows; one worker keeps each key's add and remove in order, off the event loop |
+| `search` | 2 | Metasearch (ddgs) web lookups, which block for seconds on their own network calls |
+| `cpu` | `min(4, cpu/2)` | Proof-of-work captcha solving |
+
+Nothing at request time uses the default executor: it is left to DNS, since every outbound connection (`httpx`'s `getaddrinfo`) resolves there, and a slow job parked in it would delay every scraper and image fetch behind it. `tests/framework/test_default_executor.py` keeps `asyncio.to_thread` out of the package.
 
 Artwork probing is additionally capped at `_PROBE_CONCURRENCY` (8) per scene, so one scene's image set arrives as a stream rather than a burst. Pools are created on first use and shut down in the lifespan's `finally`.
 

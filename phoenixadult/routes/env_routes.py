@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 import signal
 from pathlib import Path
@@ -145,7 +144,7 @@ async def api_save(request: Request) -> JSONResponse:
             for key, value in clean:
                 set_override(key, value)
 
-        await asyncio.to_thread(_apply)
+        await run_in('fs', _apply)
         logger.info('config', f'applied {len(clean)} override(s): {", ".join(k for k, _ in clean)}')
     return JSONResponse(await _state_for(request))
 
@@ -168,12 +167,12 @@ async def api_reset(request: Request) -> JSONResponse:
         return JSONResponse({'error': gettext('settings_errors.bad_json')}, status_code=400)
     key = body.get('key') if isinstance(body, dict) else None
     if key is None:
-        await asyncio.to_thread(clear_all_overrides)
+        await run_in('fs', clear_all_overrides)
         logger.info('config', 'cleared all overrides')
         return JSONResponse(await _state_for(request))
     if not isinstance(key, str) or not find_env_var(key):
         return JSONResponse({'error': gettext('settings_errors.not_editable') % {'key': key}}, status_code=400)
-    await asyncio.to_thread(clear_override, key)
+    await run_in('fs', clear_override, key)
     logger.info('config', f'cleared override: {key}')
     return JSONResponse(await _state_for(request))
 

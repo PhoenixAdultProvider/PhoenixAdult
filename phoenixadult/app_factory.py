@@ -99,7 +99,7 @@ def _migrate_metadataapi_env() -> None:
 
 async def _try_startup(label: str, fn: Callable[[], object]) -> None:
     try:
-        await asyncio.to_thread(fn)
+        await pools.run_in('store', fn)
     except Exception as err:  # noqa: BLE001 - startup must survive a broken derived store
         logger.error(f'startup step "{label}" failed (continuing): {err!r}')
 
@@ -108,7 +108,7 @@ async def _backup_task() -> None:
     hours = env.db_backup_interval_hours
     if hours <= 0:
         return
-    if await asyncio.to_thread(maintenance.backup_age_hours) >= hours:
+    if await pools.run_in('store', maintenance.backup_age_hours) >= hours:
         await _try_startup('db startup backup', maintenance.backup_once)
     while True:
         await asyncio.sleep(hours * 3600)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import re
@@ -11,6 +10,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx2
 
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.concurrency.single_flight import SingleFlight
 from phoenixadult.utils.http.client import DEFAULT_UA, make_http
 from phoenixadult.utils.logging.logger import logger
@@ -136,7 +136,7 @@ class _Challenge:
 
     async def _solve(self, config: dict[str, Any]) -> int:
         t0 = time.time()
-        nonce = await asyncio.to_thread(solve_pow, config['challenge'], config['difficulty'])
+        nonce = await run_in('cpu', solve_pow, config['challenge'], config['difficulty'])
         logger.info('pow', f'{self.host}: solved difficulty={config["difficulty"]} nonce={nonce} in {round((time.time() - t0) * 1000)}ms')
         return nonce
 
