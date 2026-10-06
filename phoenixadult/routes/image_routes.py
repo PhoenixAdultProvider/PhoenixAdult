@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from cachetools import TTLCache
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -10,7 +11,7 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.auth.image_guard import image_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
-from phoenixadult.utils.http.connectivity import network_usable
+from phoenixadult.utils.http.connectivity import network_down, network_usable
 from phoenixadult.utils.http.ssrf_guard import assert_fetchable_url
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -23,6 +24,8 @@ cache_router = APIRouter(dependencies=[Depends(image_guard)])
 _PROXY_CACHE_CONTROL = 'public, max-age=3600'
 _VERSIONED_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 _REVALIDATE_CACHE_CONTROL = 'public, max-age=300'
+_FAILED_TTL = 600.0
+_recent_failures: TTLCache[tuple[str, tuple[str, ...], tuple[str, ...]], bool] = TTLCache(maxsize=4096, ttl=_FAILED_TTL)
 
 
 def _read_multi(request: Request, key: str) -> list[str]:
@@ -90,6 +93,10 @@ async def _proxy(request: Request, send_body: bool, *, classify: bool = False) -
     raw_url = request.query_params.get('url')
     if not raw_url:
         return JSONResponse({'error': 'Missing url'}, status_code=400)
+    referers, cookies = _read_multi(request, 'referer'), _read_multi(request, 'cookie')
+    failure_key = (raw_url, tuple(referers), tuple(cookies))
+    if failure_key in _recent_failures:
+        return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
     if not await network_usable():
         return JSONResponse({'error': 'Network is down'}, status_code=503)
     try:
@@ -98,8 +105,10 @@ async def _proxy(request: Request, send_body: bool, *, classify: bool = False) -
         logger.warn('proxy-classified' if classify else 'proxy', f'400 {raw_url} - {err}')
         return JSONResponse({'error': 'Invalid url'}, status_code=400)
     try:
-        entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'), pinned=env.image_proxy_pin)
+        entry = await fetch_image(target, referers, cookies, pinned=env.image_proxy_pin)
     except Exception as err:  # noqa: BLE001
+        if not network_down():
+            _recent_failures[failure_key] = True
         logger.warn('proxy-classified' if classify else 'proxy', f'502 {target} - {err!r}')
         return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
     headers = {'Content-Length': str(len(entry.data)), 'Cache-Control': _PROXY_CACHE_CONTROL}

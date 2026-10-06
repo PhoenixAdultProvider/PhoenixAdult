@@ -115,6 +115,13 @@ def _network_up(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     connectivity.reset_network_state()
 
 
+@pytest.fixture(autouse=True)
+def _fresh_proxy_failures() -> None:
+    from phoenixadult.routes import image_routes
+
+    image_routes._recent_failures.clear()
+
+
 @pytest.fixture
 def no_web_search() -> object:
 
