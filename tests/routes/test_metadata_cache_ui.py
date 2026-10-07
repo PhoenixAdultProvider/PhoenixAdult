@@ -813,6 +813,7 @@ def test_the_empty_thumbnail_is_a_centred_well() -> None:
     assert 'place-content: center' in rule
     assert 'font-size: var(--text-sm)' in rule
     assert 'checkerboard-a' in rule
+    assert '.scene-card img, .scene-card .noimg { width: 100%; height: 190px;' in page.text, 'the well fills the image slot'
     assert '.scene-card .noimg::before' not in page.text
     assert '>${T.no_image}<' in page.text
 
