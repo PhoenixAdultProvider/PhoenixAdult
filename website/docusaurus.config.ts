@@ -79,8 +79,8 @@ const config: Config = {
           title: 'Docs',
           items: [
             { label: 'Hosting', to: '/hosting' },
-            { label: 'Manual search', to: '/manualsearch' },
-            { label: 'Site list', to: '/sitelist' },
+            { label: 'Manual Search', to: '/manualsearch' },
+            { label: 'Site List', to: '/sitelist' },
           ],
         },
         {

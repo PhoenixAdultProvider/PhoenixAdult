@@ -9,7 +9,7 @@ python -m scripts.site_health retry      # only sites whose last run failed
 ```
 
 Output lands at [`docs/site-health.md`](./site-health.md) (summary grid),
-`docs/site-health.json` (machine-readable results — the merge state for `new`/`retry`),
+`docs/site-health.json` (machine-readable results — the merge state for `new`/`retry`, kept locally and gitignored),
 and `docs/site-health-details.md` (per-site expected-vs-actual tables, generated locally
 and not committed). Each site gets a row in the summary grid with one icon per field type.
 

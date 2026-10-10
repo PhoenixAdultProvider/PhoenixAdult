@@ -90,13 +90,15 @@ the only way in, including from loopback.
   **Logs** and the **Clients** hit log is admin-only, enforced server-side — the
   save/reset/reveal/restart/logs endpoints return 403 for non-admins.
 - **The other admin UIs are read-only for non-admins.** `/metadata`, `/people`,
-  `/logos`, and `/queue` still open and browse normally, but every write control is
-  gone: no purge (single or bulk), prune, rescan, flush, or queue pause/resume; no image fetching on
-  People; the card action reads **View** instead of Edit, and the edit screens show
-  locked fields with no add/remove chips, image rotate/remove, or Save, and no
-  Refresh All (re-scraping overwrites snapshots). Each write endpoint behind those
-  buttons returns 403 as well, so the read-only view cannot be bypassed by
-  hand-crafted requests. Browsing, filtering, and Export Mappings stay available.
+  `/logos` and `/queue` open and browse normally — filtering and Export Mappings
+  included — but every write control is gone:
+  - no purge (single or bulk), prune, rescan, flush, or queue pause/resume;
+  - no image fetching on People;
+  - the card action reads **View** instead of Edit, and the edit screens show locked
+    fields with no add/remove chips, image rotate/remove, Save, or Refresh All.
+
+  Each write endpoint behind those buttons also returns 403, so the read-only view
+  cannot be bypassed with hand-crafted requests.
 - **Metadata locks** — every field on `/metadata/edit` and every image carries a lock
   toggle (plus a whole-image-set lock). Locked pieces keep their stored values through
   Refresh Metadata and re-scrapes; editing a field and saving locks it automatically,
@@ -118,8 +120,8 @@ script — must be at least 8 characters and contain an uppercase letter, a numb
 special character. The password fields also show an advisory zxcvbn strength meter
 (Very Weak → Very Strong); it never blocks — the composition rule is the only hard floor.
 
-Passwords are hashed with argon2id; API keys and session tokens are stored as SHA-256
-digests. A `secret.key` file is generated beside the database on first start and is used
+Passwords are hashed with argon2id; session tokens are stored as SHA-256 digests, and API
+keys as a digest for lookup plus an encrypted copy for display on `/account`. A `secret.key` file is generated beside the database on first start and is used
 to sign image URLs and encrypt stored Plex tokens — **back it up with the database**, and
 note that losing it means re-fetching Plex tokens and refreshing Plex metadata once.
 
@@ -167,40 +169,69 @@ debug, and nothing is masked unless you opt in:
 | `HTTP_BODY_DUMP` | `false` | Write every scraped page body to `<LOG_DIR>/dumps/` **regardless of log level**. The startup banner reports whether dumping is armed and where the files go. |
 | `LOG_BODY_MAX_CHARS` | `0` | Characters of each scraped response body written to the log at `verbose`. `0` keeps the whole body. Ignored below `verbose`. |
 
-At `LOG_LEVEL=verbose` — the last step, **not** `http`, which is one short and shows access lines only — the body of every textual response the provider fetches is written to the log — the page source a scraper actually parsed, tagged `[scrape-body]` with the method, final URL, status and content type. JSON bodies are pretty-printed. Binary responses (images above all) are skipped by content type. Pages recovered through the bypass chain are dumped too. This is the fastest way to see *why* a selector found nothing: a challenge page, an empty result list and a changed layout all look identical in the scraper's own log lines, and completely different here. Bodies are large — `LOG_BODY_MAX_CHARS` caps them, and `agent.log` rotates at 10 MB with 5 backups.
+#### Verbose Body Dumps
 
-Every dumped body is also **written to a file** under `<LOG_DIR>/dumps/` — `0007-GET-site.com-path-a1b2c3.html`, numbered in request order — and an `info` line names the path, so the raw page can be opened in an editor instead of scrolled in a log. The newest 300 files are kept.
+At `LOG_LEVEL=verbose` — the last step, **not** `http`, which shows access lines only — the body of every textual response the provider fetches is written to the log: the page source a scraper actually parsed, tagged `[scrape-body]` with the method, final URL, status and content type.
 
-The **Dev UI** test bench shows the same bodies in its Captures panel, and does **not** need `verbose` to do it: it opens a capture sink for the run, which switches the tracing on for that request alone. Log line and capture entry come from one call, so the two surfaces cannot drift — anything the log dumps is in the panel and vice versa.
+- JSON bodies are pretty-printed; binary responses (images above all) are skipped by content type.
+- Pages recovered through the bypass chain are dumped too.
+- This is the fastest way to see *why* a selector found nothing: a challenge page, an empty result list and a changed layout look identical in the scraper's own log lines, and completely different here.
+- Bodies are large. `LOG_BODY_MAX_CHARS` caps them, and `agent.log` rotates at 10 MB with 5 backups.
+- Every dumped body is also **written to a file** under `<LOG_DIR>/dumps/` — `0007-GET-site.com-path-a1b2c3.html`, numbered in request order — and an `info` line names the path, so the raw page opens in an editor. The newest 300 files are kept.
+- The **Dev UI** test bench shows the same bodies in its Captures panel without needing `verbose`: it opens a capture sink for the run, which switches tracing on for that request alone. Log line and capture entry come from one call, so the two cannot drift.
 
-Every request a scraper makes while searching or updating is logged at `info` with its method and full URL, tagged with the phase and site — `[search TeamSkeet] Requesting GET "…"`, `[update TeamSkeet] Requesting GET "…"`. That covers the supporting fetches too: model pages, photo-gallery pages, Data18 enrichment. Requests outside a scrape (image downloads, Plex calls, the UIs) stay at `http`, so turning the level up is not needed to see how a match was reached.
+#### Scrape Request Lines
 
-The **Logs** tab in the Config UI tails what this process has logged, polling every three seconds while the tab is open. It reads an in-memory ring buffer (1000 lines) fed by the same formatter and redaction filter as `agent.log`, so nothing is exposed there that the file would hide — and a restart starts it empty. Lines are never wrapped; the view scrolls both ways and follows the newest line until you scroll up.
+Every request a scraper makes while searching or updating is logged at `info` with its method and full URL, tagged with the phase and site — `[search TeamSkeet] Requesting GET "…"`, `[update TeamSkeet] Requesting GET "…"`. That covers supporting fetches too: model pages, photo galleries, Data18 enrichment. Requests outside a scrape (image downloads, Plex calls, the UIs) stay at `http`, so you don't need a higher level to see how a match was reached.
 
-The toolbar holds a **line limit** (50/100/200/500/1000, default 200), a **filter** that hides non-matching lines while collection continues behind it, **Pause** (new lines are dropped, never queued — resuming shows only what arrives after), **Clear** (empties the view only; the server buffer is untouched), and **Copy** (copies the visible, filtered lines).
+#### Logs Tab
+
+The **Logs** tab in the Config UI tails what this process has logged, polling every three seconds while the tab is open.
+
+- It reads an in-memory ring buffer (1000 lines) fed by the same formatter and redaction filter as `agent.log`, so it never shows anything the file would hide. A restart starts it empty.
+- Lines never wrap; the view scrolls both ways and follows the newest line until you scroll up.
+- Toolbar: a **line limit** (50/100/200/500/1000, default 200); a **filter** that hides non-matching lines while collection continues behind it; **Pause** (new lines are dropped, not queued); **Clear** (empties the view only; the server buffer is untouched); **Copy** (the visible, filtered lines).
 
 ### Images
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_DIR` | `./local/images` | Directory served back to Plex for local people and logo image files. Headshots live in `IMAGE_DIR/people`; `logo.<site-slug>.<ext>` clearLogo files (per-studio subfolders) live in `IMAGE_DIR/logos` — manage them at `/logos` and push them to Plex **collections** from the Plex tab of `/config`. `/logos/add` also takes a **logo URL template** — one address with `{domain}`/`{subsiteclean}`/`{subsite-name}` style placeholders that **Try All Subsites** expands across every sub-site of a studio; a template that fetched something is remembered per studio in `logo-templates.json` beside `STATE_DB_PATH`. |
-| `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch — proxied, snapshot, and people-cache downloads alike; the download stops as soon as it passes the ceiling. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
-| `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches. |
-| `IMAGE_GUARD_ENABLE` | `true` | Serve logos, snapshot images, and people images only to: signed URLs (every emitted image URL carries a permanent `sig=` HMAC keyed by the server secret — no expiry, so Plex-held URLs never break), Plex (`PlexMediaServer` user agent), image fetchers (`Accept: image/*` non-navigation requests, e.g. Plex's cloud image proxy), loopback, signed-in or API-key requests, and the admin UIs (same-origin subresource checks). A browser typing an image URL directly gets a 403. On by default; set it to `false` to serve images to anything that asks. While it is off, requests that *would* have been refused are logged, so you can confirm nothing legitimate is caught before turning it back on. The UA/Accept checks are best-effort, not authentication; signatures require the exact URL the provider emitted. A Plex metadata refresh picks up the signed URLs — snapshots store unsigned paths and are signed at serve time. |
-| `IMAGE_BASE_URL` | `baseurl` | Base URL Plex uses to fetch our locally-served images — actor/director/producer headshots and the clearLogos pushed to collections. Plex re-requests these and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable (see the option table below). Poster/art images always use `PHOENIX_BASE_URL`. |
+| `IMAGE_DIR` | `./local/images` | Directory served back to Plex for local image files: headshots in `IMAGE_DIR/people`, clearLogos in `IMAGE_DIR/logos` (per-studio subfolders, managed at `/logos`). |
+| `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch — proxied, snapshot and people-cache downloads alike; the download stops as soon as it passes the ceiling. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
+| `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host and TLS SNI). Turn off if a CDN rejects pinned fetches. |
+| `IMAGE_GUARD_ENABLE` | `true` | Serve images only to Plex, signed URLs and signed-in users (see [Image Guard](#image-guard)). A browser typing an image URL directly gets a 403. |
+| `IMAGE_BASE_URL` | `baseurl` | Base URL Plex uses to fetch our locally served images: cast photos and the clearLogos pushed to collections. **Must be publicly reachable** for Plex Media Server 1.43.5+ (see [below](#image_base_url)). Poster and art images always use `PHOENIX_BASE_URL`. |
 
-`IMAGE_BASE_URL` options:
+#### Image Guard
 
-| Value | Resolves To | Use When |
+With `IMAGE_GUARD_ENABLE` on (the default), logos, snapshot images and people images are served only to:
+
+- **signed URLs** — every emitted image URL carries a permanent `sig=` HMAC keyed by the server secret, with no expiry, so Plex-held URLs never break;
+- **Plex** — a `PlexMediaServer` User-Agent;
+- **image fetchers** — `Accept: image/*` on a non-navigation request (e.g. Plex's cloud image proxy);
+- **loopback**, **signed-in or API-key requests**, and **the admin UIs** (same-origin subresource checks).
+
+Notes:
+
+- The User-Agent and Accept checks are best-effort, not authentication; signatures require the exact URL the provider emitted.
+- Snapshots store unsigned paths and are signed at serve time, so a Plex metadata refresh picks up signed URLs.
+- With the guard off, requests that *would* have been refused are logged, so you can confirm nothing legitimate is caught before turning it back on.
+
+#### `IMAGE_BASE_URL`
+
+Plex fetches cast photos and collection logos from this address on demand and doesn't keep them. From **Plex Media Server 1.43.5**, Plex refuses provider images on private addresses — the log shows `Refusing to connect to <ip>: not a permitted destination for a caller-supplied URL` and cast photos appear as grey circles. Plex staff have confirmed provider images must be publicly accessible URLs.
+
+So the address must be **public** and **stable** (Plex stores it): a named Cloudflare Tunnel or another fixed hostname. See [Hosting](./hosting.md#plex-needs-public-image-urls) for an images-only setup.
+
+| Value | Resolves To | Notes |
 | --- | --- | --- |
-| `baseurl` | `PHOENIX_BASE_URL` (tunnel/FQDN) | you want local images on the public URL too |
-| `localhost` | `http://localhost:<PORT>` | Plex runs on the same machine |
-| `localipv4` | `http://<LAN-IPv4>:<PORT>` | Plex is elsewhere on the LAN |
-| `localipv6` | `http://[<LAN-IPv6>]:<PORT>` | LAN, over IPv6 |
-| an explicit address | `http://192.0.2.10:<PORT>` (scheme defaults to http, `PORT` appended when missing) | auto-detection picks the wrong interface |
+| `baseurl` | `PHOENIX_BASE_URL` | Works when that is a stable public hostname |
+| an explicit address | e.g. `https://img.example.com` (scheme defaults to http, `PORT` appended when missing) | A dedicated public hostname for images |
+| `localhost` | `http://localhost:<PORT>` | Private: refused by Plex 1.43.5+ |
+| `localipv4` | `http://<LAN-IPv4>:<PORT>` | Private: refused by Plex 1.43.5+ |
+| `localipv6` | `http://[<IPv6>]:<PORT>` | Refused when the address is private; untested with a global IPv6 address |
 
-The LAN address is detected automatically. Changing this value requires a metadata
-refresh in Plex to re-emit the image URLs.
+The LAN address is detected automatically. Changing this value requires a metadata refresh in Plex to re-emit the image URLs.
 
 ### Manual NFO
 
@@ -229,8 +260,18 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | `PEOPLE_CACHE_ENABLE` | `true` | Cache downloaded cast/crew headshots. When off, photo URLs are re-resolved on every scene refresh. |
 | `PEOPLE_CACHE_REPLACE_ENABLE` | `false` | Ignore existing cached photos and re-fetch every time. |
 | `PEOPLE_CACHE_FACE_ENABLE` | `false` | Face-detect and crop cached headshots to head + shoulders for Plex's circular card. Requires `opencv-python-headless` (`pip install "opencv-python-headless"`); no-ops if absent. Placeholder images are never cropped. Review/undo at `/people`. |
-| `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot lookup sources, comma-separated. `Scene` is the actor image from the scene page itself — **remove it to skip the scene image** and use only the external providers, or move it lower to prefer a provider over it. IAFD needs a bypass backend (Impersonate). Default order: Local Storage, Scene, IAFD, AdultDVDEmpire, Indexxx, Boobpedia, Babes and Stars, Babepedia — JAVDatabase is selectable but off by default, being JAV-only. Freeones and JAVBus are retired (they sit in `phoenixadult/graveyard/`); naming either here is ignored. Setting this variable replaces the default outright, so sources you leave out are never consulted automatically; they remain available per-person from the editor's Fetch From. |
+| `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot sources, comma-separated (see [Source Order](#source-order)). |
 | `ADULT_EMPIRE_LOGIN_TOKEN` | _(unset)_ | Session token for the AdultDVDEmpire headshot source. |
+
+#### Source Order
+
+The default order is Local Storage, Scene, IAFD, AdultDVDEmpire, Indexxx, Boobpedia, Babes and Stars, Babepedia.
+
+- **`Scene`** is the actor image from the scene page itself. Remove it to use only the external providers, or move it lower to prefer a provider over it.
+- **IAFD** needs a bypass backend (Impersonate).
+- **JAVDatabase** is selectable but off by default, being JAV-only.
+- **Freeones and JAVBus** are retired (they sit in `phoenixadult/graveyard/`); naming either is ignored.
+- Setting the variable **replaces** the default outright: sources you leave out are never consulted automatically, but stay available per person from the editor's Fetch From.
 
 ### Gender Handling
 
@@ -284,221 +325,15 @@ background/queued scrapes fall back to the first configured token. A legacy
 `METADATAAPI_TOKEN` environment value migrates into the first admin account on
 startup and is cleared from the overrides.
 
-### Plex Connections
+### Plex Connections, Cache Review and Editing
 
-Plex servers are paired per user from the **Plex tab** of `/config` — nothing is
-configured through environment variables. Add a connection, then either use **Fetch New
-Token** (a plex.tv sign-in whose token is stored server-side, never passing through the
-browser) or paste a token; pick the server address from the discovered list, and
-**Verify Server** to confirm identity and library access.
+Plex servers are paired per user from the **Plex tab** of `/config` — nothing is configured
+through environment variables. The UI how-tos live in the guides:
 
-Each connection stores its own:
-
-- **Server URL** — a LAN address is fine; the provider dials out to Plex, never the reverse.
-- **Token** — encrypted at rest with the server secret and never shown again; the UI only
-  reports whether one is saved.
-- **Allowed Plex Clients** — `X-Plex-Client-Identifier` values associated with this
-  connection. They map an incoming client to its owning user, which is how a request picks
-  up that user's MetadataAPI token, and they are the allowlist `CLIENT_TOKEN_REQUIRED`
-  checks on match/metadata requests. An identifier already listed under another user's
-  connection is refused (409), so one user cannot take over another's Plex client. Find a
-  server's identifier in a verbose request dump, the Clients tab, or its `Preferences.xml`
-  (`ProcessedMachineIdentifier`).
-- **Update channel and release** — `plex` follows the server's own channel preference
-  (`ButlerUpdateChannel`), or force `public`/`beta` (beta needs Plex Pass). The release
-  dropdown appears whenever a platform lists more than one build; unset picks the release
-  carrying the platform's latest version, since Plex lists stale builds (e.g. frozen
-  Windows 32-bit) first.
-- **Image base URL override** — set this when a particular server must reach the provider
-  at a different address than the global `IMAGE_BASE_URL`. It lives on the **Images** tab
-  (admin-only) and edits the connection currently selected on the Plex tab.
-
-Reconcile, library import, and collection-logo pushes all run against the selected
-connection; a second reconcile on the same connection is refused while one is running,
-but different connections run in parallel. Upgrading from an older release migrates any
-existing `PLEX_*` settings into the first admin's connection automatically and clears
-them from `env.overrides.json`.
-
-### Reviewing Cached Scenes
-
-`/metadata` filters run in SQL, so a filtered page's total always matches its contents. The bar
-covers search, **Provider**, Studio, Year, Month, Day, Tagline, Collection and Data18, and every
-filter narrows Export Mappings and the bulk purge to the same set.
-
-**Provider** is the network a snapshot's site is registered under — the `PROVIDER_NAME` in its
-selector file, so Brazzers filters under `Project1Service` and Vixen under `Strike3`. It is resolved
-from the registry at query time rather than stored on the row, so regrouping a site moves its
-snapshots immediately, with nothing to backfill.
-
-### Editing a Cached Scene or Headshot
-
-Both review UIs have per-row editors. The **Edit** button on `/metadata` (left of Purge) opens
-`/metadata/edit?key=<rel path>`; the one on `/people` (between "Use Original" and Purge) opens
-`/people/edit?filename=<file>`. Saving writes and returns to the list; Cancel discards.
-
-`/metadata/edit` covers title, sort title, studio, tagline, summary, date, genres, collections,
-actors, directors, producers, the Data18 reference, and the image set (previewed as a grid, each
-with its kind and a Remove button; a pasted URL is downloaded on save). Notes:
-
-- **Only the fields you send change.** Everything else in the snapshot — ratingKey, guid, ratings,
-  duration — is preserved.
-- **The Data18 ID is editable, and an edited one is flagged manual.** A scene's reference is in one
-  of three states: *blank* (none recorded), *filled* (the scrape resolved it) or *manual* (typed
-  here). Clearing the ID drops the reference. Extra page IDs may follow the first, space or comma
-  separated — images are pulled from every page in the order given, which covers a feature split
-  across several Data18 pages. The section also shows the scene's computed **mapping slug** with a
-  Copy button, ready to paste into a `data18_manual_mappings*.json` entry. The state is a real column, so `/metadata` can filter
-  on it — set **Data18** to *Manual* and **Export Mappings** writes just the hand-made ones to a
-  `data18_manual_mappings*.json` you can drop in next to the base mappings file. A later scrape that
-  resolves the same ID on its own records it as *filled*.
-- **Removing an image deletes the file**, because the snapshot writer copies only still-referenced
-  images into the new generation. Add it back by URL if that was a mistake.
-- **A kept actor keeps their headshot**; a newly added one resolves on the next serve.
-- **Changing Studio or Tagline moves the snapshot folder** (the layout is derived from them). The
-  old directory is removed and the response reports the new key.
-- The title cannot be blank, and the snapshot writer still rejects error-looking titles.
-- **The header links back to the source site.** Every scrape records what it fetched as the scene's
-  source reference — URL, kind, and any raw API JSON — and the editor reads that first: a scene
-  page shows **Scene ↗**, sites with no scene pages of their own (DirtyFlix-style) show
-  **Listing ↗**, and API-backed scrapers (Project1Service, FuckYouCash, Unzip VR…) get a collapsed
-  **Source JSON** panel that pretty-prints the stored response instantly — auth is a non-issue
-  because the JSON was captured during the scrape. Scenes not yet re-scraped since this landed fall
-  back to decoding the identifier: browsable payloads still link, slug-only identifiers (Strike3,
-  Reptyle, Nubiles, Naughty America, Stepped Up, ModelCentro) are rebuilt from each site's
-  `direct_url_template`, and API-endpoint payloads fetch into the panel on first expand through the
-  SSRF-guarded `GET /metadata/source-json` proxy. Identifiers with nothing recoverable show neither
-  affordance until their next refresh.
-
-`/people/edit` covers the upstream original URL and cropped status, with the performer's name as the
-heading plus **Copy** and **Search IAFD** buttons. **Fetch From** runs one chosen photo source
-(dropdown; `PEOPLE_SOURCE_ORDER`'s remote sources, minus Local Storage — it returns an
-already-cached local file, not an upstream URL) and fills the URL field with what it finds. Nothing
-is downloaded until you save, so a wrong hit costs nothing. Saving a change **re-downloads the image and
-replaces the cached file**, cropping per the checkbox rather than `PEOPLE_CACHE_FACE_ENABLE` — so it
-doubles as a way to crop or un-crop one headshot. The checkbox is disabled when
-`opencv-python-headless` is absent.
-
-**Recorded Source** relabels where the headshot came from without touching the image — for entries
-that predate source tracking, or one filed under the wrong site. **Fetch From** sets it to whatever
-answered, and because IAFD already returns a framed head-and-shoulders portrait, fetching from there
-also clears Cropped Status so a second crop is not applied to an image that does not need one.
-
-A **Scenes** section lists every cached snapshot that credits the person in that headshot's role —
-title (linking to the snapshot editor), date, studio and sub-site — newest first. It reads the
-snapshot cache, so it says as much when `METADATA_CACHE_ENABLE` is off.
-
-The **SFW Mode** button hides the preview card; like the metadata screens it shares the setting and
-never hands the browser an image URL while it is on.
-
-The `/people` list filters on **source** (a dropdown of the sources actually present, plus
-Unrecorded) and offers **Generic Only** beside Cropped Only and No Upstream, for finding people still
-carrying the placeholder silhouette. **Single Name** narrows to mononyms — one word and nothing
-after it, so `Haley`, `LaSirena69` and `A.J.` match while `Kate Smith` does not — which is how you
-find credits a site published without a surname. All of them persist with the other filters and
-clear with Reset.
-
-Saving also **flags every scene crediting that performer to re-push their headshots**. A snapshot
-freezes the served image URL, which carries a content-hash cache-buster; replacing the bytes changes
-the token, but a cached serve would keep handing Plex the old URL and Plex only re-fetches when a URL
-changes. The flag (`scenes.force_refresh`) makes the next serve clear that scene's people-cache
-thumbs so the image backfill rebuilds them at the current bytes, then clears itself — one forced
-re-push per edit, not a permanent state.
-
-`/people` also has a name search over the current tab and a **No Upstream** filter next to
-**Cropped Only**, for headshots with no recorded source URL (they cannot be re-pulled or restored).
-
-Each card carries the source its image came from — `IAFD`, `Indexxx`, `Scene` for the scene page's
-own actor image, `Generic` for the silhouette — and the editor repeats it under the name. Sources
-are recorded as images are cached; images that predate the recording had theirs derived from the
-image host, with anything no source claims counted as `Scene`.
-
-**Fetch Images for Shown** applies one source to everyone the current filters leave visible — tab,
-Cropped Only, No Upstream and the name search all narrow it, so "every actor with no upstream
-recorded" is a filter away. It asks for confirmation with the count, then for each person looks the
-name up at that source and, on a hit, replaces the cached file, keeping that person's existing
-cropped setting and flagging their scenes to re-push. Lookups run three at a time to stay polite to
-the source, and a batch is capped at 250 people — anything beyond that is reported as skipped rather
-than silently dropped. A person the source doesn't know is left exactly as they were. Progress
-streams back per person (`Fetching 21 of 60 from IAFD…` plus a bar), so a long batch shows how far
-along it is rather than sitting on one static count.
-
-#### Reconciling Stale Tags
-
-Plex keeps agent-supplied tags that a provider stops returning: change a scene's collection and
-the old one stays on the item. The HTTP provider API has no way to clear it — an agent-framework plugin
-could call `metadata.collections.clear()` because it mutated a live Plex object, but a
-provider only answers questions. Reconciliation closes that gap from the outside.
-
-```
-POST /plex/reconcile              # dry run: reports what it would remove
-POST /plex/reconcile?apply=1      # performs the removals
-POST /plex/reconcile?apply=1&limit=10
-POST /plex/reconcile?fields=Genre,Collection   # only these tag types
-POST /plex/reconcile?sites=myfamilypies        # only these scraper clients
-GET  /plex/status                 # {"enabled": true|false}
-```
-
-Requires a signed-in session or an API key, like the cache UIs. It reconciles the five tag
-fields — Collection, Genre, Role, Director, Producer — removing only
-values Plex holds that the provider's current snapshot does not.
-
-Notes:
-
-- **Dry run by default.** Nothing is written without `apply=1`.
-- **Locked fields are skipped**, never overwritten. Plex locks a field once you edit it by hand,
-  so a lock means you chose that value. Skipped fields are listed in the report.
-- Writes send `<field>.locked=0`. Without it Plex would lock the field it just saw edited,
-  freezing out every future provider update.
-- Scenes with no cached snapshot are skipped rather than re-scraped, so a run costs no upstream
-  traffic.
-- Items matched by another agent are ignored — only guids carrying our provider identifier.
-
-#### Importing a Library Into the Cache
-
-Scenes whose site has gone offline can no longer be re-scraped, but Plex still holds the metadata it
-was given. Import reads one Plex movie library and writes each scene back as a provider snapshot, so
-that history survives a cache purge or a rematch.
-
-```
-GET  /plex/libraries                          # movie sections, for the picker
-POST /plex/import?section=27                  # dry run: reports what it would import
-POST /plex/import?section=27&apply=1          # writes the snapshots
-POST /plex/import?section=27&apply=1&limit=50
-POST /plex/import?section=27&apply=1&overwrite=1   # replace cached scenes too
-POST /plex/import-item?ratingKey=51767             # import one scene (dry-run row button)
-```
-
-Pick the library and run it from the **Plex tab** of `/config` ("Import a Library Into the Cache").
-
-Notes:
-
-- **Dry run by default.** Nothing is written without `apply=1`.
-- **Single scenes import from the dry-run report**: each `importable` (and `skipped`) row carries an
-  **Import** button that writes just that scene via `POST …/import-item?ratingKey=…`, honoring the
-  Overwrite checkbox — cherry-pick a few scenes without applying the whole library.
-- **Scenes already cached are skipped**, so a stored fresh scrape is never overwritten by Plex's
-  older copy. Pass `overwrite=1` (or tick "Overwrite Cached Scenes") to replace them instead — use
-  it to re-run an import after a fix rather than purging by hand.
-- Each scene is keyed back to its `(site, cur_id)` from the guid — ours first, then the retired
-  bundle's numeric site id, then the studio name. That last step also recovers scenes **another
-  agent matched** (Kodi NFO, `local`, and friends): when the studio names a site we know, the
-  scene is keyed on the identifier that agent's own guid carries. Scenes that match none are
-  reported as `unresolved` with the reason, and skipped — never guessed at.
-- **Every poster and art candidate is imported, not just the two Plex has selected** — the old agent
-  handed Plex its whole image set, so that is where the scene stills live. Duplicates listed under
-  both buckets are collapsed, and each image is typed by the same aspect-ratio classifier a fresh
-  scrape uses. Images are staged on disk and adopted by the snapshot writer, so the Plex token never
-  reaches stored metadata.
-- **Actor headshots are not imported** — the people pipeline resolves those.
-- Retired sites resolve through the **Archive** client (`phoenixadult/clients/aggregators/archive.py`):
-  registry entries that exist only so their cached scenes stay servable. It never scrapes, and it
-  yields to a real client if that site is ever ported back — its retired scraper waits in
-  `phoenixadult/graveyard/`, imported by nothing but still linted and type-checked, so restoring it
-  is re-registration rather than archaeology. Its **search reads the metadata cache**
-  — cached scenes for that site scored against the query — so an imported scene can still be
-  matched in Plex, which is what makes importing foreign-agent content worth doing.
-- The per-item list in the report is capped at 500 entries; anything beyond that is counted in
-  `itemsTruncated`.
+- [Plex Connections](./guides/plex-connections.md) — pairing servers, reconciling stale tags,
+  importing a library into the cache.
+- [Metadata Cache](./guides/metadata-cache.md) — reviewing and editing cached scenes.
+- [People Cache](./guides/people-cache.md) — reviewing, editing and re-fetching headshots.
 
 ### Matching & Title Parsing
 

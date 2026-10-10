@@ -25,48 +25,53 @@ Connection setup (`phoenixadult/utils/db/connect`):
 
 **Connections are per-thread.** A `sqlite3.Connection` tolerates use from another thread
 (`check_same_thread=False`) but is not safe for *concurrent* use — two threads inside `execute()`
-on one handle raise `InterfaceError: bad parameter or other API misuse`. Serving reads the cache
-through `asyncio.to_thread`, so every worker gets its own connection, tracked in a registry that
-`close()` drains together (a stale handle in a worker would otherwise pin a swapped-out database
-file). Opening is serialized under a lock: switching a fresh database to WAL needs a lock that
-`busy_timeout` does not wait out, so the first connection sets it and the rest find it set.
+on one handle raise `InterfaceError: bad parameter or other API misuse`.
+
+- Every database call runs on a named thread pool (`run_in('store', …)`, or `auth` for sign-in
+  lookups), never on the event loop. See [Concurrency](./design/concurrency.md#thread-pools) for
+  the pools and the test that keeps SQLite off the loop.
+- Each worker gets its own connection, tracked in a registry that `close()` drains together — a
+  stale handle in a worker would otherwise pin a swapped-out database file.
+- Opening is serialized under a lock: switching a fresh database to WAL needs a lock that
+  `busy_timeout` does not wait out, so the first connection sets it and the rest find it set.
 
 `force_refresh` is a one-shot flag, not stored state: a people-cache edit sets it on every scene
 crediting that performer, and the next serve consumes it to rebuild their headshot URLs. The
 snapshot upsert deliberately omits the column, so rewriting a scene never clears a pending flag.
 
-Schema versioning uses `PRAGMA user_version`. **Version 1 is the baseline**: the full
-schema is created in one shot from `_SCHEMA_V1` in `phoenixadult/utils/db/__init__.py`
-and stamped `user_version = 1`. The incremental migration history that produced this
-shape (sixteen steps, folded 2026-08-07) was collapsed once the schema stabilised —
-a database reporting any other version predates v1 and is refused at startup with an
-error naming the fix: start from a fresh file. Through the alpha the version
-stays at exactly **v1**: additive columns arrive via the `_ENSURE_COLUMNS` pass
-in `phoenixadult/utils/db/__init__.py` (runs at connect, compares
-`PRAGMA table_info` against the declared list, `ALTER TABLE ADD COLUMN`s what is
-missing) and idempotent data fixes via `_ENSURE_DATA` beside it (currently the
-`day`→`sky` theme rename, which briefly lived as migration v2 — a database still
-stamped v2 restamps itself down to v1 on connect). Both passes are free once
-applied; the accumulated entries fold into the baseline at 1.0, when numbered
-migrations resume. Current ensure-columns:
-`scenes.locked_fields` (JSON list of locked field names),
-`scenes.images_locked`, and `scene_images.locked` — the metadata-lock storage.
-The two `scenes` columns are deliberately absent from `_SCENE_COLUMNS`, so the
-wholesale upsert never clears them (the `force_refresh` pattern);
-`scene_images.locked` survives the delete-and-reinsert by riding the payload
-(`PlexImage.locked`, like `priority`).
-Also ensured: `scenes.source_url`, `scenes.source_kind`, and
-`scenes.source_json` — the scene's source reference (the URL the scraper
-fetched, its kind `page`/`listing`/`api`, and the raw JSON an API client
-returned). These ARE in `_SCENE_COLUMNS`: every scrape or refresh rewrites them,
-which is how existing scenes pick up their source data. They ride the payload as
-`PlexMetadata.sourceRef` (the `data18` pattern; the bare name `source` is
-reserved in the Plex schema as a string, and an object there makes Plex reject
-the whole response), so bundles and manual saves carry
-them, and the metadata editor reads them for its Scene/Listing link and Source
-JSON panel — falling back to decoding the cur_id for scenes not yet refreshed.
-`sourceRef`, `data18`, and the per-image `locked`/`rotate` flags are internal: the
-provider routes strip them before a response goes to Plex.
+## Schema Versioning
+
+Schema versioning uses `PRAGMA user_version`.
+
+- **Version 1 is the baseline.** The full schema is created in one shot from `_SCHEMA_V1` in
+  `phoenixadult/utils/db/__init__.py` and stamped `user_version = 1`.
+- **Older databases are refused.** The sixteen-step migration history that produced this shape
+  was folded on 2026-08-07. A database reporting any other version predates v1 and is refused at
+  startup with an error naming the fix: start from a fresh file.
+- **Additive columns** arrive through the `_ENSURE_COLUMNS` pass beside it, which runs at
+  connect, compares `PRAGMA table_info` against the declared list and `ALTER TABLE ADD COLUMN`s
+  what is missing. Through the alpha the version stays at exactly **v1**.
+- **Idempotent data fixes** run through `_ENSURE_DATA` — currently the `day`→`sky` theme rename,
+  which briefly lived as migration v2 (a database still stamped v2 restamps itself to v1 on
+  connect).
+- Both passes are free once applied. Their entries fold into the baseline at 1.0, when numbered
+  migrations resume.
+
+Current ensured columns:
+
+| Column | Holds | In `_SCENE_COLUMNS`? |
+| --- | --- | --- |
+| `scenes.locked_fields` | JSON list of locked field names | **No** — the wholesale upsert never clears it (the `force_refresh` pattern) |
+| `scenes.images_locked` | whether the whole image set is locked | **No**, as above |
+| `scene_images.locked` | a single image's lock | n/a — survives the delete-and-reinsert by riding the payload (`PlexImage.locked`, like `priority`) |
+| `scenes.source_url`, `source_kind`, `source_json` | the scene's source reference: the URL the scraper fetched, its kind (`page`/`listing`/`api`), and the raw JSON an API client returned | **Yes** — every scrape or refresh rewrites them, which is how existing scenes pick up source data |
+
+The source reference rides the payload as `PlexMetadata.sourceRef` (the `data18` pattern; the
+bare name `source` is reserved in the Plex schema as a string, and an object there makes Plex
+reject the whole response). Bundles and manual saves carry it, and the metadata editor reads it
+for its Scene/Listing link and Source JSON panel, falling back to decoding the `cur_id` for scenes
+not yet refreshed. `sourceRef`, `data18` and the per-image `locked`/`rotate` flags are internal:
+the provider routes strip them before a response goes to Plex.
 
 ## Design Principle
 
@@ -537,26 +542,30 @@ Installs from before this rule were folded at migration time (keep the row scene
 actually reference, repoint every credit onto it) — pre-v1 history now.
 
 A `title_case` rule change can strand a spelling: once honorifics gained a period,
-`Mz Dani` and `Mz. Dani` were two rows. The pre-v1 migrations folded any pair whose names
-collapse to the same string under `title_case` (keeping the canonical spelling, carrying
-`gender` and `iafd_id` onto a survivor that had neither) and recased stranded single rows
-in place. Genuine variants are never touched — `Glory Hole` and `Gloryhole` both survive
-`title_case` unchanged, so choosing between them stays an editorial decision. For
-**genres** the canonical authority is `genres.json`'s replace map, not `title_case` — its
-values deliberately keep lowercase gender qualifiers (`Caucasian (female)`), which
-`title_case` would capitalize; the recase logic resolves a genre through the replace map
-first and falls back to `title_case` only for free-form tags.
+`Mz Dani` and `Mz. Dani` were two rows.
+
+- The pre-v1 migrations folded any pair whose names collapse to the same string under
+  `title_case` — keeping the canonical spelling, and carrying `gender` and `iafd_id` onto a
+  survivor that had neither — and recased stranded single rows in place.
+- Genuine variants are never touched. `Glory Hole` and `Gloryhole` both survive `title_case`
+  unchanged, so choosing between them stays an editorial decision.
+- For **genres** the canonical authority is `genres.json`'s replace map, not `title_case`: its
+  values deliberately keep lowercase gender qualifiers (`Caucasian (female)`) that
+  `title_case` would capitalize. The recase logic resolves a genre through the replace map
+  first and falls back to `title_case` only for free-form tags.
 
 ### Pruning Unreferenced Names
 
 Dimension rows outlive the scenes that created them: a tag that `genres.json` later filters
-out, a tagline from a purged snapshot, a performer whose only scene was deleted. **Prune
-Unused Names** in the metadata UI (`POST /metadata/prune-names`) deletes every row in the six
-dimension tables that no scene references, and reports the count per table. Nothing is lost
-permanently — a name reappears the moment a scene credits it again — but curated
-per-person data (gender, `iafd_id`, a cached headshot) goes with the row, so an orphaned
-person is worth reviewing in the people UI first. The single-name filter there exists for
-exactly that: short names collide easily and are usually better replaced with a fuller one.
+out, a tagline from a purged snapshot, a performer whose only scene was deleted.
+
+**Prune Unused Names** in the metadata UI (`POST /metadata/prune-names`) deletes every row in
+the six dimension tables that no scene references, and reports the count per table.
+
+- Nothing is lost permanently: a name reappears the moment a scene credits it again.
+- Curated per-person data (gender, `iafd_id`, a cached headshot) goes with the row, so review an
+  orphaned person in the people UI first. The Single Name filter there exists for exactly that:
+  short names collide easily and are usually better replaced with a fuller one.
 
 Each junction carries `pos`, preserving the emitted order of the original response so a
 reassembled snapshot is byte-for-byte faithful (order is meaningful — the first
@@ -630,16 +639,18 @@ dimension `UPDATE` and nothing more. The two-character bucket keeps directory wi
 by construction (256 buckets; ~33 folders each at 8k scenes).
 
 `snapshot.json` makes each folder self-describing: the scene's site, `cur_id`, hash, the
-full served response and every image's dimensions. At startup the server sweeps the tree
-and adopts any bundle whose hash the `scenes` table doesn't know, so dropping bundle
-folders into the cache (a restore from backup, a copy from another install) and
-restarting is all it takes to register them. `scripts/rebuild_from_bundles.py` runs the
-same sweep by hand — `--overwrite` re-reads every bundle, rebuilding the rows and all
-their junctions from the files alone, so the tree survives a lost database. Installs
-from before this layout are moved by
-`scripts/migrate_snapshot_layout.py` (dry run by default, `--apply` to migrate,
-`--prune-orphans` to also drop folders and image rows nothing points at); the server logs
-a warning at startup while any snapshot is still on the old layout.
+full served response and every image's dimensions.
+
+- **Adopted at startup.** The server sweeps the tree and adopts any bundle whose hash the
+  `scenes` table doesn't know, so dropping bundle folders into the cache (a restore from
+  backup, a copy from another install) and restarting is all it takes to register them.
+- **Rebuild by hand.** `scripts/rebuild_from_bundles.py` runs the same sweep on demand.
+  `--overwrite` re-reads every bundle, rebuilding the rows and all their junctions from the
+  files alone, so the tree survives a lost database.
+- **Older layouts.** `scripts/migrate_snapshot_layout.py` moves installs from before this
+  layout (dry run by default, `--apply` to migrate, `--prune-orphans` to also drop folders
+  and image rows nothing points at). The server logs a warning at startup while any snapshot
+  is still on the old layout.
 
 ## Image Handling
 
@@ -652,15 +663,17 @@ route. `scene_images` records what the folder holds: classified `kind`, stored U
   images already inside the snapshot tree in place — same names, same bytes, dimensions
   re-probed locally — so backfill rewrites never re-download or renumber artwork.
 - **Solid-color images are dropped, never stored.** Sites sometimes serve a flat black or
-  white placeholder in place of real artwork. The fetcher measures each image's channel
-  extrema on a drafted decode and flags anything whose spread is ≤ 4 as solid; the snapshot
-  write skips it, and a rewrite deletes one that a previous version had already stored.
-  When the dropped image was the `thumb` or `art`, the largest surviving image of that same
-  kind takes its place; a scene ends up with no poster only when nothing of that kind is
-  left. A scene that never had a `thumb` does not gain one.
-  The margin is wide (a genuinely solid image measures 0; the faintest real detail measures
-  in the teens), so a dark-but-real image is not at risk. Every drop is logged with its URL.
-  `scripts/find_artwork_mismatches.py` reports snapshots still holding one.
+  white placeholder in place of real artwork.
+  - The fetcher measures each image's channel extrema on a drafted decode and flags
+    anything whose spread is ≤ 4 as solid. The margin is wide — a genuinely solid image
+    measures 0, the faintest real detail measures in the teens — so a dark-but-real image
+    is not at risk.
+  - The snapshot write skips it, and a rewrite deletes one a previous version stored.
+    Every drop is logged with its URL.
+  - When the dropped image was the `thumb` or `art`, the largest surviving image of the
+    same kind takes its place. A scene ends up with no poster only when nothing of that
+    kind is left, and a scene that never had a `thumb` does not gain one.
+  - `scripts/find_artwork_mismatches.py` reports snapshots still holding one.
 - **At serve**, each image kind is emitted highest resolution first (`width × height`
   descending, unknown dimensions last); fresh scrapes apply the same ordering in the
   mapper from the just-probed dimensions, and the highest-resolution poster becomes the
@@ -677,20 +690,31 @@ database file. Leftover `.migrated` files are inert rollback
 artifacts, deletable whenever the operator is satisfied — `phoenixadult.db` is the only live
 copy of the scene text and must be backed up.
 
-Snapshot writes are idempotent upserts keyed on `hash` (`UNIQUE` — this is also what
-prevents duplicate snapshots of the same scene). A crash between the image-folder
-rename and the row commit leaves only orphan image files, which the next write of that
-scene replaces.
-
 ## Corruption Prevention
 
-WAL mode keeps a shared-memory index (`-shm`) and relies on POSIX byte-range locks that
-assume a **single host** with a coherent view of the file. Put the database on storage
-only this process touches. A network mount (NFS/SMB), or a local path **exported** over
-SMB so another machine (a Windows indexer, antivirus, a backup job, a file browser) can
-open it, breaks that assumption and tears the WAL — the classic "database disk image is
-malformed" / freelist corruption. The image and metadata trees are plain files and are
-fine on a share; only `*.db`/`-wal`/`-shm` must stay private to the process.
+**Keep the database on private storage.** WAL mode keeps a shared-memory index (`-shm`) and
+relies on POSIX byte-range locks that assume a **single host** with a coherent view of the
+file. A network mount (NFS/SMB), or a local path **exported** over SMB so another machine (a
+Windows indexer, antivirus, a backup job, a file browser) can open it, breaks that assumption
+and tears the WAL — the classic "database disk image is malformed" / freelist corruption. The
+image and metadata trees are plain files and are fine on a share; only `*.db`/`-wal`/`-shm`
+must stay private to the process.
+
+**Killing the process is safe.** With WAL and `synchronous=NORMAL`, a killed process (even
+`kill -9`) cannot corrupt the database: SQLite rolls back the half-finished transaction on the
+next open and keeps everything committed. Only a power loss or OS crash can lose the last
+transactions, and even that does not corrupt the file.
+
+**Files on disk are written whole or not at all:**
+
+- **Snapshots** stage in a `<hash>.tmp` folder and are renamed into place. Snapshot rows are
+  idempotent upserts keyed on `hash` (`UNIQUE` — also what prevents duplicate snapshots of a
+  scene), so a crash between the folder rename and the row commit leaves only orphan image
+  files, which the next write of that scene replaces.
+- **Headshots and logos** are written to a hidden `.part` file beside the target and renamed
+  over it (`phoenixadult/utils/fs/atomic.py`), so an interrupted write leaves the previous
+  image intact. A background sweep at startup deletes `.part` files more than an hour old from
+  the people and logo caches; the age guard keeps it from touching a write still in progress.
 
 ## Backups & Self-Healing (App-Driven)
 

@@ -5,8 +5,9 @@ renders the markdown under the repo's top-level [`../docs`](../docs) folder (not
 `website/docs` folder) — `docusaurus.config.ts` points the docs plugin at
 `../docs`, so editing a file there updates the site.
 
-Mermaid diagrams are enabled (`@docusaurus/theme-mermaid`); the design doc and the
-request-flow diagrams render natively.
+Mermaid diagrams are enabled (`@docusaurus/theme-mermaid`), so the design pages under
+`docs/design/` render their diagrams natively. The sidebar is defined in `sidebars.ts`;
+add new pages there.
 
 ## Develop
 
@@ -19,23 +20,33 @@ npm start          # local dev server with live reload
 ## Build
 
 ```bash
+npm run typecheck  # tsc over the site's TypeScript (CI runs this too)
 npm run build      # static site into website/build/
 npm run serve      # preview the production build
 ```
 
-## Deploy (Codeberg Pages)
+Broken links only warn (`onBrokenLinks: 'warn'`), so read the build output for them.
 
-The site is published to **Codeberg Pages** at
-<https://phoenixadultprovider.codeberg.page/PhoenixAdult/> by the
-[`.forgejo/workflows/pages.yml`](../.forgejo/workflows/pages.yml) workflow: on every
-push to `main` that touches `website/` or `docs/`, it builds the site and
-force-pushes the static output to the `pages` branch, which Codeberg serves.
+## Deploy
 
-`docusaurus.config.ts` is **host-agnostic**: it defaults to the Codeberg Pages URL
-above but reads these env vars so the same config can build for another host (e.g.
-GitHub Pages) without edits — the `pages` branch is generated, never edit it by hand:
+The site publishes to two hosts from the same config, on every push to `main` that touches
+`website/` or `docs/`:
 
-| Env var | Default (Codeberg) | GitHub Pages example |
+| Host | Workflow | URL |
+| --- | --- | --- |
+| Codeberg Pages | [`.forgejo/workflows/pages.yml`](../.forgejo/workflows/pages.yml) — builds and force-pushes the output to the `pages` branch | <https://phoenixadultprovider.codeberg.page/PhoenixAdult/> |
+| GitHub Pages | [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) — builds and deploys with the Pages actions | <https://phoenixadultprovider.github.io/PhoenixAdult/> |
+
+Both typecheck before building. On GitHub the same workflow also runs on pull requests
+(typecheck and build only, no deploy), which is how Dependabot's npm updates are tested.
+`pwsh website/deploy-pages.ps1` publishes to Codeberg Pages by hand, using your local git
+credentials, when CI isn't available.
+
+`docusaurus.config.ts` is **host-agnostic**: it defaults to the Codeberg Pages URL and reads
+these env vars, which the GitHub workflow sets, so the same config builds for either host.
+The `pages` branch is generated; never edit it by hand.
+
+| Env var | Default (Codeberg) | GitHub Pages |
 | --- | --- | --- |
 | `DOCS_SITE_URL` | `https://phoenixadultprovider.codeberg.page` | `https://phoenixadultprovider.github.io` |
 | `DOCS_BASE_URL` | `/PhoenixAdult/` | `/PhoenixAdult/` |
@@ -43,13 +54,13 @@ GitHub Pages) without edits — the `pages` branch is generated, never edit it b
 | `DOCS_REPO_LABEL` | `Codeberg` | `GitHub` |
 | `DOCS_EDIT_URL` | `…/_edit/main/docs/` (Forgejo) | `…/edit/main/docs/` (GitHub) |
 
-One-time setup on the repo:
+### One-Time Setup
 
-1. **Settings → Actions** — enable Actions.
-2. **Settings → Actions → Secrets** — add a secret named `CODEBERG_TOKEN` whose value
-   is a Codeberg access token: **Settings → Applications → Generate New Token**, give
-   it the `write:repository` scope, and copy the generated string (shown once). The
-   workflow uses it to push the built site to the `pages` branch.
+- **Codeberg:** enable Actions (**Settings → Actions**), then add a secret named
+  `CODEBERG_TOKEN` holding a Codeberg access token with the `write:repository` scope
+  (**Settings → Applications → Generate New Token**). The workflow uses it to push the built
+  site to the `pages` branch.
+- **GitHub:** set **Settings → Pages → Source** to **GitHub Actions**.
 
 ## Notes
 

@@ -41,7 +41,7 @@ NODE_ENV=development python -m phoenixadult.main
 - First-run setup: `GET /setup` — creates the first (admin) account
 - Sign in: `GET /login`; account and API key: `GET /account`
 - Config UI: `GET /config` (signed in)
-- Dev UI: `GET /dev` (non-production, signed in)
+- Dev UI: `GET /dev` — the scraper test bench (needs `DEV_UI_ENABLE`)
 - People cache: `GET /people` — browse and manage cached cast & crew headshots (actors, directors, producers) and gender tags (needs `PEOPLE_CACHE_ENABLE`)
 - Metadata cache: `GET /metadata` — filterable view of frozen scene snapshots, with per-scene purge and refresh (needs `METADATA_CACHE_ENABLE`)
 - Logo cache: `GET /logos` — the clearLogo wall, with `GET /logos/add` to file a new one
@@ -49,14 +49,15 @@ NODE_ENV=development python -m phoenixadult.main
 - Stored searches: `GET /searches` — cached search results, with duplicate spellings grouped
 - Plex agent mount: `/<provider>/movies` (e.g. `/phoenixadult/movies`)
 
-These surfaces are guarded the same way as `/config` and `/dev` — a signed-in session or an API key. They're optional, off by default, and enabled via their `*_ENABLE` env vars in the Config UI.
+Every page needs a signed-in session or an API key. The people and metadata caches and the dev UI are optional, enabled by `PEOPLE_CACHE_ENABLE`, `METADATA_CACHE_ENABLE` and `DEV_UI_ENABLE` in the Config UI.
 
 See the [configuration document](./docs/configuration.md) for every environment variable — with defaults and detailed usage — and the two ways to set them (`.env` at boot vs the runtime Config UI).
 
-Lint / type-check / test:
+Before committing, run the same gate CI runs (see [CONTRIBUTING](./CONTRIBUTING.md#linting-formatting-and-types)):
 
 ```bash
-ruff check . && ruff format --check .
+ruff format . && ruff check .
+python scripts/check_comments.py
 mypy phoenixadult
 pytest             # add --cov for a coverage report (roughly doubles the runtime)
 ```
@@ -65,54 +66,22 @@ pytest             # add --cov for a coverage report (roughly doubles the runtim
 
 Each site/network/database gets its own dedicated `Client` subclass under
 `phoenixadult/clients/` — grouped into `aggregators/` (databases like Data18, JavBus),
-`networks/` (multi-site networks), and `sites/` (single sites). Every client is
-registered by its scraper-config `type` in `phoenixadult/clients/__init__.py`, with its
-URL/selector definitions in `phoenixadult/registry/selectors/`.
+`networks/` (multi-site networks), and `sites/` (single sites). Clients are discovered
+automatically, keyed on their module name, with their URL/selector definitions in
+`phoenixadult/registry/selectors/`. Start a new one with
+`python scripts/new_scraper.py --name "Foo Bar" --base-url https://foo.bar --kind sites`.
 
 Each client should prefer the base **field-hook orchestrator** —
 override `load_scene_context` + the per-field `fetch_*` hooks (`fetch_title`,
 `fetch_actors`, `fetch_image_urls`, …) rather than re-implementing
 `fetch_scene_detail` end to end. HTML extraction uses **XPath** via parsel.
 
-## Cloudflare Tunnel
+## Hosting
 
-`scripts/start-with-tunnel.ps1` is a one-click launcher (Windows / PowerShell).
-It downloads `cloudflared.exe` on first run, opens an ephemeral
-`https://*.trycloudflare.com` quick tunnel to `http://localhost:3000`, writes
-that URL into `.env` as `PHOENIX_BASE_URL`, then starts the app
-(`python -m phoenixadult.main`, which auto-reloads in dev). Ctrl+C tears the tunnel down.
+Plex fetches cast photos and collection logos from the provider itself, and from Plex Media Server
+1.43.5 it only accepts **publicly reachable** image URLs. Behind a home network that means a stable
+public hostname, such as a named Cloudflare Tunnel, which can be limited to the image routes.
 
-```bash
-pwsh -ExecutionPolicy Bypass -File scripts/start-with-tunnel.ps1
-# Windows PowerShell 5.1:
-powershell -ExecutionPolicy Bypass -File scripts/start-with-tunnel.ps1
-# custom local port:
-pwsh -ExecutionPolicy Bypass -File scripts/start-with-tunnel.ps1 -Port 8080
-```
-
-No Cloudflare account or domain is required; the URL is ephemeral and changes on
-every run. The script prefers the project `.venv` interpreter and sets `PORT` so
-the agent listens on the tunnel's target port. For a stable URL, set up a named
-tunnel with `cloudflared` and point `PHOENIX_BASE_URL` at its hostname.
-
-### Admin Surfaces Through the Tunnel
-
-Every admin page requires a signed-in user, from a tunnel or from loopback alike:
-
-1. Start the server and open `https://<sub>.trycloudflare.com/setup` on first run to
-   create the admin account; afterwards sign in at `/login`. Passwords need 8+ characters
-   with an uppercase letter, a number, and a special character.
-2. The session cookie carries auth across pages, so links and API calls work with no
-   token threading. It is `HttpOnly` and `SameSite=Lax`, and marked `Secure` automatically
-   when the tunnel terminates TLS.
-
-For scripts and automation, generate an API key on `/account` (shown once) and send it
-as a header — no secret ever lands in a URL, browser history, or tunnel access log:
-
-```bash
-curl -H 'Authorization: Bearer pa_…' https://<sub>.trycloudflare.com/metadata/entries
-# or: curl -H 'x-api-key: pa_…' …
-```
-
-Locked out? Run `python scripts/reset_password.py <username>` on the server (add
-`--create-admin` if no admin account remains).
+See the [hosting document](./docs/hosting.md) for tunnels, Windows, Docker, the FreeBSD port and
+systemd, and for signing in to the admin pages through a tunnel. The full design reference lives in
+[docs/design](./docs/design/index.md).
