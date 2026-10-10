@@ -103,6 +103,7 @@ async def _run_one(fx: dict[str, Any]) -> dict[str, Any]:
     from phoenixadult.models.scrape import SceneContext, SearchContext
     from phoenixadult.registry import find_site, get_all_providers
     from phoenixadult.services.scraper_router import ScraperRouter
+    from phoenixadult.utils.plex.rating_key import to_rating_key
     from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry
     from phoenixadult.utils.processors.search_query import build_search_pieces
 
@@ -151,7 +152,7 @@ async def _run_one(fx: dict[str, Any]) -> dict[str, Any]:
             return r
 
         mapper = MetadataMapper()
-        rating_key = mapper.to_rating_key(best.cur_id, site.name, parsed.date)
+        rating_key = to_rating_key(best.cur_id, site.name, parsed.date)
         meta = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed.date, site)
 
         e = fx.get('expect') or {}

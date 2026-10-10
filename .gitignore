@@ -235,6 +235,7 @@ __marimo__/
 .env
 env.overrides.json
 docs/site-health-details.md
+docs/site-health.json
 logs/*
 tools/*
 local/*
