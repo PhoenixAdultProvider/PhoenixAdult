@@ -15,9 +15,11 @@ RUN apt-get update \
 # bypass backend (first in the default BYPASS_ORDER); FlareSolverr runs as the
 # compose sidecar.
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir '.[impersonate]'
+RUN python -c "import tomllib; p = tomllib.load(open('pyproject.toml', 'rb'))['project']; print('\n'.join(p['dependencies'] + p['optional-dependencies']['impersonate']))" > /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 
-# Replace the dependency layer's empty dist with the real package.
+# Install the package itself on top of the cached dependencies.
 COPY phoenixadult ./phoenixadult
 RUN pip install --no-cache-dir --no-deps .
 
