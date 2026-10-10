@@ -23,8 +23,8 @@ class CzechAVClient(Client):
         if not search_results:
             return
 
-        for search_result in search_results['sel'].xpath('//*[contains(@class,"search-item")][.//h2]'):
-            a = search_result.xpath('(.//a[.//h2])[1]')
+        for search_result in search_results['sel'].xpath('//*[contains(@class,"search-item")][.//h2 or .//h3]'):
+            a = search_result.xpath('(.//a[.//h2 or .//h3])[1]')
             title = first_attr(a)
             href = first_attr(a, '@href')
             if not title or not href:

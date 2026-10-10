@@ -35,6 +35,23 @@ async def test_search_scene_id_boost() -> None:
 
 
 @respx.mock
+async def test_search_reads_the_redesigned_cards() -> None:
+    url = 'https://czechmassage.com/tour/search/?q=cool%20scene'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text="""<div class="search-item grid">
+              <a class="media-wrapper" href="/video/cool-scene/"><img src="https://cdn/t.jpg" alt="Cool scene"></a>
+              <div class="column"><a href="/video/cool-scene/"><h3 class="h2 line-clamp">Cool scene</h3></a></div>
+            </div>""",
+        )
+    )
+    results: list[SearchResult] = []
+    await CzechAVClient().search(results, search_context(SITE, 'cool scene', space='%20'))
+    assert [(r.title, r.scene_url) for r in results] == [('Cool scene', 'https://czechmassage.com/video/cool-scene/')]
+
+
+@respx.mock
 async def test_detail_episode() -> None:
     url = 'https://czechmassage.com/video/cool-scene-555/'
     respx.get(url).mock(
