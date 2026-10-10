@@ -4,7 +4,23 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'phoenixadult/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - '.env.example'
+      - 'docs/sitelist.md'
+      - '.github/workflows/ci.yml'
   pull_request:
+    paths:
+      - 'phoenixadult/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - '.env.example'
+      - 'docs/sitelist.md'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 permissions:
