@@ -5,5 +5,5 @@ blank_issues_enabled: false
 
 contact_links:
   - name: Question / discussion
-    url: https://github.com/<owner>/PhoenixAdult/discussions
+    url: https://github.com/PhoenixAdultProvider/PhoenixAdult/discussions
     about: For general questions, naming-convention help, or "is this site supported?" — please use Discussions, not Issues.
