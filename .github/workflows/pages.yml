@@ -1,5 +1,5 @@
-# GitHub Pages twin of .forgejo/workflows/pages.yml; serves https://phoenixadultprovider.github.io/PhoenixAdult/
-name: Deploy docs to GitHub Pages
+# GitHub Pages twin of .forgejo/workflows/pages.yml; pull requests build and typecheck only, pushes to main also deploy.
+name: Docs site
 
 on:
   push:
@@ -8,16 +8,19 @@ on:
       - 'website/**'
       - 'docs/**'
       - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -43,21 +46,31 @@ jobs:
         run: npm ci
         working-directory: website
 
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: website
+
       - name: Build site
         run: npm run build
         working-directory: website
 
       - name: Configure Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v6
 
       - name: Upload site
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: website/build
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

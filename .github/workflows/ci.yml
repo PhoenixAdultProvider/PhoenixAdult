@@ -21,6 +21,8 @@ on:
       - '.env.example'
       - 'docs/sitelist.md'
       - '.github/workflows/ci.yml'
+  schedule:
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:

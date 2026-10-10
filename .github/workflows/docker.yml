@@ -1,0 +1,51 @@
+# Builds the image and checks it answers /health; no image is pushed anywhere.
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+      - 'pyproject.toml'
+      - '.github/workflows/docker.yml'
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+      - 'pyproject.toml'
+      - '.github/workflows/docker.yml'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate compose file
+        run: docker compose config --quiet
+
+      - name: Build image
+        run: docker build --tag phoenixadult:ci .
+
+      - name: Start and wait for /health
+        run: |
+          docker run --detach --name phoenixadult --publish 3000:3000 phoenixadult:ci
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/health; then
+              echo
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs phoenixadult
+          exit 1
