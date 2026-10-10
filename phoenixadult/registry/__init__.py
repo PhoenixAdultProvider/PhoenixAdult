@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import dataclasses
 from typing import NamedTuple
+from urllib.parse import urlsplit
 
 from phoenixadult import provider_version
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.models.site_info import ContentType, ResolvedSiteInfo, SiteInfo
 from phoenixadult.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
 from phoenixadult.registry.selectors.aggregators.archive import ARCHIVE_SITES as _ARCHIVE_SITES
+from phoenixadult.utils.http.bypass import set_site_backends
 from phoenixadult.utils.processors.site_key import normalize_site_key
 
 __all__ = [
@@ -151,3 +153,28 @@ def provider_name_tokens(provider_name: str) -> list[str]:
 
 def get_sites_for_provider(provider_id: str) -> list[ResolvedSiteInfo]:
     return sites_by_provider.get(provider_id, [])
+
+
+def _host(url: str) -> str:
+    return (urlsplit(url).hostname or '').lower().removeprefix('www.')
+
+
+def _bypass_hosts(sites: list[SiteInfo]) -> dict[str, tuple[str, ...]]:
+    hosts: dict[str, tuple[str, ...]] = {}
+    for site in sites:
+        if not site.bypass:
+            continue
+        host = _host(site.base_url)
+        if hosts.setdefault(host, site.bypass) != site.bypass:
+            raise RuntimeError(f'sites on {host} declare different PROVIDER_BYPASS lists: {hosts[host]} and {site.bypass} ({site.name})')
+    return hosts
+
+
+_BYPASS_BY_HOST = _bypass_hosts(SITE_DEFINITIONS)
+
+
+def bypass_for_url(url: str) -> tuple[str, ...]:
+    return _BYPASS_BY_HOST.get(_host(url), ())
+
+
+set_site_backends(bypass_for_url)

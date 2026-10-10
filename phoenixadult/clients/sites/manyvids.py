@@ -58,7 +58,7 @@ class ManyvidsClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
         api_url = f'{site.base_url.rstrip("/")}/bff/store/video/{_numeric_id(url)}'
-        details_page_elements = await self.fetch_json(api_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass))
+        details_page_elements = await self.fetch_json(api_url, FetchCtx(capture=ctx.capture if ctx else None))
         data = (details_page_elements or {}).get('data')
         if not data:
             return None

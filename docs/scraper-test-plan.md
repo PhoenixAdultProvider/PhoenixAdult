@@ -36,6 +36,10 @@ refuses a name or scraper type that is already taken, and regenerates the siteli
 are discovered by module name, so nothing else needs registering. `--search-path`,
 `--search-method` and `--search-notes` fill in the selector; see `--help` for the rest.
 
+If the site blocks plain requests, add `PROVIDER_BYPASS` to the selector (for example `['Impersonate']`) and pass
+`bypass=PROVIDER_BYPASS` to `make_site`. Never force the bypass from the client; see
+[HTTP and Bypass](./design/http-bypass.md#sites-that-require-a-bypass).
+
 ## Unit-Test Conventions
 
 Tests mirror the source tree: a scraper at `phoenixadult/clients/<kind>/<x>.py` (`sites`,

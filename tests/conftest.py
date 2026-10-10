@@ -97,9 +97,18 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
     monkeypatch.delenv('REQBIN_ENABLE', raising=False)
+    import httpx2
+
+    from phoenixadult.utils.http.bypass_types import BypassRequest, BypassResponse
     from phoenixadult.utils.http.impersonate import impersonate_backend
 
-    monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)
+    async def through_respx(req: BypassRequest) -> BypassResponse:
+        async with httpx2.AsyncClient() as client:
+            r = await client.request(req.method, req.url, headers=req.headers, cookies=req.cookies, content=req.body)
+        return BypassResponse(status=r.status_code, body=r.text, headers=dict(r.headers), final_url=str(r.url))
+
+    monkeypatch.setattr(impersonate_backend, 'is_available', lambda: True)
+    monkeypatch.setattr(impersonate_backend, 'request', through_respx)
 
 
 @pytest.fixture(autouse=True)

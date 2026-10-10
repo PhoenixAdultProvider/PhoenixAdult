@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.scraper_config import ScraperConfig
-from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
+from phoenixadult.models.site_info import BypassName, ContentType, SearchMethod, SiteInfo
 
 
 def make_site(
@@ -22,7 +22,7 @@ def make_site(
     image_cookies: list[str] | None = None,
     search_method: SearchMethod | None = None,
     search_notes: str | None = None,
-    use_bypass: bool = False,
+    bypass: list[BypassName] | None = None,
     token_prefixes: tuple[str, ...] = (),
 ) -> SiteInfo:
     return SiteInfo(
@@ -41,6 +41,6 @@ def make_site(
         image_cookies=tuple(image_cookies or ()),
         search_method=search_method,
         search_notes=search_notes,
-        use_bypass=use_bypass,
+        bypass=tuple(bypass or ()),
         token_prefixes=token_prefixes,
     )

@@ -59,9 +59,7 @@ class ScrewMeTooClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
 
-        details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {url}'
-        )
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
         if not details_page_elements:
             return None
 
@@ -74,9 +72,7 @@ class ScrewMeTooClient(Client):
                 continue
 
             model_url = absolute_url(href, site.base_url)
-            model_page_elements = await self.fetch_and_load(
-                model_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'GET {model_url} (actor)'
-            )
+            model_page_elements = await self.fetch_and_load(model_url, FetchCtx(capture=ctx.capture if ctx else None), f'GET {model_url} (actor)')
             photo = ''
             if model_page_elements:
                 last_model_sel = model_page_elements['sel']

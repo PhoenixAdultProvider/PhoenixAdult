@@ -96,7 +96,7 @@ class PervCityClient(Client):
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
         capture = ctx.capture if ctx else None
 
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'[{site.name}] scene {url}')
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'[{site.name}] scene {url}')
         if not details_page_elements:
             return None
 

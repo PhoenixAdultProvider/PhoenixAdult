@@ -86,7 +86,7 @@ class MyDirtyHobbyClient(Client):
             headers['Accept-Language'] = lang
 
         details_page_elements = await self.fetch_and_load(
-            fetch_url, FetchCtx(capture=ctx.capture if ctx else None, headers=headers, use_bypass=site.use_bypass), f'[{site.name}] detail {fetch_url}'
+            fetch_url, FetchCtx(capture=ctx.capture if ctx else None, headers=headers), f'[{site.name}] detail {fetch_url}'
         )
         if not details_page_elements:
             return None

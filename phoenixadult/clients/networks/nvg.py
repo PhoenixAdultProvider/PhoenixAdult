@@ -127,7 +127,7 @@ class NVGClient(Client):
 
         if _HTTP_RE.match(head):
             scene_url = head
-            details_page_elements = await self.fetch_and_load(head, FetchCtx(capture=capture, use_bypass=site.use_bypass))
+            details_page_elements = await self.fetch_and_load(head, FetchCtx(capture=capture))
             if details_page_elements:
                 sel = details_page_elements['sel']
                 title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()

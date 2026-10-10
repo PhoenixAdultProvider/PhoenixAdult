@@ -100,9 +100,7 @@ class FamilyTherapyClient(Client):
                 subsite=ctx.subsite if ctx else None,
             )
 
-        details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
-        )
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
         if not details_page_elements:
             return None
 

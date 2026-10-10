@@ -14,6 +14,7 @@ _LEGEND = '\n'.join(
         '+ ✅ = **[Enhanced Search](./manualsearch.md#enhanced-search)**. This includes searching by title and/or actor(s), enhanced with date and/or SceneID matching.',  # noqa: E501
         '+ ✓ = **[Limited Search](./manualsearch.md#limited-search)**. Only title and/or actor can be used, unless otherwise noted.',
         '+ ❌ = **[Exact Match](./manualsearch.md#exact-match)** only. Either using a numerical Scene&nbsp;ID or a Direct&nbsp;URL.',
+        '+ *Backend* Required = the site blocks plain requests, so every request goes through the named [bypass backend](./design/http-bypass.md#bypass-chain), tried in the order listed.',  # noqa: E501
         '',
         'If the site is not listed below &mdash; i.e. the site is not yet supported &mdash; use the instructions for [manual adding](./manualsearch.md#manual-nfo).',  # noqa: E501
         '',
@@ -76,10 +77,25 @@ def _group_notes(g: _Group) -> str:
     return note if count >= 2 else ''
 
 
+def bypass_label(backends: tuple[str, ...]) -> str:
+    if not backends:
+        return ''
+    names = list(backends)
+    joined = names[0] if len(names) == 1 else f'{", ".join(names[:-1])} and {names[-1]}'
+    return f'{joined} Required'
+
+
+def _group_bypass(g: _Group) -> tuple[str, ...]:
+    found = {s.bypass for s in g.sites}
+    return next(iter(found)) if len(found) == 1 else ()
+
+
 def _emit_group(g: _Group) -> str:
     icon = _group_icon(g)
     heading_note = _group_notes(g)
-    header_tail = f' | {icon} - **{heading_note}**' if heading_note else f' | {icon}'
+    heading_bypass = _group_bypass(g)
+    bypass_tail = f' | {bypass_label(heading_bypass)}' if heading_bypass else ''
+    header_tail = f' | {icon}{bypass_tail}' + (f' - **{heading_note}**' if heading_note else '')
     lines: list[str] = [f'+ #### {g.title}{header_tail}']
 
     sorted_sites = sorted(g.sites, key=lambda s: s.name.lower())
@@ -91,6 +107,8 @@ def _emit_group(g: _Group) -> str:
         aliases = sorted(site.aliases or [], key=str.lower)
         note = (site.search_notes or '').strip()
         note_suffix = f' - **{note}**' if note and note != heading_note else ''
+        if site.bypass and site.bypass != heading_bypass:
+            note_suffix = f' | {bypass_label(site.bypass)}{note_suffix}'
         if site.name.strip().lower() == g.title.strip().lower():
             for alias in aliases:
                 lines.append(f'  - {alias}')

@@ -3,6 +3,7 @@
 + ✅ = **[Enhanced Search](./manualsearch.md#enhanced-search)**. This includes searching by title and/or actor(s), enhanced with date and/or SceneID matching.
 + ✓ = **[Limited Search](./manualsearch.md#limited-search)**. Only title and/or actor can be used, unless otherwise noted.
 + ❌ = **[Exact Match](./manualsearch.md#exact-match)** only. Either using a numerical Scene&nbsp;ID or a Direct&nbsp;URL.
++ *Backend* Required = the site blocks plain requests, so every request goes through the named [bypass backend](./design/http-bypass.md#bypass-chain), tried in the order listed.
 
 If the site is not listed below &mdash; i.e. the site is not yet supported &mdash; use the instructions for [manual adding](./manualsearch.md#manual-nfo).
 
@@ -215,7 +216,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Tug Me Off
   - Hussie Pass
   - See Him Fuck
-+ #### Bellesa | ✅ - **Flaresolverr Required**
++ #### Bellesa | ✅ | Impersonate Required
   - Bellesa Films
   - Bellesa House
 + #### Black PayBack | ✓
@@ -688,7 +689,7 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### HoloGirlsVR | ✅
 + #### HotwifeXXX | ✅
 + #### HuCows | ✅
-+ #### IAFD | ✅
++ #### IAFD | ✅ | Impersonate Required
   - Black Patrol
 + #### InterracialPass | ✅
   - Backroom Casting Couch
@@ -1717,7 +1718,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Swallowed
   - True Anal
 + #### Strapon Cum | ❌ - **Direct URL**
-+ #### Strike3 | ✅ - **Impersonate Required**
++ #### Strike3 | ✅ | Impersonate Required
   - Blacked
   - Blacked RAW
   - Deeper
@@ -1803,7 +1804,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - X Core Club
   - Young Throats
 + #### Teeny Taboo | ✅
-+ #### The Score Group | ✅
++ #### The Score Group | ✅ | Impersonate and FlareSolverr Required
   - 18 Eighteen
   - 50 Plus MILFs
   - 60 Plus MILFs

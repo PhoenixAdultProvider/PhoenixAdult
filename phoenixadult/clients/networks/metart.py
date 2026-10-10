@@ -52,7 +52,7 @@ class MetArtClient(Client):
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
         capture = ctx.capture if ctx else None
 
-        details_page_elements = await self.fetch_json(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), label=f'GET {url}')
+        details_page_elements = await self.fetch_json(url, FetchCtx(capture=capture), label=f'GET {url}')
         if not isinstance(details_page_elements, dict):
             return None
 

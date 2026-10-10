@@ -60,9 +60,7 @@ class UltrafilmsClient(Client):
         url = parts[0]
         date = (parts[1] if len(parts) > 1 else '').strip()
         poster_url = (parts[2] if len(parts) > 2 else '').strip()
-        details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
-        )
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
         if not details_page_elements:
             return None
 

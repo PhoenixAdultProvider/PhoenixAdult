@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
+from phoenixadult.models.site_info import BypassName, ContentType, SearchMethod, SiteInfo
 from phoenixadult.registry.selectors._factory import make_site
 
 PROVIDER_NAME = 'The Score Group'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_BYPASS: list[BypassName] = ['Impersonate', 'FlareSolverr']
 
 
 def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
@@ -18,8 +19,8 @@ def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
+        bypass=PROVIDER_BYPASS,
         scraper_type='scoregroup',
-        use_bypass=True,
         data18_enrichment=True,
     )
 

@@ -118,7 +118,7 @@ class Watch4BeautyClient(Client):
 
         scene_arr = await self.fetch_json(
             f'{base}/api/issues/{scene_slug}',
-            FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass),
+            FetchCtx(capture=ctx.capture if ctx else None),
             label=f'[{site.name}] issues/{scene_slug}',
         )
         scene = scene_arr[0] if isinstance(scene_arr, list) and scene_arr else None

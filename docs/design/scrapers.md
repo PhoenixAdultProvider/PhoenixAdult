@@ -89,7 +89,7 @@ Score Group refreshes release dates to keep old scenes looking new, so it scores
 
 ## Fetching and Tracing
 
-- **Direct first.** `fetch_and_load` / `fetch_json` try a direct httpx2 request and fall back to the bypass chain when enabled (see [HTTP and Bypass](./http-bypass.md)).
+- **Plain or bypass.** `fetch_and_load` / `fetch_json` send a plain httpx2 request, unless the URL's host declares `PROVIDER_BYPASS` in the registry — then they go straight to those backends (see [HTTP and Bypass](./http-bypass.md#sites-that-require-a-bypass)).
 - **One trace for everything.** Every response a client receives is dumped by `trace_response` (`utils/logging/response_trace.py`) to a file under `<LOG_DIR>/dumps/`, to the verbose log, and to the dev UI capture sink from one call, so the three cannot drift.
 - **No silent drops.** A request that never returns a response says so at `warn`.
 - **XPath only.** HTML is parsed with `parsel.Selector` (lxml-backed).

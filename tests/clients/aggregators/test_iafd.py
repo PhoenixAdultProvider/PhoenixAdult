@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
 from phoenixadult.clients.aggregators.iafd import IAFDClient, supplement
@@ -118,18 +119,21 @@ async def test_supplement_is_quiet_when_the_title_is_not_listed() -> None:
 
 
 @respx.mock
-async def test_every_iafd_request_goes_through_the_bypass() -> None:
+async def test_every_iafd_request_goes_through_the_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     studio_url = 'https://www.iafd.com/studio.rme/studio=9856/blackpayback.com.htm'
     respx.get(studio_url).mock(return_value=httpx.Response(200, text=LISTING_HTML.replace('distable', 'studio')))
     respx.get(SCENE_URL).mock(return_value=httpx.Response(200, text=SCENE_HTML))
 
-    seen: list[bool] = []
+    from phoenixadult.utils.http.impersonate import impersonate_backend
 
-    class SpyClient(IAFDClient):
-        async def fetch_and_load(self, url, ctx=None, label=''):  # type: ignore[no-untyped-def, override]
-            seen.append(bool(ctx and ctx.use_bypass))
-            return await super().fetch_and_load(url, ctx, label)
+    seen: list[str] = []
+    passthrough = impersonate_backend.request
 
-    await supplement(SpyClient(), studio_url, 'Black Artistry Denied', FetchCtx(use_bypass=False), '[test]')
+    async def spy(req):  # type: ignore[no-untyped-def]
+        seen.append(req.url)
+        return await passthrough(req)
 
-    assert seen == [True, True]
+    monkeypatch.setattr(impersonate_backend, 'request', spy)
+    await supplement(IAFDClient(), studio_url, 'Black Artistry Denied', FetchCtx(), '[test]')
+
+    assert seen == [studio_url, SCENE_URL], 'IAFD URLs follow the IAFD registry entry, whichever client asks'

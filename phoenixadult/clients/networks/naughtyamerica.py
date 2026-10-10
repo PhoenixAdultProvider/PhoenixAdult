@@ -43,10 +43,6 @@ class NaughtyAmericaClient(Client):
         self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
 
     async def _paced(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:
-        if ctx is None:
-            ctx = FetchCtx()
-
-        ctx.use_bypass = True
         await self.pacer.pace(label or url)
         return await self.fetch_and_load(url, ctx, label)
 
@@ -146,7 +142,7 @@ class NaughtyAmericaClient(Client):
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         path = payload.split('|')[0].lstrip('/')
         url = f'{_SCENE_BASE}/{path}'
-        loaded = await self._paced(url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}')
+        loaded = await self._paced(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
         if not loaded:
             return None
 

@@ -69,9 +69,7 @@ class SicflicsClient(Client):
 
         base = site.base_url.rstrip('/')
         popup_url = f'{base}/v6/v6.pop.php?id={packed.get("sceneID", "")}'
-        details_page_elements = await self.fetch_and_load(
-            popup_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] popup {popup_url}'
-        )
+        details_page_elements = await self.fetch_and_load(popup_url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] popup {popup_url}')
         if not details_page_elements:
             return None
 

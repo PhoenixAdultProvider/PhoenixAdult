@@ -89,7 +89,7 @@ class BellesaClient(Client):
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     async def _get_json(self, base: str, path: str, capture: list[RawCaptureEntry] | None) -> Any:
-        ctx = FetchCtx(capture=capture, use_bypass=True, headers={'Content-Type': 'application/json', 'Referer': base})
+        ctx = FetchCtx(capture=capture, headers={'Content-Type': 'application/json', 'Referer': base})
         loaded = await self.fetch_and_load(f'{base}{_API}/{path}', ctx, f'[Bellesa] {path}')
         if not loaded:
             return None

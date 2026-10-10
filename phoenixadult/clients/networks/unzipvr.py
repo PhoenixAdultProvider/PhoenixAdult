@@ -40,9 +40,7 @@ class UnzipVRClient(Client):
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
-        details_page_elements = await self.fetch_json(
-            f'{base}/api/content/v1/videos/{payload}', FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass)
-        )
+        details_page_elements = await self.fetch_json(f'{base}/api/content/v1/videos/{payload}', FetchCtx(capture=ctx.capture if ctx else None))
         item = (details_page_elements.get('data') or {}).get('item') if isinstance(details_page_elements, dict) else None
         if not isinstance(item, dict):
             return None

@@ -8,7 +8,7 @@ import httpx2
 from phoenixadult.clients.base import Client
 from phoenixadult.config.env import env
 from phoenixadult.models.capture import RawCaptureEntry
-from phoenixadult.utils.http.bypass import bypass_post
+from phoenixadult.utils.http.bypass import bypass_post, site_backends
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.response_trace import trace_response
 
@@ -36,18 +36,19 @@ class GraphQLClient(Client):
         headers: dict[str, str] | None = None,
         capture_label: str | None = None,
         capture_sink: list[RawCaptureEntry] | None = None,
-        use_bypass: bool = False,
     ) -> Any:
         tag = capture_label or endpoint
         body = json.dumps({'query': query, 'variables': variables})
-        bypass_ok = use_bypass or env.bypass_auto_retry
+        required = bool(site_backends(endpoint))
+        bypass_ok = required or env.bypass_auto_retry
 
-        try:
-            r = await self.http.post(endpoint, content=body, headers=headers)
-            trace_response(r)
-        except httpx2.HTTPError as err:
-            logger.warn('graphql', f'{tag} -> request failed: {err}')
-            r = None
+        r = None
+        if not required:
+            try:
+                r = await self.http.post(endpoint, content=body, headers=headers)
+                trace_response(r)
+            except httpx2.HTTPError as err:
+                logger.warn('graphql', f'{tag} -> request failed: {err}')
 
         if r is not None:
             content_type = r.headers.get('content-type', '')
@@ -63,7 +64,7 @@ class GraphQLClient(Client):
         elif not bypass_ok:
             return None
 
-        logger.info('graphql', f'{tag} -> retrying POST via bypass')
+        logger.info('graphql', f'{tag} -> POST via bypass')
         resp = await bypass_post(endpoint, body, {'Content-Type': 'application/json', **(headers or {})})
         if not resp or resp.status >= 400:
             logger.warn('graphql', f'{tag} -> bypass failed (status={resp.status if resp else "none"})')

@@ -44,19 +44,23 @@ async def test_search_by_id() -> None:
 
 
 @respx.mock
-async def test_search_recovers_via_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_search_goes_straight_through_impersonate(monkeypatch: pytest.MonkeyPatch) -> None:
     import json as _json
 
-    monkeypatch.setenv('FLARESOLVERR_URL', 'http://localhost:8191')
-    monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr')
-    respx.post(_ENDPOINT).mock(return_value=httpx.Response(403, html='<html>Attention Required! | Cloudflare</html>'))
-    gql = {'data': {'searchVideos': {'edges': [{'node': {'videoId': '7', 'title': 'Bypassed', 'releaseDate': '2022-01-01', 'slug': 'bypassed'}}]}}}
-    envelope = {'status': 'ok', 'solution': {'url': _ENDPOINT, 'status': 200, 'response': _json.dumps(gql), 'headers': {}, 'cookies': []}}
-    respx.post('http://localhost:8191/v1').mock(return_value=httpx.Response(200, json=envelope))
+    from phoenixadult.utils.http.bypass_types import BypassRequest, BypassResponse
+    from phoenixadult.utils.http.impersonate import impersonate_backend
 
+    direct = respx.post(_ENDPOINT).mock(return_value=httpx.Response(403, html='<html>Attention Required! | Cloudflare</html>'))
+    gql = {'data': {'searchVideos': {'edges': [{'node': {'videoId': '7', 'title': 'Bypassed', 'releaseDate': '2022-01-01', 'slug': 'bypassed'}}]}}}
+
+    async def impersonated(req: BypassRequest) -> BypassResponse:
+        return BypassResponse(status=200, body=_json.dumps(gql))
+
+    monkeypatch.setattr(impersonate_backend, 'request', impersonated)
     results: list[SearchResult] = []
     await Strike3Client().search(results, search_context(SITE, title='x'))
     assert len(results) == 1 and results[0].title == 'Bypassed'
+    assert not direct.called, 'PROVIDER_BYPASS sends Strike3 straight to Impersonate'
 
 
 @respx.mock

@@ -19,7 +19,7 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_
 from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode, pack_cur_id, same_scene
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
-from phoenixadult.utils.http.bypass import bypass_get, bypass_post, is_challenge
+from phoenixadult.utils.http.bypass import bypass_get, bypass_post, is_challenge, site_backends
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, ScenePacer
 from phoenixadult.utils.logging.logger import logger
@@ -111,7 +111,6 @@ class CandidatePage:
 @dataclass
 class FetchCtx:
     capture: list[RawCaptureEntry] | None = None
-    use_bypass: bool = False
     headers: dict[str, str] | None = None
 
 
@@ -122,9 +121,7 @@ def _challenge_page(body: str) -> bool:
     return len(body) <= _CHALLENGE_PAGE_MAX and is_challenge(body)
 
 
-def _bypass_enabled(ctx: FetchCtx | None) -> bool:
-    if ctx and ctx.use_bypass:
-        return True
+def _fallback_enabled() -> bool:
     return env.bypass_auto_retry
 
 
@@ -187,40 +184,43 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         self, url: str, ctx: FetchCtx | None = None, label: str | None = None, form: dict[str, str] | None = None
     ) -> dict[str, Any] | None:
         verb = 'POST' if form is not None else 'GET'
-        direct = await self._direct_fetch(url, ctx.headers if ctx else None, form)
-        if direct and direct['ok']:
-            return {'status': direct['status'], 'html': direct['body'], 'sel': Selector(text=direct['body'])}
-        if not _bypass_enabled(ctx):
-            if direct:
-                logger.debug(f'fetch_and_load {url} → HTTP {direct["status"]}')
-            else:
-                logger.warn('scrape', f'fetch_and_load {verb} {url} got nothing back, so there is no page to parse or dump')
-            return None
+        direct = None
+        if not site_backends(url):
+            direct = await self._direct_fetch(url, ctx.headers if ctx else None, form)
+            if direct and direct['ok']:
+                return {'status': direct['status'], 'html': direct['body'], 'sel': Selector(text=direct['body'])}
+            if not _fallback_enabled():
+                if direct:
+                    logger.debug(f'fetch_and_load {url} → HTTP {direct["status"]}')
+                else:
+                    logger.warn('scrape', f'fetch_and_load {verb} {url} got nothing back, so there is no page to parse or dump')
+                return None
         headers = (ctx.headers if ctx else None) or {}
         if form is not None:
             bypass = await bypass_post(url, urlencode(form), {'Content-Type': 'application/x-www-form-urlencoded', **headers})
         else:
             bypass = await bypass_get(url, headers)
         if not bypass or bypass.status >= 400:
-            direct_status = direct['status'] if direct else 'error'
+            direct_status = direct['status'] if direct else ('skipped' if site_backends(url) else 'error')
             logger.warn(f'fetch_and_load {url} failed — direct HTTP {direct_status}, bypass status={bypass.status if bypass else "none"}')
             return None
-        logger.info(f'fetch_and_load {url} → recovered via bypass ({bypass.status})')
+        logger.info(f'fetch_and_load {url} → served via bypass ({bypass.status})')
         trace_body(f'{verb} {url} (bypass)', bypass.status, bypass.body, 'text/html')
         return {'status': bypass.status, 'html': bypass.body, 'sel': Selector(text=bypass.body)}
 
     async def fetch_json(self, url: str, ctx: FetchCtx | None = None, headers: dict[str, str] | None = None, label: str | None = None) -> Any | None:
-        try:
-            r = await self.http.get(url, headers=headers)
-            trace_response(r)
-            if r.status_code < 400:
-                data = r.json()
-                return data
-            logger.debug(f'fetch_json {url} → HTTP {r.status_code}')
-        except (httpx2.HTTPError, ValueError) as err:
-            logger.debug(f'fetch_json {url} threw: {err}')
-        if not _bypass_enabled(ctx):
-            return None
+        if not site_backends(url):
+            try:
+                r = await self.http.get(url, headers=headers)
+                trace_response(r)
+                if r.status_code < 400:
+                    data = r.json()
+                    return data
+                logger.debug(f'fetch_json {url} → HTTP {r.status_code}')
+            except (httpx2.HTTPError, ValueError) as err:
+                logger.debug(f'fetch_json {url} threw: {err}')
+            if not _fallback_enabled():
+                return None
         bypass = await bypass_get(url, headers or {})
         if not bypass or bypass.status >= 400:
             logger.warn(f'fetch_json {url} failed — direct and bypass exhausted (bypass status={bypass.status if bypass else "none"})')
@@ -230,7 +230,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         except ValueError as err:
             logger.debug(f"fetch_json {url} → bypass body wasn't JSON: {err}")
             return None
-        logger.info(f'fetch_json {url} → recovered via bypass ({bypass.status})')
+        logger.info(f'fetch_json {url} → served via bypass ({bypass.status})')
         trace_body(f'GET {url} (bypass)', bypass.status, bypass.body, 'application/json')
         return parsed
 
@@ -448,7 +448,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         capture: list[RawCaptureEntry] | None = None,
         label: str = 'actor',
         limit: int = 3,
-        use_bypass: bool = False,
     ) -> list[ActorResult]:
         seen: set[str] = set()
         unique: list[tuple[str, str]] = []
@@ -464,7 +463,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             photo = ''
             if href:
                 async with sem:
-                    model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture, use_bypass=use_bypass), f'[{label}] {name}')
+                    model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture), f'[{label}] {name}')
                 if model_page_elements:
                     photo = extract_photo(model_page_elements['sel'])
             return ActorResult(name=name, photo_url=photo)
@@ -574,7 +573,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             date_part, _, packed = fallback_date.partition('|')
             fallback_date = date_part.strip()
         capture = ctx.capture if ctx else None
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'GET {url}')
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'GET {url}')
         if not details_page_elements:
             logger.warn(site.name, f'load_scene_context: {url} failed')
             return None
@@ -594,9 +593,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         tail = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
-        )
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
         if not details_page_elements:
             return None
 

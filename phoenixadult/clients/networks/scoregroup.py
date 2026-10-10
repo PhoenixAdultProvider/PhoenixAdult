@@ -202,7 +202,7 @@ class ScoreGroupClient(Client):
         base = search_data.site_info.base_url.rstrip('/')
         url = base + _SEARCH_PATH
         form = {'keywords': _keywords(search_data), **_SEARCH_FILTERS}
-        ctx = FetchCtx(capture=search_data.capture, use_bypass=search_data.site_info.use_bypass)
+        ctx = FetchCtx(capture=search_data.capture)
         async with loop_gate('scoregroup-search', gate.SCOREGROUP_SEARCH):
             search_results = await self.fetch_and_load(url, ctx, f'[{search_data.site_info.name}] search {url}', form=form)
         sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if search_results else []
@@ -234,7 +234,7 @@ class ScoreGroupClient(Client):
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         ctx = loaded.ctx
         if isinstance(source, dict) and '_url' in source:
-            fetch_ctx = FetchCtx(capture=ctx.capture, use_bypass=loaded.site.use_bypass)
+            fetch_ctx = FetchCtx(capture=ctx.capture)
             details_page_elements = await self.fetch_and_load(source['_url'], fetch_ctx, f'[{loaded.site.name}] candidate {source["_url"]}')
             if not details_page_elements:
                 return
@@ -303,9 +303,7 @@ class ScoreGroupClient(Client):
             return None
 
         fetch_url = _id_url(site, head) if head.isdigit() else head
-        details_page_elements = await self.fetch_and_load(
-            fetch_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {fetch_url}'
-        )
+        details_page_elements = await self.fetch_and_load(fetch_url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {fetch_url}')
         if not details_page_elements:
             return None
 
@@ -428,7 +426,7 @@ class ScoreGroupClient(Client):
             genders[actor_name] = 'male' if '/male-' in href else ''
             refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-        resolved = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name, use_bypass=scene.site.use_bypass)
+        resolved = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name)
         actors = [ActorResult(name=a.name, photo_url=a.photo_url, gender=genders.get(a.name, '')) for a in resolved]
 
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):

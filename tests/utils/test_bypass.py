@@ -118,6 +118,8 @@ def _stub_curl_cffi(monkeypatch: pytest.MonkeyPatch, fail_with: str) -> type[_St
 async def test_a_reset_stream_is_retried_once_rather_than_failing_the_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.utils.http.impersonate import impersonate_backend
 
+    monkeypatch.delattr(impersonate_backend, 'request')
+
     session = _stub_curl_cffi(monkeypatch, 'Failed to perform, curl: (92) HTTP/2 stream 1 reset by server (error 0x2 INTERNAL_ERROR).')
     monkeypatch.setattr('phoenixadult.utils.http.impersonate._RETRY_PAUSE', 0)
     got = await impersonate_backend.request(BypassRequest(url='https://www.scoreland.com/search-es', method='POST', body='keywords=x'))
@@ -127,6 +129,8 @@ async def test_a_reset_stream_is_retried_once_rather_than_failing_the_backend(mo
 
 async def test_a_failure_that_is_not_transient_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.utils.http.impersonate import impersonate_backend
+
+    monkeypatch.delattr(impersonate_backend, 'request')
 
     session = _stub_curl_cffi(monkeypatch, 'Failed to perform, curl: (6) Could not resolve host')
     assert await impersonate_backend.request(BypassRequest(url='https://nope.example/x', method='POST', body='')) is None

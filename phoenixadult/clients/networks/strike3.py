@@ -45,7 +45,7 @@ class Strike3Client(GraphQLClient):
                 await asyncio.sleep(_PACE_SECONDS - delta)
 
             self._last_fetch = time.monotonic()
-            return await self.graphql(endpoint, query, variables, headers={'Referer': base_url}, capture_label=label, capture_sink=sink, use_bypass=True)
+            return await self.graphql(endpoint, query, variables, headers={'Referer': base_url}, capture_label=label, capture_sink=sink)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         endpoint = f'{search_data.site_info.base_url.rstrip("/")}/graphql'

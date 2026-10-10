@@ -54,9 +54,7 @@ class BrandNewAmateursClient(Client):
             packed = {'sceneURL': payload, 'actorURL': ''}
 
         scene_url = packed.get('sceneURL', '')
-        details_page_elements = await self.fetch_and_load(
-            scene_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {scene_url}'
-        )
+        details_page_elements = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {scene_url}')
         if not details_page_elements:
             return None
 

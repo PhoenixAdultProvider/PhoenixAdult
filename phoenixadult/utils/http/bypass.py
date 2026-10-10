@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from phoenixadult.config.env import env
 from phoenixadult.utils.http.bypass_types import BypassBackend, BypassRequest, BypassResponse
 from phoenixadult.utils.http.flaresolverr import flare_solverr_backend
@@ -29,6 +31,22 @@ def is_challenge(body: str | None) -> bool:
     return any(m in low for m in _CHALLENGE_MARKERS)
 
 
+def _no_site_backends(url: str) -> tuple[str, ...]:
+    return ()
+
+
+_site_backends: Callable[[str], tuple[str, ...]] = _no_site_backends
+
+
+def set_site_backends(resolver: Callable[[str], tuple[str, ...]]) -> None:
+    global _site_backends
+    _site_backends = resolver
+
+
+def site_backends(url: str) -> tuple[str, ...]:
+    return _site_backends(url)
+
+
 def _configured_order() -> list[BypassBackend]:
     raw = env.bypass_order_raw
     if not raw:
@@ -37,8 +55,15 @@ def _configured_order() -> list[BypassBackend]:
     return out or ALL_BACKENDS
 
 
+def _order_for(url: str) -> list[BypassBackend]:
+    named = site_backends(url)
+    if named:
+        return [_BY_NAME[n.lower()] for n in named if n.lower() in _BY_NAME]
+    return _configured_order()
+
+
 async def http_bypass(req: BypassRequest) -> BypassResponse | None:
-    for backend in _configured_order():
+    for backend in _order_for(req.url):
         try:
             available = backend.is_available()
         except Exception as err:  # noqa: BLE001 - a probe failure shouldn't abort the chain

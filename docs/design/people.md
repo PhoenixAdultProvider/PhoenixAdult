@@ -33,7 +33,7 @@ flowchart TB
 
 External sources live under `phoenixadult/utils/people/sources/` and are fanned out by `find_photo`. There are eight site-specific XPath sources: `iafd`, `adult_dvd_empire`, `babepedia`, `babes_and_stars`, `boobpedia`, `indexxx`, `jav_database`, `local_storage`. Retired sources (Freeones, JAVBus) wait in `phoenixadult/graveyard/`.
 
-IAFD needs a bypass backend (see [HTTP and Bypass](./http-bypass.md#using-the-bypass)).
+IAFD needs a bypass backend (see [HTTP and Bypass](./http-bypass.md#sites-that-require-a-bypass)).
 
 ## Gender
 

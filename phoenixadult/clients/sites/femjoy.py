@@ -61,9 +61,7 @@ class FemjoyClient(Client):
         except ValueError:
             return None
 
-        details_page_elements = await self.fetch_json(
-            search_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), label=f'GET {search_url}'
-        )
+        details_page_elements = await self.fetch_json(search_url, FetchCtx(capture=ctx.capture if ctx else None), label=f'GET {search_url}')
         result = next((r for r in (details_page_elements or {}).get('results', []) if r.get('id') == scene_id), None)
         if not result or not result.get('title'):
             return None

@@ -7,6 +7,7 @@ from phoenixadult.models.scraper_config import ScraperConfig
 
 ContentType = Literal['sceneName', 'actors', 'sceneId', 'sceneIdName']
 SearchMethod = Literal['enhanced', 'limited', 'exact']
+BypassName = Literal['Impersonate', 'FlareSolverr', 'Playwright', 'ReqBin']
 
 
 @dataclass(frozen=True)
@@ -26,11 +27,11 @@ class SiteInfo:
     image_cookies: tuple[str, ...] = ()
     search_method: SearchMethod | None = None
     search_notes: str | None = None
-    use_bypass: bool = False
+    bypass: tuple[BypassName, ...] = ()
     token_prefixes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        for name in ('aliases', 'image_referers', 'image_cookies', 'token_prefixes'):
+        for name in ('aliases', 'image_referers', 'image_cookies', 'token_prefixes', 'bypass'):
             object.__setattr__(self, name, tuple(getattr(self, name)))
 
     def search_url(self, query: str) -> str:

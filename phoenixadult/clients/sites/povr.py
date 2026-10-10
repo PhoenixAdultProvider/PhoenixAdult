@@ -67,9 +67,7 @@ class POVRClient(Client):
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         sub_site = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {url}'
-        )
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
         if not details_page_elements:
             return None
 

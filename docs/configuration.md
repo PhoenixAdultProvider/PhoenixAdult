@@ -299,8 +299,8 @@ markup change or block no longer ends the chain.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `BYPASS_ORDER` | Impersonate, FlareSolverr, Playwright, ReqBin | Order of HTTP-bypass strategies to try for anti-scrape sites. |
-| `BYPASS_AUTO_RETRY` | `false` | Re-route every failed scraper request (4xx/5xx) through the bypass chain. |
+| `BYPASS_ORDER` | Impersonate, FlareSolverr, Playwright, ReqBin | Order of HTTP-bypass backends tried when `BYPASS_AUTO_RETRY` re-routes a failed request. Sites marked *Required* in the site list use their own backends instead. |
+| `BYPASS_AUTO_RETRY` | `false` | Re-route every failed scraper request (4xx/5xx or a challenge page) through the bypass chain. Sites that require a bypass always use it, whatever this is set to. |
 | `BYPASS_TIMEOUT_MS` | `10000` | Per-attempt challenge-solve ceiling (ms) for FlareSolverr/Playwright before the chain moves on. |
 | `FLARESOLVERR_URL` | _(unset)_ | Self-hosted FlareSolverr endpoint used to clear Cloudflare challenges. |
 | `REQBIN_ENABLE` | `false` | Use the third-party ReqBin service as a bypass fallback. |

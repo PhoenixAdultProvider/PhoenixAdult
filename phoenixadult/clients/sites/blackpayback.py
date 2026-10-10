@@ -63,7 +63,7 @@ class BlackPayBackClient(Client):
     # ── Context Loader (main page + two-hop IAFD lookup, stashed for the field hooks) ──
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
-        fetch_ctx = FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass)
+        fetch_ctx = FetchCtx(capture=ctx.capture if ctx else None)
         main_page_elements = await self.fetch_and_load(payload, fetch_ctx, f'[{site.name}] detail {payload}')
         if not main_page_elements:
             return None

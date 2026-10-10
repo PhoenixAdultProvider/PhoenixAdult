@@ -22,7 +22,7 @@ classDiagram
     +provider_id: str | None
     +image_referers: list[str]
     +image_cookies: list[str]
-    +use_bypass: bool
+    +bypass: tuple[BypassName]
     +direct_url_template: str | None
     +scraper_config: ScraperConfig
     +search_url(query) str

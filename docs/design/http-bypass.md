@@ -20,7 +20,7 @@ flowchart LR
   chain --> fs
   chain --> pw
   chain --> rb
-  note1["Per-site use_bypass (FetchCtx.use_bypass) or global<br/>BYPASS_AUTO_RETRY gates the fallback.<br/>First available backend wins."]
+  note1["Sites with PROVIDER_BYPASS go straight to their listed backends;<br/>others fall back only with BYPASS_AUTO_RETRY.<br/>First backend that answers wins."]
   chain -.-> note1
 ```
 
@@ -58,28 +58,34 @@ The default order is **Impersonate → FlareSolverr → Playwright → ReqBin**.
 
 **Challenge detection.** A 2xx whose body still contains a challenge marker (AWS WAF, `just a moment`, `cf-chl-`, Turnstile) counts as unsolved, so the chain moves to the next backend.
 
-## Using the Bypass
+## Sites That Require a Bypass
 
-Adoption is opt-in per call site; not every scraper routes through the chain. Typical users are the CDN- or Cloudflare-protected people sources under `phoenixadult/utils/people/sources/`, such as IAFD.
-
-**Inside a `Client`**, pass `use_bypass=True` on the `FetchCtx`, so the base `fetch_and_load` / `fetch_json` go through the chain:
+A site that blocks plain requests declares it in its selector file, not in its client:
 
 ```python
-loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture, use_bypass=True), label)
+PROVIDER_BYPASS: list[BypassName] = ['Impersonate', 'FlareSolverr']
 ```
 
-**Directly**, where you only have a URL (for example in a standalone source module):
+and passes `bypass=PROVIDER_BYPASS` to `make_site`. The registry turns those declarations into a host map (`registry.bypass_for_url`) and registers it with the bypass module, so `utils/` code can ask for it without importing the registry:
 
-```python
-from phoenixadult.utils.http.bypass import bypass_get
+- **Every request to that host is covered.** `fetch_and_load`, `fetch_json`, GraphQL calls and direct `bypass_get`/`bypass_post` all look the URL's host up, so a site's pages, its API and other clients' lookups (Black PayBack asking IAFD) follow the same entry. Requests to unflagged hosts — Data18 enrichment during a Score Group scrape, for example — stay plain.
+- **Straight to the bypass.** A required host skips the plain request, which would only fail or draw a challenge.
+- **Only the listed backends, in order.** The site's list replaces `BYPASS_ORDER` for that host, so a backend that cannot help (FlareSolverr drops the custom headers an API needs) is never tried.
+- **One list per host.** Two sites on the same host must declare the same list; the registry refuses to load otherwise.
+- **Visible in the site list.** `docs/sitelist.md` shows `| Impersonate Required` (or `X and Y Required`, `X, Y and Z Required`) after the search-method icon.
 
-resp = await bypass_get(url)
-if not resp or resp.status != 200:
-    return None
-sel = Selector(resp.body)
-```
+Current declarations:
 
-IAFD-backed people lookups (gender detection and the IAFD photo source) need a backend — `curl_cffi` installed, or `FLARESOLVERR_URL` set. Without one they degrade to empty results rather than erroring.
+| Site(s) | `PROVIDER_BYPASS` | Why |
+|---|---|---|
+| The Score Group | `['Impersonate', 'FlareSolverr']` | Plain requests are fingerprint-blocked; Impersonate serves most pages and FlareSolverr clears the challenges it hits |
+| IAFD | `['Impersonate']` | Plain requests get 403 from the server's network |
+| Bellesa | `['Impersonate']` | The API returns 403 and a challenge; FlareSolverr would drop its JSON headers |
+| Strike3 | `['Impersonate']` | Ported with Impersonate for its Cloudflare-fingerprinted GraphQL |
+
+Everything else uses plain requests. With `BYPASS_AUTO_RETRY` on, a failed plain request (4xx/5xx or a challenge page) retries through the global `BYPASS_ORDER`.
+
+IAFD-backed people lookups (gender detection and the IAFD photo source) therefore need `curl_cffi` installed. Without it they degrade to empty results rather than erroring.
 
 ## Ban-Avoidance Pacing
 

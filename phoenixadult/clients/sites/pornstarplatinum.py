@@ -53,7 +53,7 @@ class PornstarPlatinumClient(Client):
             return None
 
         details_page_elements = await self.fetch_and_load(
-            packed.get('url', ''), FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {packed.get("url", "")}'
+            packed.get('url', ''), FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {packed.get("url", "")}'
         )
         if not details_page_elements:
             return None

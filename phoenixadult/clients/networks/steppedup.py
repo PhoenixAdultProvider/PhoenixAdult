@@ -73,9 +73,7 @@ class SteppedUpClient(Client):
         if not build_id:
             return None
 
-        details_page_elements = await self.fetch_json(
-            f'{base}/_next/data/{build_id}/scenes/{slug}.json', FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass)
-        )
+        details_page_elements = await self.fetch_json(f'{base}/_next/data/{build_id}/scenes/{slug}.json', FetchCtx(capture=ctx.capture if ctx else None))
         content = (details_page_elements.get('pageProps') or {}).get('content') if isinstance(details_page_elements, dict) else None
         if not isinstance(content, dict):
             return None

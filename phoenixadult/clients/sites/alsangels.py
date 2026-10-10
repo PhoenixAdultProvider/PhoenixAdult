@@ -93,7 +93,7 @@ class AlsAngelsClient(Client):
         model_id, scene_num = id_match.group(1), id_match.group(2)
 
         model_page_elements = await self.fetch_and_load(
-            f'{base}/profiles/{model_id}.html', FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] profile {model_id}'
+            f'{base}/profiles/{model_id}.html', FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] profile {model_id}'
         )
         if not model_page_elements:
             return None
