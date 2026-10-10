@@ -1,4 +1,4 @@
-# Mirrored by .github/workflows/ci.yml; change both when the gate changes.
+# Mirrors .forgejo/workflows/ci.yml; change both when the gate changes.
 name: CI
 
 on:
@@ -7,26 +7,25 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   gate:
-    runs-on: codeberg-small
+    runs-on: ubuntu-latest
     container:
-      # Big community image — effectively always warm in the runner's docker cache,
-      # unlike the python+node combo image (~570MB cold pull per host) that the
-      # cache action needed. The cache saved ~22s/run and cost ~58s/run; dropped.
       image: python:3.13-bookworm
     env:
       PIP_ROOT_USER_ACTION: ignore
     steps:
       - name: Checkout
-        run: |
-          git init -q .
-          git remote add origin "https://codeberg.org/${GITHUB_REPOSITORY}.git"
-          git fetch -q --depth 2 origin "${GITHUB_SHA}"
-          git checkout -q FETCH_HEAD
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Comments
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           if git rev-parse HEAD~1 >/dev/null 2>&1; then
             python scripts/check_comments.py HEAD~1..HEAD
           else
@@ -35,7 +34,6 @@ jobs:
 
       - name: Install
         run: |
-          # nodejs runs the page-script load test; without it that test skips.
           apt-get update -qq && apt-get install -y -qq --no-install-recommends nodejs
           pip install -q uv
           uv pip install --system -e '.[dev,face]'
