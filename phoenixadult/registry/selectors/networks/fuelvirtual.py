@@ -1,29 +1,17 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'FuelVirtual'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 
-
-def _site(name: str, host: str, search_path: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path=search_path,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='fuelvirtual',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('FuckedHard18', 'fuckedhard18.com', '/membersarea/search.php?st=advanced&site[]=5&qall='),
-    _site('MassageGirls18', 'massagegirls18.com', '/membersarea/search.php?st=advanced&site[]=4&qall='),
-    _site('NewGirlPOV', 'pornmastermind.com', '/tour/newgirlpov/search.php?qall='),
+    PROVIDER.site('FuckedHard18', host='fuckedhard18.com', search_path='/membersarea/search.php?st=advanced&site[]=5&qall='),
+    PROVIDER.site('MassageGirls18', host='massagegirls18.com', search_path='/membersarea/search.php?st=advanced&site[]=4&qall='),
+    PROVIDER.site('NewGirlPOV', host='pornmastermind.com', search_path='/tour/newgirlpov/search.php?qall='),
 ]

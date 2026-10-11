@@ -1,29 +1,18 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'WowNetwork'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SEARCH_PATH = '/?s={query}'
 
-
-def _site(name: str, host: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path='/?s={query}',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='wownetwork',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Wow Girls', 'wowgirlsblog.com'),
-    _site('18 Only Girls', '18onlygirlsblog.com'),
-    _site('WowPorn', 'wowpornblog.com'),
+    PROVIDER.site('Wow Girls', host='wowgirlsblog.com'),
+    PROVIDER.site('18 Only Girls', host='18onlygirlsblog.com'),
+    PROVIDER.site('WowPorn', host='wowpornblog.com'),
 ]

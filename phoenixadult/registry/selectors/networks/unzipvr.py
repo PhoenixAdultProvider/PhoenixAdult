@@ -1,32 +1,20 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Unzip VR'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SEARCH_PATH = ''
 
-
-def _site(name: str, domain: str, data18: bool = False) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://content.{domain}',
-        search_path='',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='unzipvr',
-        data18_enrichment=data18,
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('VR Bangers', 'vrbangers.com', data18=True),
-    _site('VR Conk', 'vrconk.com', data18=True),
-    _site('Blow VR', 'blowvr.com'),
-    _site('VRB Trans', 'vrbtrans.com'),
-    _site('VRB Gay', 'vrbgay.com'),
+    PROVIDER.site('VR Bangers', host='content.vrbangers.com', data18_enrichment=True),
+    PROVIDER.site('VR Conk', host='content.vrconk.com', data18_enrichment=True),
+    PROVIDER.site('Blow VR', host='content.blowvr.com'),
+    PROVIDER.site('VRB Trans', host='content.vrbtrans.com'),
+    PROVIDER.site('VRB Gay', host='content.vrbgay.com'),
 ]

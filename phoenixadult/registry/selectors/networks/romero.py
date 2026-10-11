@@ -1,37 +1,26 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Romero Multimedia'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_IMAGE_REFERERS = ['sceneURL']
+PROVIDER_SEARCH_PATH = '/?s={query}'
 
-
-def _site(name: str, host: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path='/?s={query}',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        image_referers=['sceneURL'],
-        scraper_type='romero',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Defeated XXX', 'defeated.xxx'),
-    _site('Defeated Sex Fight', 'defeatedsexfight.com'),
-    _site('Goonblins', 'goonblins.com'),
-    _site('Hentaied', 'hentaied.com'),
-    _site('Parasited', 'parasited.com'),
-    _site('Futanari XXX', 'futanari.xxx'),
-    _site('Freeze', 'freeze.xxx'),
-    _site('Plants vs Cunts', 'plantsvscunts.com'),
-    _site('Voodooed', 'voodooed.com'),
-    _site('Vored', 'vored.com'),
+    PROVIDER.site('Defeated XXX', host='defeated.xxx'),
+    PROVIDER.site('Defeated Sex Fight', host='defeatedsexfight.com'),
+    PROVIDER.site('Goonblins', host='goonblins.com'),
+    PROVIDER.site('Hentaied', host='hentaied.com'),
+    PROVIDER.site('Parasited', host='parasited.com'),
+    PROVIDER.site('Futanari XXX', host='futanari.xxx'),
+    PROVIDER.site('Freeze', host='freeze.xxx'),
+    PROVIDER.site('Plants vs Cunts', host='plantsvscunts.com'),
+    PROVIDER.site('Voodooed', host='voodooed.com'),
+    PROVIDER.site('Vored', host='vored.com'),
 ]

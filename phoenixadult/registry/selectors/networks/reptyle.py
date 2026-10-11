@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 from phoenixadult.registry.selectors.networks.reptyle_networks import reptyle_aliases
 
 PROVIDER_NAME = 'Reptyle'
@@ -9,32 +9,18 @@ PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 PROVIDER_SEARCH_PATH = '/movies/{query}'
+PROVIDER_DATA18_ENRICHMENT = True
+PROVIDER_SCENE_TEMPLATE = '{base}/movies/{head}'
 
 _ALIASES: dict[str, list[str]] = reptyle_aliases()
 
-
-def _site(name: str, base_url: str, token_prefixes: tuple[str, ...] = ()) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=base_url,
-        search_path=PROVIDER_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        aliases=_ALIASES.get(name, []),
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='reptyle',
-        data18_enrichment=True,
-        token_prefixes=token_prefixes,
-        direct_url_template='{base}/movies/{head}',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('MYLF', 'https://www.mylf.com'),
-    _site('TeamSkeet', 'https://www.teamskeet.com', token_prefixes=('mylfx', 'teamskeetx')),
-    _site('Swappz', 'https://www.swappz.com'),
-    _site('FreeUse', 'https://www.freeuse.com'),
-    _site('Pervz', 'https://www.pervz.com'),
-    _site('Family Strokes', 'https://www.familystrokes.com'),
+    PROVIDER.site('MYLF', base_url='https://www.mylf.com', aliases=_ALIASES.get('MYLF', [])),
+    PROVIDER.site('TeamSkeet', base_url='https://www.teamskeet.com', token_prefixes=('mylfx', 'teamskeetx'), aliases=_ALIASES.get('TeamSkeet', [])),
+    PROVIDER.site('Swappz', base_url='https://www.swappz.com', aliases=_ALIASES.get('Swappz', [])),
+    PROVIDER.site('FreeUse', base_url='https://www.freeuse.com', aliases=_ALIASES.get('FreeUse', [])),
+    PROVIDER.site('Pervz', base_url='https://www.pervz.com', aliases=_ALIASES.get('Pervz', [])),
+    PROVIDER.site('Family Strokes', base_url='https://www.familystrokes.com', aliases=_ALIASES.get('Family Strokes', [])),
 ]

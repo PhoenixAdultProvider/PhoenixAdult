@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Private'
 PROVIDER_BASE_URL = 'https://www.private.com'
@@ -25,18 +25,6 @@ _NAMES = [
     'Tight and Teen',
 ]
 
+PROVIDER = Provider.from_headers(__name__)
 
-def _site(name: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=PROVIDER_BASE_URL,
-        search_path=PROVIDER_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='private',
-    )
-
-
-SITES: list[SiteInfo] = [_site(n) for n in _NAMES]
+SITES: list[SiteInfo] = [PROVIDER.site(n) for n in _NAMES]

@@ -1,22 +1,15 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Naughty America Other Sites'
 PROVIDER_CONTENT_TYPE: ContentType = 'actors'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = 'Actor only'
 
+PROVIDER = Provider.from_headers(__name__)
+
 SITES: list[SiteInfo] = [
-    make_site(
-        name='Tonights Girlfriend',
-        provider_name=PROVIDER_NAME,
-        base_url='https://www.tonightsgirlfriend.com',
-        search_path='/pornstar/',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='tonightsgirlfriend',
-    ),
+    PROVIDER.site('Tonights Girlfriend', host='www.tonightsgirlfriend.com', search_path='/pornstar/'),
 ]

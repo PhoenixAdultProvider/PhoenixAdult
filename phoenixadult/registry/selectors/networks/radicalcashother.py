@@ -1,45 +1,34 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Radical Cash Other'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 
-
-def _site(name: str, host: str, search_path: str, sub_group: str, search_notes: str = PROVIDER_SEARCH_NOTES) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        sub_group=sub_group,
-        base_url=f'https://{host}',
-        search_path=search_path,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=search_notes,
-        scraper_type='radicalcashother',
-    )
-
-
-def _hitzefrei(name: str, host: str) -> SiteInfo:
-    return _site(name, host, '/search/{query}', 'Hitzefrei')
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('PurgatoryX', 'purgatoryx.com', 'https://tour.purgatoryx.com/search/{query}', 'PurgatoryX'),
-    _site('Hitzefrei', 'hitzefrei.com', 'https://tour.hitzefrei.com/search/{query}', 'Hitzefrei'),
-    _hitzefrei('Unleashed', 'unleashed.hitzefrei.com'),
-    _hitzefrei('CityCheck', 'citycheck.hitzefrei.com'),
-    _hitzefrei('MILF Hunters', 'milfhunters.hitzefrei.com'),
-    _hitzefrei('Cuff Em All', 'cuffemall.hitzefrei.com'),
-    _hitzefrei('fANALarm', 'fanalarm.hitzefrei.com'),
-    _hitzefrei('Fuck on Arrival', 'fuckonarrival.hitzefrei.com'),
-    _hitzefrei('Family Affairs', 'familyaffairs.hitzefrei.com'),
-    _hitzefrei("Patti's Anal", 'pattisanals.hitzefrei.com'),
-    _site('Gonzo Living', 'gonzoliving.com', 'https://tour.gonzoliving.com/search/{query}', 'Gonzo Living'),
-    _site('Teen Gonzo', 'teengonzo.com', 'https://tour.teengonzo.com/search/{query}', 'Gonzo Living'),
-    _site('MILF Gonzo', 'milfgonzo.com', 'https://tour.milfgonzo.com/search/{query}', 'Gonzo Living'),
-    _site('ToughLoveX', 'toughlovex.com', 'https://tour.toughlovex.com/search/{query}', 'ToughLoveX', 'Actor Name Only or Title Only'),
+    PROVIDER.site('PurgatoryX', host='purgatoryx.com', search_path='https://tour.purgatoryx.com/search/{query}', sub_group='PurgatoryX'),
+    PROVIDER.site('Hitzefrei', host='hitzefrei.com', search_path='https://tour.hitzefrei.com/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('Unleashed', host='unleashed.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('CityCheck', host='citycheck.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('MILF Hunters', host='milfhunters.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('Cuff Em All', host='cuffemall.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('fANALarm', host='fanalarm.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('Fuck on Arrival', host='fuckonarrival.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('Family Affairs', host='familyaffairs.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site("Patti's Anal", host='pattisanals.hitzefrei.com', search_path='/search/{query}', sub_group='Hitzefrei'),
+    PROVIDER.site('Gonzo Living', host='gonzoliving.com', search_path='https://tour.gonzoliving.com/search/{query}', sub_group='Gonzo Living'),
+    PROVIDER.site('Teen Gonzo', host='teengonzo.com', search_path='https://tour.teengonzo.com/search/{query}', sub_group='Gonzo Living'),
+    PROVIDER.site('MILF Gonzo', host='milfgonzo.com', search_path='https://tour.milfgonzo.com/search/{query}', sub_group='Gonzo Living'),
+    PROVIDER.site(
+        'ToughLoveX',
+        host='toughlovex.com',
+        search_path='https://tour.toughlovex.com/search/{query}',
+        sub_group='ToughLoveX',
+        search_notes='Actor Name Only or Title Only',
+    ),
 ]

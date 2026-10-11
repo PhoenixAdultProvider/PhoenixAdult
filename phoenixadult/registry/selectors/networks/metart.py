@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'MetArt Network'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
@@ -9,32 +9,20 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 PROVIDER_SEARCH_PATH = '/api'
 
-
-def _site(name: str, host: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path=PROVIDER_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='metart',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('MetArt', 'www.metart.com'),
-    _site('MetArtX', 'www.metartx.com'),
-    _site('SexArt', 'www.sexart.com'),
-    _site('The Life Erotic', 'www.thelifeerotic.com'),
-    _site('VivThomas', 'www.vivthomas.com'),
-    _site('Straplezz', 'straplezz.com'),
-    _site('Hustler', 'hustler.com'),
-    _site('Errotica Archives', 'www.errotica-archives.com'),
-    _site('ALS Scan', 'www.alsscan.com'),
-    _site('Rylsky Art', 'www.rylskyart.com'),
-    _site('Eternal Desire', 'www.eternaldesire.com'),
-    _site('Stunning18', 'www.stunning18.com'),
-    _site('Love Hairy', 'www.lovehairy.com'),
+    PROVIDER.site('MetArt', host='www.metart.com'),
+    PROVIDER.site('MetArtX', host='www.metartx.com'),
+    PROVIDER.site('SexArt', host='www.sexart.com'),
+    PROVIDER.site('The Life Erotic', host='www.thelifeerotic.com'),
+    PROVIDER.site('VivThomas', host='www.vivthomas.com'),
+    PROVIDER.site('Straplezz', host='straplezz.com'),
+    PROVIDER.site('Hustler', host='hustler.com'),
+    PROVIDER.site('Errotica Archives', host='www.errotica-archives.com'),
+    PROVIDER.site('ALS Scan', host='www.alsscan.com'),
+    PROVIDER.site('Rylsky Art', host='www.rylskyart.com'),
+    PROVIDER.site('Eternal Desire', host='www.eternaldesire.com'),
+    PROVIDER.site('Stunning18', host='www.stunning18.com'),
+    PROVIDER.site('Love Hairy', host='www.lovehairy.com'),
 ]

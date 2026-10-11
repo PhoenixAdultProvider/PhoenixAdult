@@ -66,7 +66,7 @@ A site that blocks plain requests declares it in its selector file, not in its c
 PROVIDER_BYPASS: list[BypassName] = ['Impersonate', 'FlareSolverr']
 ```
 
-and passes `bypass=PROVIDER_BYPASS` to `make_site`. The registry turns those declarations into a host map (`registry.bypass_for_url`) and registers it with the bypass module, so `utils/` code can ask for it without importing the registry:
+`Provider.from_headers` applies it to every site in the file. The registry turns those declarations into a host map (`registry.bypass_for_url`) and registers it with the bypass module, so `utils/` code can ask for it without importing the registry:
 
 - **Every request to that host is covered.** `fetch_and_load`, `fetch_json`, GraphQL calls and direct `bypass_get`/`bypass_post` all look the URL's host up, so a site's pages, its API and other clients' lookups (Black PayBack asking IAFD) follow the same entry. Requests to unflagged hosts — Data18 enrichment during a Score Group scrape, for example — stay plain.
 - **Straight to the bypass.** A required host skips the plain request, which would only fail or draw a challenge.

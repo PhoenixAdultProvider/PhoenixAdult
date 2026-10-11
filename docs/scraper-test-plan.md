@@ -36,8 +36,38 @@ refuses a name or scraper type that is already taken, and regenerates the siteli
 are discovered by module name, so nothing else needs registering. `--search-path`,
 `--search-method` and `--search-notes` fill in the selector; see `--help` for the rest.
 
-If the site blocks plain requests, add `PROVIDER_BYPASS` to the selector (for example `['Impersonate']`) and pass
-`bypass=PROVIDER_BYPASS` to `make_site`. Never force the bypass from the client; see
+The selector's `PROVIDER_*` headers are the defaults for every site in the file.
+`PROVIDER = Provider.from_headers(__name__)` reads them, and `PROVIDER.site(name, ...)` builds one
+site, taking only what differs:
+
+```python
+PROVIDER_NAME = 'Foo Network'
+PROVIDER_BASE_URL = 'https://www.{host}'
+PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
+PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
+PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SEARCH_PATH = '/search?q={query}'
+
+PROVIDER = Provider.from_headers(__name__)
+
+SITES: list[SiteInfo] = [
+    PROVIDER.site('Foo', host='foo.com'),
+    PROVIDER.site('Bar', host='bar.com', search_path='/videos?q={query}'),
+]
+```
+
+- **Recognized headers:** `PROVIDER_NAME`, `PROVIDER_CONTENT_TYPE` and `PROVIDER_SEARCH_METHOD` are
+  required. The optional ones are `PROVIDER_SEARCH_NOTES`, `PROVIDER_SEARCH_PATH`, `PROVIDER_BASE_URL`,
+  `PROVIDER_BYPASS`, `PROVIDER_SCENE_TEMPLATE`, `PROVIDER_SCRAPER_TYPE`, `PROVIDER_DATA18_ENRICHMENT`,
+  `PROVIDER_IMAGE_REFERERS` and `PROVIDER_IMAGE_COOKIES`.
+- **Errors:** an unknown header, a missing required header, or an invalid content type, search method
+  or bypass name stops the app at import, naming the file.
+- **Scraper type:** `PROVIDER_SCRAPER_TYPE` defaults to the file name.
+- **Base URL:** `host=` fills the `{host}` placeholder in `PROVIDER_BASE_URL`. With no base header,
+  it gives `https://<host>`. Pass `base_url=` instead for a one-off address.
+
+If the site blocks plain requests, add `PROVIDER_BYPASS` to the selector (for example `['Impersonate']`).
+Never force the bypass from the client; see
 [HTTP and Bypass](./design/http-bypass.md#sites-that-require-a-bypass).
 
 ## Unit-Test Conventions

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 from phoenixadult.utils.helpers.data_files import load_data
 
 PROVIDER_NAME = 'Gamma'
@@ -12,63 +12,64 @@ PROVIDER_SEARCH_PATH = 'https://tsmkfa364q-dsn.algolia.net/1/indexes/*/queries'
 
 _ALIASES: dict[str, list[str]] = load_data(__file__, 'gammaentother_aliases')
 
-
-def _site(sub_group: str, base_url: str, name: str, aliases: list[str] | None = None) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        sub_group=sub_group,
-        base_url=base_url,
-        search_path=PROVIDER_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        aliases=aliases or [],
-        scraper_type='gammaentother',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Girlsway', 'https://www.girlsway.com', 'Girlsway', ["Mommy's Girl", 'Web Young', 'Girls Try Anal', 'Sextape Lesbians', 'Girlsway Originals']),
-    _site('21Naturals', 'https://www.21naturals.com', '21Naturals', ['21FootArt', '21EroticAnal']),
-    _site('Evil Angel', 'https://www.evilangel.com', 'Evil Angel', ['Blackmailed']),
-    _site('XEmpire', 'https://www.xempire.com', 'HardX', ['EroticaX', 'DarkX', 'LesbianX', 'AllBlackX']),
-    _site('GloryHoleSecrets', 'http://www.gloryholesecrets.com', 'GloryHoleSecrets'),
-    _site('Pure Taboo', 'https://www.puretaboo.com', 'Pure Taboo'),
-    _site('Blowpass', 'https://www.blowpass.com', 'Throated', ['Mommy Blows Best', 'Only Teen Blowjobs', '1000 Facials', 'Immoral Live', 'My XXX Pass']),
-    _site(
-        'Fantasy Massage',
-        'https://www.fantasymassage.com',
-        'Fantasy Massage',
-        ['Nuru Massage', 'All Girl Massage', 'Soapy Massage', 'Milking Table', 'Massage Parlor', 'Tricky Spa', 'POV Massage'],
+    PROVIDER.site(
+        'Girlsway',
+        sub_group='Girlsway',
+        base_url='https://www.girlsway.com',
+        aliases=["Mommy's Girl", 'Web Young', 'Girls Try Anal', 'Sextape Lesbians', 'Girlsway Originals'],
     ),
-    _site('21Sextury', 'http://www.21sextury.com', '21Sextury', _ALIASES['21Sextury']),
-    _site('Girlfriends Films', 'http://www.girlfriendsfilms.com', 'Girlfriends Films'),
-    _site('Burning Angel', 'http://www.burningangel.com', 'Burning Angel'),
-    _site('Pretty Dirty', 'http://www.prettydirty.com', 'Pretty Dirty'),
-    _site('Fame Digital', 'http://www.devilsfilm.com', 'Devils Film'),
-    _site('Fame Digital', 'http://www.peternorth.com', 'Peter North'),
-    _site('Fame Digital', 'http://www.roccosiffredi.com', 'Rocco Siffredi'),
-    _site('Dogfart Network', 'https://www.dogfartnetwork.com', 'Dogfart', _ALIASES['Dogfart']),
-    _site('21Sextreme', 'http://www.21sextreme.com', '21Sextreme', ['Lusty Grandmas', 'Grandpas Fuck Teens', 'Teach Me Fisting', 'Zoliboy', 'Dominated Girls']),
-    _site('Joymii', 'https://www.joymii.com', 'Joymii'),
-    _site('Gangbang Creampie', 'https://www.gangbangcreampie.com', 'Gangbang Creampie'),
-    _site('Zero Tolerance', 'http://www.zerotolerancefilms.com', 'Zero Tolerance'),
-    _site('Wicked', 'https://www.wicked.com', 'Wicked'),
-    _site('Adult Time', 'https://adulttime.com', 'Adult Time', _ALIASES['Adult Time']),
-    _site('Gender X', 'https://www.genderxfilms.com', 'Gender X'),
-    _site('My Pervy Family', 'https://www.mypervyfamily.com', 'My Pervy Family'),
-    _site('Filthy Kings', 'https://www.filthykings.com', 'Filthy Kings', _ALIASES['Filthy Kings']),
-    _site('Mommys Boy', 'http://www.mommysboy.com', "Mommy's Boy"),
-    _site('Model Time', 'http://www.modeltime.com', 'Model Time'),
-    _site('Out of the Family', 'http://www.outofthefamily.com', 'Out of the Family'),
-    _site('Give Me Teens', 'http://www.givemeteens.com', 'Give Me Teens'),
-    _site('White Ghetto', 'http://www.whiteghetto.com', 'White Ghetto'),
-    _site('Silvia Saint', 'http://www.silviasaint.com', 'Silvia Saint'),
-    _site('Cumshot Oasis', 'http://www.cumshotoasis.com', 'Cumshot Oasis'),
-    _site('Lethal Hardcore', 'https://www.lethalhardcore.com', 'Lethal Hardcore'),
-    _site('Lethal Hardcore', 'https://www.lethalhardcorevr.com', 'Lethal Hardcore VR'),
-    _site('Touch My Wife', 'http://www.touchmywife.com', 'Touch My Wife'),
-    _site('Taboo Heat', 'http://www.tabooheat.com', 'Taboo Heat'),
-    _site('B Skow', 'http://www.bskow.com', 'B Skow'),
+    PROVIDER.site('21Naturals', sub_group='21Naturals', base_url='https://www.21naturals.com', aliases=['21FootArt', '21EroticAnal']),
+    PROVIDER.site('Evil Angel', sub_group='Evil Angel', base_url='https://www.evilangel.com', aliases=['Blackmailed']),
+    PROVIDER.site('HardX', sub_group='XEmpire', base_url='https://www.xempire.com', aliases=['EroticaX', 'DarkX', 'LesbianX', 'AllBlackX']),
+    PROVIDER.site('GloryHoleSecrets', sub_group='GloryHoleSecrets', base_url='http://www.gloryholesecrets.com'),
+    PROVIDER.site('Pure Taboo', sub_group='Pure Taboo', base_url='https://www.puretaboo.com'),
+    PROVIDER.site(
+        'Throated',
+        sub_group='Blowpass',
+        base_url='https://www.blowpass.com',
+        aliases=['Mommy Blows Best', 'Only Teen Blowjobs', '1000 Facials', 'Immoral Live', 'My XXX Pass'],
+    ),
+    PROVIDER.site(
+        'Fantasy Massage',
+        sub_group='Fantasy Massage',
+        base_url='https://www.fantasymassage.com',
+        aliases=['Nuru Massage', 'All Girl Massage', 'Soapy Massage', 'Milking Table', 'Massage Parlor', 'Tricky Spa', 'POV Massage'],
+    ),
+    PROVIDER.site('21Sextury', sub_group='21Sextury', base_url='http://www.21sextury.com', aliases=_ALIASES['21Sextury']),
+    PROVIDER.site('Girlfriends Films', sub_group='Girlfriends Films', base_url='http://www.girlfriendsfilms.com'),
+    PROVIDER.site('Burning Angel', sub_group='Burning Angel', base_url='http://www.burningangel.com'),
+    PROVIDER.site('Pretty Dirty', sub_group='Pretty Dirty', base_url='http://www.prettydirty.com'),
+    PROVIDER.site('Devils Film', sub_group='Fame Digital', base_url='http://www.devilsfilm.com'),
+    PROVIDER.site('Peter North', sub_group='Fame Digital', base_url='http://www.peternorth.com'),
+    PROVIDER.site('Rocco Siffredi', sub_group='Fame Digital', base_url='http://www.roccosiffredi.com'),
+    PROVIDER.site('Dogfart', sub_group='Dogfart Network', base_url='https://www.dogfartnetwork.com', aliases=_ALIASES['Dogfart']),
+    PROVIDER.site(
+        '21Sextreme',
+        sub_group='21Sextreme',
+        base_url='http://www.21sextreme.com',
+        aliases=['Lusty Grandmas', 'Grandpas Fuck Teens', 'Teach Me Fisting', 'Zoliboy', 'Dominated Girls'],
+    ),
+    PROVIDER.site('Joymii', sub_group='Joymii', base_url='https://www.joymii.com'),
+    PROVIDER.site('Gangbang Creampie', sub_group='Gangbang Creampie', base_url='https://www.gangbangcreampie.com'),
+    PROVIDER.site('Zero Tolerance', sub_group='Zero Tolerance', base_url='http://www.zerotolerancefilms.com'),
+    PROVIDER.site('Wicked', sub_group='Wicked', base_url='https://www.wicked.com'),
+    PROVIDER.site('Adult Time', sub_group='Adult Time', base_url='https://adulttime.com', aliases=_ALIASES['Adult Time']),
+    PROVIDER.site('Gender X', sub_group='Gender X', base_url='https://www.genderxfilms.com'),
+    PROVIDER.site('My Pervy Family', sub_group='My Pervy Family', base_url='https://www.mypervyfamily.com'),
+    PROVIDER.site('Filthy Kings', sub_group='Filthy Kings', base_url='https://www.filthykings.com', aliases=_ALIASES['Filthy Kings']),
+    PROVIDER.site("Mommy's Boy", sub_group='Mommys Boy', base_url='http://www.mommysboy.com'),
+    PROVIDER.site('Model Time', sub_group='Model Time', base_url='http://www.modeltime.com'),
+    PROVIDER.site('Out of the Family', sub_group='Out of the Family', base_url='http://www.outofthefamily.com'),
+    PROVIDER.site('Give Me Teens', sub_group='Give Me Teens', base_url='http://www.givemeteens.com'),
+    PROVIDER.site('White Ghetto', sub_group='White Ghetto', base_url='http://www.whiteghetto.com'),
+    PROVIDER.site('Silvia Saint', sub_group='Silvia Saint', base_url='http://www.silviasaint.com'),
+    PROVIDER.site('Cumshot Oasis', sub_group='Cumshot Oasis', base_url='http://www.cumshotoasis.com'),
+    PROVIDER.site('Lethal Hardcore', sub_group='Lethal Hardcore', base_url='https://www.lethalhardcore.com'),
+    PROVIDER.site('Lethal Hardcore VR', sub_group='Lethal Hardcore', base_url='https://www.lethalhardcorevr.com'),
+    PROVIDER.site('Touch My Wife', sub_group='Touch My Wife', base_url='http://www.touchmywife.com'),
+    PROVIDER.site('Taboo Heat', sub_group='Taboo Heat', base_url='http://www.tabooheat.com'),
+    PROVIDER.site('B Skow', sub_group='B Skow', base_url='http://www.bskow.com'),
 ]

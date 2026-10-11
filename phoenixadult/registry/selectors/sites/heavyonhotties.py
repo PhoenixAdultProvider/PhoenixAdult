@@ -1,22 +1,15 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Heavy on Hotties'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 
+PROVIDER = Provider.from_headers(__name__)
+
 SITES: list[SiteInfo] = [
-    make_site(
-        name=PROVIDER_NAME,
-        provider_name=PROVIDER_NAME,
-        base_url='https://www.heavyonhotties.com',
-        search_path='/movies/{query}',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='heavyonhotties',
-    ),
+    PROVIDER.site('Heavy on Hotties', host='www.heavyonhotties.com', search_path='/movies/{query}'),
 ]

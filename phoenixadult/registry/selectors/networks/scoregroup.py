@@ -1,43 +1,30 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import BypassName, ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'The Score Group'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 PROVIDER_BYPASS: list[BypassName] = ['Impersonate', 'FlareSolverr']
+PROVIDER_DATA18_ENRICHMENT = True
 
-
-def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://www.{host}',
-        search_path=video_list_path,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        bypass=PROVIDER_BYPASS,
-        scraper_type='scoregroup',
-        data18_enrichment=True,
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Porn Mega Load', 'pornmegaload.com', '/hd-porn-scenes/'),
-    _site('Naughty Mag', 'naughtymag.com', '/amateur-videos/'),
-    _site('XL Girls', 'xlgirls.com', '/bbw-videos/'),
-    _site('Bootylicious Mag', 'bootyliciousmag.com', '/big-booty-videos/'),
-    _site('50 Plus MILFs', '50plusmilfs.com', '/xxx-milf-videos/'),
-    _site('60 Plus MILFs', '60plusmilfs.com', '/xxx-granny-videos/'),
-    _site('18 Eighteen', '18eighteen.com', '/xxx-teen-videos/'),
-    _site('Big Boob Bundle', 'bigboobbundle.com', '/videos/'),
-    _site('Leg Sex', 'legsex.com', '/foot-fetish-videos/'),
-    _site('Scoreland', 'scoreland.com', '/big-boob-videos/'),
-    _site('Christy Marks', 'christymarks.com', '/videos/'),
-    _site('ScorelandTwo', 'scoreland2.com', '/big-boob-scenes/'),
-    _site('ScoreVideos', 'scorevideos.com', '/porn-videos/'),
-    _site('Score Classics', 'scoreclassics.com', '/classic-boob-videos/'),
+    PROVIDER.site('Porn Mega Load', host='www.pornmegaload.com', search_path='/hd-porn-scenes/'),
+    PROVIDER.site('Naughty Mag', host='www.naughtymag.com', search_path='/amateur-videos/'),
+    PROVIDER.site('XL Girls', host='www.xlgirls.com', search_path='/bbw-videos/'),
+    PROVIDER.site('Bootylicious Mag', host='www.bootyliciousmag.com', search_path='/big-booty-videos/'),
+    PROVIDER.site('50 Plus MILFs', host='www.50plusmilfs.com', search_path='/xxx-milf-videos/'),
+    PROVIDER.site('60 Plus MILFs', host='www.60plusmilfs.com', search_path='/xxx-granny-videos/'),
+    PROVIDER.site('18 Eighteen', host='www.18eighteen.com', search_path='/xxx-teen-videos/'),
+    PROVIDER.site('Big Boob Bundle', host='www.bigboobbundle.com', search_path='/videos/'),
+    PROVIDER.site('Leg Sex', host='www.legsex.com', search_path='/foot-fetish-videos/'),
+    PROVIDER.site('Scoreland', host='www.scoreland.com', search_path='/big-boob-videos/'),
+    PROVIDER.site('Christy Marks', host='www.christymarks.com', search_path='/videos/'),
+    PROVIDER.site('ScorelandTwo', host='www.scoreland2.com', search_path='/big-boob-scenes/'),
+    PROVIDER.site('ScoreVideos', host='www.scorevideos.com', search_path='/porn-videos/'),
+    PROVIDER.site('Score Classics', host='www.scoreclassics.com', search_path='/classic-boob-videos/'),
 ]

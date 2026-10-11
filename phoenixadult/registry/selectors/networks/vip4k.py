@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'VIP4K'
 PROVIDER_BASE_URL = 'https://vip4k.com'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SEARCH_PATH = '/en/search/{query}'
 
 _NAMES = [
     'Tutor 4K',
@@ -33,18 +34,6 @@ _NAMES = [
     'Serve 4K',
 ]
 
+PROVIDER = Provider.from_headers(__name__)
 
-def _site(name: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=PROVIDER_BASE_URL,
-        search_path='/en/search/{query}',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='vip4k',
-    )
-
-
-SITES: list[SiteInfo] = [_site(n) for n in _NAMES]
+SITES: list[SiteInfo] = [PROVIDER.site(n) for n in _NAMES]

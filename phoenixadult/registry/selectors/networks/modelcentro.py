@@ -1,46 +1,35 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'ModelCentro Network'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SCENE_TEMPLATE = '{base}/scene/{id}/'
+PROVIDER_SEARCH_PATH = '/sapi/'
 
-
-def _site(name: str, base_url: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=base_url,
-        search_path='/sapi/',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='modelcentro',
-        direct_url_template='{base}/scene/{id}/',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Fall in Lovia', 'https://www.fallinlovia.com'),
-    _site('Romi Rain', 'https://www.romirain.com'),
-    _site('Jerk Off with Me', 'https://www.jerkoffwithme.com'),
-    _site('Get Your Knees Dirty', 'https://www.getyourkneesdirty.com'),
-    _site('Nude Beauties', 'https://nudebeauties.eu'),
-    _site('Dani Daniels', 'https://danidaniels.com'),
-    _site('Official Chloe Toy', 'https://officialchloetoy.com'),
-    _site('Yummy Couple', 'https://friends.yummycouple.com'),
-    _site('Katya Clover', 'https://www.katya-clover.com'),
-    _site('De Nude Art', 'https://denudeart.com'),
-    _site('Lisey Sweet', 'https://theliseysweet.com'),
-    _site('My Life in Miami', 'https://mylifeinmiami.com'),
-    _site('Gina Gerson', 'https://www.ginagerson.xxx'),
-    _site('Vina Sky XXX', 'https://www.vinaskyxxx.com'),
-    _site('Bruce and Morgan', 'https://www.bruceandmorgan.net'),
-    _site('Vicki Valkyrie', 'https://www.vickivalkyrie.com'),
-    _site('Dillion Nation', 'https://dillionation.com'),
-    _site('Lilu Moon', 'https://www.lilumoonx.com'),
-    _site('SlutInspection', 'https://www.slutinspection.com'),
+    PROVIDER.site('Fall in Lovia', host='www.fallinlovia.com'),
+    PROVIDER.site('Romi Rain', host='www.romirain.com'),
+    PROVIDER.site('Jerk Off with Me', host='www.jerkoffwithme.com'),
+    PROVIDER.site('Get Your Knees Dirty', host='www.getyourkneesdirty.com'),
+    PROVIDER.site('Nude Beauties', host='nudebeauties.eu'),
+    PROVIDER.site('Dani Daniels', host='danidaniels.com'),
+    PROVIDER.site('Official Chloe Toy', host='officialchloetoy.com'),
+    PROVIDER.site('Yummy Couple', host='friends.yummycouple.com'),
+    PROVIDER.site('Katya Clover', host='www.katya-clover.com'),
+    PROVIDER.site('De Nude Art', host='denudeart.com'),
+    PROVIDER.site('Lisey Sweet', host='theliseysweet.com'),
+    PROVIDER.site('My Life in Miami', host='mylifeinmiami.com'),
+    PROVIDER.site('Gina Gerson', host='www.ginagerson.xxx'),
+    PROVIDER.site('Vina Sky XXX', host='www.vinaskyxxx.com'),
+    PROVIDER.site('Bruce and Morgan', host='www.bruceandmorgan.net'),
+    PROVIDER.site('Vicki Valkyrie', host='www.vickivalkyrie.com'),
+    PROVIDER.site('Dillion Nation', host='dillionation.com'),
+    PROVIDER.site('Lilu Moon', host='www.lilumoonx.com'),
+    PROVIDER.site('SlutInspection', host='www.slutinspection.com'),
 ]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Naughty America'
 PROVIDER_BASE_URL = 'https://www.naughtyamerica.com'
@@ -9,6 +9,8 @@ PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 PROVIDER_SEARCH_PATH = '/search?term={query}'
+PROVIDER_DATA18_ENRICHMENT = True
+PROVIDER_SCENE_TEMPLATE = '{base}/{head}'
 
 _NAMES = [
     '2 Chicks Same Time',
@@ -102,20 +104,6 @@ _NAMES = [
     'Wives on Vacation',
 ]
 
+PROVIDER = Provider.from_headers(__name__)
 
-def _site(name: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=PROVIDER_BASE_URL,
-        search_path=PROVIDER_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='naughtyamerica',
-        data18_enrichment=True,
-        direct_url_template='{base}/{head}',
-    )
-
-
-SITES: list[SiteInfo] = [_site(n) for n in _NAMES]
+SITES: list[SiteInfo] = [PROVIDER.site(n) for n in _NAMES]

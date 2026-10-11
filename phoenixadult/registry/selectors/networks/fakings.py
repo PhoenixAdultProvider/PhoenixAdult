@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 from phoenixadult.utils.helpers.data_files import load_data
 
 PROVIDER_NAME = 'FAKings'
@@ -11,16 +11,8 @@ PROVIDER_SEARCH_NOTES = ''
 
 _ALIASES: list[str] = load_data(__file__, 'fakings_aliases')
 
+PROVIDER = Provider.from_headers(__name__)
+
 SITES: list[SiteInfo] = [
-    make_site(
-        name=PROVIDER_NAME,
-        provider_name=PROVIDER_NAME,
-        base_url='https://www.fakings.com',
-        search_path='/en/buscar/{query}',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        aliases=_ALIASES,
-        scraper_type='fakings',
-    ),
+    PROVIDER.site(PROVIDER_NAME, host='www.fakings.com', search_path='/en/buscar/{query}', aliases=_ALIASES),
 ]

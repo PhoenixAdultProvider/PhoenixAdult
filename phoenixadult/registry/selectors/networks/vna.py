@@ -1,66 +1,55 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'VNA Network'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SEARCH_PATH = '/videos/'
 
-
-def _site(name: str, host: str, search_path: str = '/videos/') -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path=search_path,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='vna',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('All Anal All the Time', 'allanalallthetime.com'),
-    _site('Kimber Lee Live', 'kimberleelive.com'),
-    _site('Vicky at Home', 'vickyathome.com', '/milf-videos/'),
-    _site('Shanda Fay', 'shandafay.com'),
-    _site('Deauxma Live', 'deauxmalive.com'),
-    _site('Sara Jay', 'sarajay.com'),
-    _site('Carmen Valentina', 'carmenvalentina.com'),
-    _site('Charlee Chase Live', 'charleechaselive.com'),
-    _site('Gabby Quinteros', 'gabbyquinteros.com'),
-    _site('Angelina Castro Live', 'angelinacastrolive.com'),
-    _site('Julia Ann Live', 'juliaannlive.com'),
-    _site('Nikki Benz', 'nikkibenz.com'),
-    _site('Sunny Lane Live', 'sunnylanelive.com'),
-    _site('Puma Swede XXX', 'pumaswedexxx.com'),
-    _site('Sophie Dee Live', 'sophiedeelive.com'),
-    _site('Its Cleo Live', 'itscleolive.com'),
-    _site('Maggie Green Live', 'maggiegreenlive.com'),
-    _site('Bobbi Eden Live', 'bobbiedenlive.com'),
-    _site('Eva Lin Live', 'evalin.live'),
-    _site('Tasha Reign', 'tashareign.com'),
-    _site('Jelena Jensen', 'jelenajensen.com'),
-    _site('Penny Pax Live', 'pennypaxlive.com'),
-    _site('Sex My Wife', 'sexmywife.com'),
-    _site('Rubber Doll', 'rubberdoll.net'),
-    _site('Fucked Feet', 'fuckedfeet.com'),
-    _site('Nina Kayy', 'ninakayy.com'),
-    _site('Rome Major', 'romemajor.com'),
-    _site('Siri', 'siripornstar.com'),
-    _site('Kink305', 'kink305.com'),
-    _site('Foxxed Up', 'foxxedup.com'),
-    _site('Natalia Starr', 'nataliastarr.com'),
-    _site('Samantha Grace', 'samanthagrace.com'),
-    _site('Rachel Storms XXX', 'rachelstormsxxx.com'),
-    _site('Kendra James', 'kendrajames.com'),
-    _site('Maxine X', 'maxinex.com'),
-    _site('POV Mania', 'povmania.com'),
-    _site('Girl Girl Mania', 'girlgirlmania.com'),
-    _site('Kayla Paige Live', 'kaylapaigelive.com'),
-    _site('Women by Julia Ann', 'womenbyjuliaann.com'),
-    _site('VNA Live', 'vnalive.com'),
+    PROVIDER.site('All Anal All the Time', host='allanalallthetime.com'),
+    PROVIDER.site('Kimber Lee Live', host='kimberleelive.com'),
+    PROVIDER.site('Vicky at Home', host='vickyathome.com', search_path='/milf-videos/'),
+    PROVIDER.site('Shanda Fay', host='shandafay.com'),
+    PROVIDER.site('Deauxma Live', host='deauxmalive.com'),
+    PROVIDER.site('Sara Jay', host='sarajay.com'),
+    PROVIDER.site('Carmen Valentina', host='carmenvalentina.com'),
+    PROVIDER.site('Charlee Chase Live', host='charleechaselive.com'),
+    PROVIDER.site('Gabby Quinteros', host='gabbyquinteros.com'),
+    PROVIDER.site('Angelina Castro Live', host='angelinacastrolive.com'),
+    PROVIDER.site('Julia Ann Live', host='juliaannlive.com'),
+    PROVIDER.site('Nikki Benz', host='nikkibenz.com'),
+    PROVIDER.site('Sunny Lane Live', host='sunnylanelive.com'),
+    PROVIDER.site('Puma Swede XXX', host='pumaswedexxx.com'),
+    PROVIDER.site('Sophie Dee Live', host='sophiedeelive.com'),
+    PROVIDER.site('Its Cleo Live', host='itscleolive.com'),
+    PROVIDER.site('Maggie Green Live', host='maggiegreenlive.com'),
+    PROVIDER.site('Bobbi Eden Live', host='bobbiedenlive.com'),
+    PROVIDER.site('Eva Lin Live', host='evalin.live'),
+    PROVIDER.site('Tasha Reign', host='tashareign.com'),
+    PROVIDER.site('Jelena Jensen', host='jelenajensen.com'),
+    PROVIDER.site('Penny Pax Live', host='pennypaxlive.com'),
+    PROVIDER.site('Sex My Wife', host='sexmywife.com'),
+    PROVIDER.site('Rubber Doll', host='rubberdoll.net'),
+    PROVIDER.site('Fucked Feet', host='fuckedfeet.com'),
+    PROVIDER.site('Nina Kayy', host='ninakayy.com'),
+    PROVIDER.site('Rome Major', host='romemajor.com'),
+    PROVIDER.site('Siri', host='siripornstar.com'),
+    PROVIDER.site('Kink305', host='kink305.com'),
+    PROVIDER.site('Foxxed Up', host='foxxedup.com'),
+    PROVIDER.site('Natalia Starr', host='nataliastarr.com'),
+    PROVIDER.site('Samantha Grace', host='samanthagrace.com'),
+    PROVIDER.site('Rachel Storms XXX', host='rachelstormsxxx.com'),
+    PROVIDER.site('Kendra James', host='kendrajames.com'),
+    PROVIDER.site('Maxine X', host='maxinex.com'),
+    PROVIDER.site('POV Mania', host='povmania.com'),
+    PROVIDER.site('Girl Girl Mania', host='girlgirlmania.com'),
+    PROVIDER.site('Kayla Paige Live', host='kaylapaigelive.com'),
+    PROVIDER.site('Women by Julia Ann', host='womenbyjuliaann.com'),
+    PROVIDER.site('VNA Live', host='vnalive.com'),
 ]

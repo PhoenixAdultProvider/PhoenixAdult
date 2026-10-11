@@ -1,60 +1,49 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'PornCZ'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = 'Title or Actor'
+PROVIDER_IMAGE_REFERERS = ['baseURL']
+PROVIDER_SEARCH_PATH = '/en/search?q={query}'
 
-
-def _site(name: str, host: str) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path='/en/search?q={query}',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        image_referers=['baseURL'],
-        scraper_type='porncz',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Czech Sex Casting', 'www.czechsexcasting.com'),
-    _site('Sex with Muslims', 'www.sexwithmuslims.com'),
-    _site('Sex in Taxi', 'www.sexintaxi.com'),
-    _site('VR Porn CZ', 'www.vrporncz.com'),
-    _site('Fucking Street', 'www.fuckingstreet.com'),
-    _site('Hunter POV', 'www.hunterpov.com'),
-    _site('Czech Gypsies', 'www.czechgypsies.com'),
-    _site('Dick on Trip', 'www.dickontrip.com'),
-    _site('Czech Boobs', 'www.czechboobs.com'),
-    _site('Czech Deviant', 'www.czechdeviant.com'),
-    _site('Amateri Premium', 'www.amateripremium.com'),
-    _site('Fucking Office', 'www.fuckingoffice.com'),
-    _site('Czech Executor', 'www.czechexecutor.com'),
-    _site('Czech Hitchhikers', 'www.czechhitchhikers.com'),
-    _site('Girls Take Away', 'www.girlstakeaway.com'),
-    _site('Czech Escort Girls', 'www.czechescortgirls.com'),
-    _site('Horny Doctor', 'www.hornydoctor.com'),
-    _site('Lady Dee', 'www.ladydee.com'),
-    _site('Teen From Bohemia', 'www.teenfrombohemia.com'),
-    _site('Czech Real Dolls', 'www.czechrealdolls.com'),
-    _site('Amateur From Bohemia', 'www.amateursfrombohemia.com'),
-    _site('Czech Anal Sex', 'www.czechanalsex.com'),
-    _site('Dellia Twins', 'www.dellaitwins.com'),
-    _site('Chloe Lamour', 'www.chloelamour.com'),
-    _site('Public From Bohemia', 'www.publicfrombohemia.com'),
-    _site('Susan Ayn', 'www.susanayn.com'),
-    _site('Horny Girls CZ', 'www.hornygirlscz.com'),
-    _site('Czech Sex Party', 'www.czechsexparty.com'),
-    _site('Retro Porn CZ', 'www.retroporncz.com'),
-    _site('Boys Fuck MILFs', 'www.boysfuckmilfs.com'),
-    _site('Czech Bi Porn', 'www.czechbiporn.com'),
-    _site('Czech Shemale', 'www.czechshemale.com'),
-    _site('Czech Gay City', 'www.czechgaycity.com'),
+    PROVIDER.site('Czech Sex Casting', host='www.czechsexcasting.com'),
+    PROVIDER.site('Sex with Muslims', host='www.sexwithmuslims.com'),
+    PROVIDER.site('Sex in Taxi', host='www.sexintaxi.com'),
+    PROVIDER.site('VR Porn CZ', host='www.vrporncz.com'),
+    PROVIDER.site('Fucking Street', host='www.fuckingstreet.com'),
+    PROVIDER.site('Hunter POV', host='www.hunterpov.com'),
+    PROVIDER.site('Czech Gypsies', host='www.czechgypsies.com'),
+    PROVIDER.site('Dick on Trip', host='www.dickontrip.com'),
+    PROVIDER.site('Czech Boobs', host='www.czechboobs.com'),
+    PROVIDER.site('Czech Deviant', host='www.czechdeviant.com'),
+    PROVIDER.site('Amateri Premium', host='www.amateripremium.com'),
+    PROVIDER.site('Fucking Office', host='www.fuckingoffice.com'),
+    PROVIDER.site('Czech Executor', host='www.czechexecutor.com'),
+    PROVIDER.site('Czech Hitchhikers', host='www.czechhitchhikers.com'),
+    PROVIDER.site('Girls Take Away', host='www.girlstakeaway.com'),
+    PROVIDER.site('Czech Escort Girls', host='www.czechescortgirls.com'),
+    PROVIDER.site('Horny Doctor', host='www.hornydoctor.com'),
+    PROVIDER.site('Lady Dee', host='www.ladydee.com'),
+    PROVIDER.site('Teen From Bohemia', host='www.teenfrombohemia.com'),
+    PROVIDER.site('Czech Real Dolls', host='www.czechrealdolls.com'),
+    PROVIDER.site('Amateur From Bohemia', host='www.amateursfrombohemia.com'),
+    PROVIDER.site('Czech Anal Sex', host='www.czechanalsex.com'),
+    PROVIDER.site('Dellia Twins', host='www.dellaitwins.com'),
+    PROVIDER.site('Chloe Lamour', host='www.chloelamour.com'),
+    PROVIDER.site('Public From Bohemia', host='www.publicfrombohemia.com'),
+    PROVIDER.site('Susan Ayn', host='www.susanayn.com'),
+    PROVIDER.site('Horny Girls CZ', host='www.hornygirlscz.com'),
+    PROVIDER.site('Czech Sex Party', host='www.czechsexparty.com'),
+    PROVIDER.site('Retro Porn CZ', host='www.retroporncz.com'),
+    PROVIDER.site('Boys Fuck MILFs', host='www.boysfuckmilfs.com'),
+    PROVIDER.site('Czech Bi Porn', host='www.czechbiporn.com'),
+    PROVIDER.site('Czech Shemale', host='www.czechshemale.com'),
+    PROVIDER.site('Czech Gay City', host='www.czechgaycity.com'),
 ]

@@ -12,24 +12,19 @@ _KINDS = ('sites', 'networks', 'aggregators')
 _SELECTOR = """from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = '@NAME@'
+PROVIDER_BASE_URL = '@BASE_URL@'
 PROVIDER_CONTENT_TYPE: ContentType = '@CONTENT_TYPE@'
 PROVIDER_SEARCH_METHOD: SearchMethod = '@SEARCH_METHOD@'
 PROVIDER_SEARCH_NOTES = '@SEARCH_NOTES@'
+PROVIDER_SEARCH_PATH = '@SEARCH_PATH@'
+@SCRAPER_TYPE_HEADER@
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    make_site(
-        name=PROVIDER_NAME,
-        provider_name=PROVIDER_NAME,
-        base_url='@BASE_URL@',
-        search_path='@SEARCH_PATH@',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='@SCRAPER_TYPE@',
-    ),
+    PROVIDER.site(PROVIDER_NAME),
 ]
 """
 
@@ -188,6 +183,7 @@ def main() -> None:
         'CLASS': _class_name(args.name),
         'KIND': args.kind,
         'MODULE': module,
+        'SCRAPER_TYPE_HEADER': f"PROVIDER_SCRAPER_TYPE = '{scraper_type}'\n" if module != scraper_type else '',
         'CLASSVAR_IMPORT': 'from typing import ClassVar\n' if module != scraper_type else '',
         'SCRAPER_TYPE_LINE': f"    scraper_type: ClassVar[str] = '{scraper_type}'\n\n" if module != scraper_type else '',
     }

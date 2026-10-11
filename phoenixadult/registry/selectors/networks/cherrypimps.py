@@ -1,45 +1,33 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Cherry Pimps'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 PROVIDER_SEARCH_PATH = '/search.php?query={query}'
-_DEFAULT_BASE = 'https://www.cherrypimps.com'
+PROVIDER_BASE_URL = 'https://www.cherrypimps.com'
 
-
-def _site(name: str, base_url: str = _DEFAULT_BASE) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=base_url,
-        search_path=PROVIDER_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='cherrypimps',
-    )
-
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    _site('Cherry Pimps'),
-    _site('Wild on Cam', 'https://www.wildoncam.com'),
-    _site('Cherry Spot'),
-    _site('Britney Amber'),
-    _site('Confessions.XXX'),
-    _site('Cucked.XXX'),
-    _site('Drilled.XXX'),
-    _site('BCM.XXX'),
-    _site('Petite.XXX'),
-    _site('Family'),
-    _site('Busted'),
-    _site('Cheese.XXX'),
-    _site('Femme'),
-    _site('Fresh'),
-    _site('Taboo'),
-    _site('Bush'),
-    _site('Ginger'),
+    PROVIDER.site('Cherry Pimps'),
+    PROVIDER.site('Wild on Cam', base_url='https://www.wildoncam.com'),
+    PROVIDER.site('Cherry Spot'),
+    PROVIDER.site('Britney Amber'),
+    PROVIDER.site('Confessions.XXX'),
+    PROVIDER.site('Cucked.XXX'),
+    PROVIDER.site('Drilled.XXX'),
+    PROVIDER.site('BCM.XXX'),
+    PROVIDER.site('Petite.XXX'),
+    PROVIDER.site('Family'),
+    PROVIDER.site('Busted'),
+    PROVIDER.site('Cheese.XXX'),
+    PROVIDER.site('Femme'),
+    PROVIDER.site('Fresh'),
+    PROVIDER.site('Taboo'),
+    PROVIDER.site('Bush'),
+    PROVIDER.site('Ginger'),
 ]

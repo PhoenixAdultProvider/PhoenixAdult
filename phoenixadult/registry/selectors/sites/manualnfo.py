@@ -1,24 +1,16 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Manual NFO'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'exact'
 PROVIDER_SEARCH_NOTES = 'NFO basename'
+PROVIDER_DATA18_ENRICHMENT = True
+
+PROVIDER = Provider.from_headers(__name__)
 
 SITES: list[SiteInfo] = [
-    make_site(
-        name=PROVIDER_NAME,
-        provider_name=PROVIDER_NAME,
-        base_url='',
-        search_path='',
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        aliases=['manual'],
-        scraper_type='manualnfo',
-        data18_enrichment=True,
-    ),
+    PROVIDER.site('Manual NFO', base_url='', search_path='', aliases=['manual']),
 ]

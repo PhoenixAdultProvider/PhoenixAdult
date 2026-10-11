@@ -3,30 +3,21 @@ from __future__ import annotations
 from dataclasses import replace
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Nubiles'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
+PROVIDER_SEARCH_PATH = '/video/gallery/'
+PROVIDER_SCENE_TEMPLATE = '{base}/video/watch/{head}'
+PROVIDER_DATA18_ENRICHMENT = True
+
+PROVIDER = Provider.from_headers(__name__)
+
 NUBILES_PORN = 'Nubiles Porn'
 NUBILES_FILMS = 'Nubile Films'
 MOM_LOVER = 'Mom Lover'
-
-
-def _site(name: str, base_url: str, *, search_path: str = '/video/gallery/', data18: bool = True) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=base_url,
-        search_path=search_path,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='nubiles',
-        data18_enrichment=data18,
-        direct_url_template='{base}/video/watch/{head}',
-    )
 
 
 def _group(sub_group: str, sites: list[SiteInfo]) -> list[SiteInfo]:
@@ -34,62 +25,62 @@ def _group(sub_group: str, sites: list[SiteInfo]) -> list[SiteInfo]:
 
 
 NUBILES_PORN_SITES = [
-    _site('Bad Teens Punished', 'https://badteenspunished.com'),
-    _site('Bounty Hunter Porn', 'https://bountyhunterporn.com'),
-    _site('Caught My Coach', 'https://caughtmycoach.com'),
-    _site('Cheating Sis', 'https://cheatingsis.com'),
-    _site('Cum Swapping Sis', 'https://cumswappingsis.com'),
-    _site("Daddy's Lil Angel", 'https://daddyslilangel.com'),
-    _site('Detention Girls', 'https://detentiongirls.com'),
-    _site('Driver XXX', 'https://driverxxx.com'),
-    _site('Family Swap', 'https://familyswap.xxx'),
-    _site('Moms Teach Sex', 'https://momsteachsex.com'),
-    _site('My Family Pies', 'https://myfamilypies.com'),
-    _site('Nubiles.net', 'https://nubiles.net'),
-    _site('Nubiles Casting', 'https://nubiles-casting.com'),
-    _site('Nubiles ET', 'https://nubileset.com'),
-    _site('Nubiles Porn', 'https://nubiles-porn.com'),
-    _site('Nubiles Unscripted', 'https://nubilesunscripted.com'),
-    _site('Petite Ballerinas Fucked', 'https://petiteballerinasfucked.com'),
-    _site('Petite HD Porn', 'https://petitehdporn.com'),
-    _site('Princess Cum', 'https://princesscum.com'),
-    _site('Reality Sis', 'https://realitysis.com'),
-    _site("She's Breeding Material", 'https://shesbreedingmaterial.com'),
-    _site('Smashed', 'https://smashed.xxx'),
-    _site('Step Siblings Caught', 'https://stepsiblingscaught.com'),
-    _site('Teacher Fucks Teens', 'https://teacherfucksteens.com'),
-    _site('Younger Mommy', 'https://youngermommy.com'),
+    PROVIDER.site('Bad Teens Punished', host='badteenspunished.com'),
+    PROVIDER.site('Bounty Hunter Porn', host='bountyhunterporn.com'),
+    PROVIDER.site('Caught My Coach', host='caughtmycoach.com'),
+    PROVIDER.site('Cheating Sis', host='cheatingsis.com'),
+    PROVIDER.site('Cum Swapping Sis', host='cumswappingsis.com'),
+    PROVIDER.site("Daddy's Lil Angel", host='daddyslilangel.com'),
+    PROVIDER.site('Detention Girls', host='detentiongirls.com'),
+    PROVIDER.site('Driver XXX', host='driverxxx.com'),
+    PROVIDER.site('Family Swap', host='familyswap.xxx'),
+    PROVIDER.site('Moms Teach Sex', host='momsteachsex.com'),
+    PROVIDER.site('My Family Pies', host='myfamilypies.com'),
+    PROVIDER.site('Nubiles.net', host='nubiles.net'),
+    PROVIDER.site('Nubiles Casting', host='nubiles-casting.com'),
+    PROVIDER.site('Nubiles ET', host='nubileset.com'),
+    PROVIDER.site('Nubiles Porn', host='nubiles-porn.com'),
+    PROVIDER.site('Nubiles Unscripted', host='nubilesunscripted.com'),
+    PROVIDER.site('Petite Ballerinas Fucked', host='petiteballerinasfucked.com'),
+    PROVIDER.site('Petite HD Porn', host='petitehdporn.com'),
+    PROVIDER.site('Princess Cum', host='princesscum.com'),
+    PROVIDER.site('Reality Sis', host='realitysis.com'),
+    PROVIDER.site("She's Breeding Material", host='shesbreedingmaterial.com'),
+    PROVIDER.site('Smashed', host='smashed.xxx'),
+    PROVIDER.site('Step Siblings Caught', host='stepsiblingscaught.com'),
+    PROVIDER.site('Teacher Fucks Teens', host='teacherfucksteens.com'),
+    PROVIDER.site('Younger Mommy', host='youngermommy.com'),
 ]
 
 MOM_LOVER_SITES = [
-    _site('Bratty MILF', 'https://brattymilf.com'),
-    _site('Cheating Mommy', 'https://cheatingmommy.com'),
-    _site('Dating My Stepson', 'https://datingmystepson.com'),
-    _site('Double Pies', 'https://doublepies.com'),
-    _site("I'm Not Your Mommy", 'https://imnotyourmommy.com'),
-    _site('MILF Coach', 'https://milfcoach.com'),
-    _site('Mom Lover', 'https://momlover.com'),
-    _site('Mom Swapped', 'https://momswapped.com'),
-    _site('Mom Wants Creampie', 'https://momwantscreampie.com'),
-    _site('Mom Wants to Breed', 'https://momwantstobreed.com'),
-    _site("Mom's Boy Toy", 'https://momsboytoy.com'),
-    _site("Mom's Family Secrets", 'https://momsfamilysecrets.com'),
-    _site("Mom's Tight", 'https://momstight.com'),
+    PROVIDER.site('Bratty MILF', host='brattymilf.com'),
+    PROVIDER.site('Cheating Mommy', host='cheatingmommy.com'),
+    PROVIDER.site('Dating My Stepson', host='datingmystepson.com'),
+    PROVIDER.site('Double Pies', host='doublepies.com'),
+    PROVIDER.site("I'm Not Your Mommy", host='imnotyourmommy.com'),
+    PROVIDER.site('MILF Coach', host='milfcoach.com'),
+    PROVIDER.site('Mom Lover', host='momlover.com'),
+    PROVIDER.site('Mom Swapped', host='momswapped.com'),
+    PROVIDER.site('Mom Wants Creampie', host='momwantscreampie.com'),
+    PROVIDER.site('Mom Wants to Breed', host='momwantstobreed.com'),
+    PROVIDER.site("Mom's Boy Toy", host='momsboytoy.com'),
+    PROVIDER.site("Mom's Family Secrets", host='momsfamilysecrets.com'),
+    PROVIDER.site("Mom's Tight", host='momstight.com'),
 ]
 
 NUBILES_FILMS_SITES = [
-    _site('Girls Only Porn', 'https://girlsonlyporn.com', search_path='/video/watch/', data18=False),
-    _site('Hot Crazy Mess', 'https://hotcrazymess.com', search_path='/video/'),
-    _site('NF Busty', 'https://nfbusty.com', search_path='/video/'),
-    _site('Nubile Films', 'https://nubilefilms.com'),
-    _site('That Sitcom Show', 'https://thatsitcomshow.com', search_path='/video/'),
+    PROVIDER.site('Girls Only Porn', host='girlsonlyporn.com', search_path='/video/watch/', data18_enrichment=False),
+    PROVIDER.site('Hot Crazy Mess', host='hotcrazymess.com', search_path='/video/'),
+    PROVIDER.site('NF Busty', host='nfbusty.com', search_path='/video/'),
+    PROVIDER.site('Nubile Films', host='nubilefilms.com'),
+    PROVIDER.site('That Sitcom Show', host='thatsitcomshow.com', search_path='/video/'),
 ]
 
 STANDALONE_SITES = [
-    _site('Anilos', 'https://anilos.com', search_path='/video/', data18=False),
-    _site('Bratty Sis', 'https://brattysis.com'),
-    _site('Deep Lush', 'https://deeplush.com', search_path='/video/'),
-    _site('The POV God', 'https://thepovgod.com', data18=False),
+    PROVIDER.site('Anilos', host='anilos.com', search_path='/video/', data18_enrichment=False),
+    PROVIDER.site('Bratty Sis', host='brattysis.com'),
+    PROVIDER.site('Deep Lush', host='deeplush.com', search_path='/video/'),
+    PROVIDER.site('The POV God', host='thepovgod.com', data18_enrichment=False),
 ]
 
 SITES: list[SiteInfo] = [

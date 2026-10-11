@@ -1,66 +1,55 @@
 from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
-from phoenixadult.registry.selectors._factory import make_site
+from phoenixadult.registry.selectors._factory import Provider
 
 PROVIDER_NAME = 'Teen Mega World'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
-_SEARCH_PATH = '/search.php?query={query}'
-_SHARED_HOST = 'teenmegaworld.net'
+PROVIDER_SEARCH_PATH = '/search.php?query={query}'
+PROVIDER_BASE_URL = 'https://teenmegaworld.net'
 
-
-def _site(name: str, host: str = _SHARED_HOST) -> SiteInfo:
-    return make_site(
-        name=name,
-        provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
-        search_path=_SEARCH_PATH,
-        content_type=PROVIDER_CONTENT_TYPE,
-        search_method=PROVIDER_SEARCH_METHOD,
-        search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='teenmegaworld',
-    )
+PROVIDER = Provider.from_headers(__name__)
 
 
 SITES: list[SiteInfo] = [
-    _site('Teen Mega World'),
-    _site('18 First Sex'),
-    _site('ATMovs'),
-    _site('About Girls Love'),
-    _site('Anal-Angels', 'anal-angels.com'),
-    _site('Anal-Beauty', 'anal-beauty.com'),
-    _site('Beauty 4K', 'beauty4k.com'),
-    _site('BeautyAngels', 'beauty-angels.com'),
-    _site('Coeds Reality'),
-    _site('Creampie Angels', 'creampie-angels.com'),
-    _site('Dirty Coach', 'dirty-coach.com'),
-    _site('Dirty Doctor', 'dirty-doctor.com'),
-    _site('El Porno Latino'),
-    _site('ExGfBox'),
-    _site('First BGG', 'firstbgg.com'),
-    _site('Fuck Studies', 'fuckstudies.com'),
-    _site('Gag N Gape', 'gag-n-gape.com'),
-    _site('Home Teen Vids'),
-    _site('Home Toy Teens'),
-    _site('Lolly Hardcore', 'lollyhardcore.com'),
-    _site('No Boring', 'noboring.com'),
-    _site('Nubile Girls HD', 'nubilegirlshd.com'),
-    _site('NylonsX'),
-    _site('Old-n-Young', 'old-n-young.com'),
-    _site('Private Teen Video'),
-    _site('Solo Teen Girls', 'soloteengirls.net'),
-    _site('Squirting Virgin'),
-    _site('Teen Sex Mania', 'teensexmania.com'),
-    _site('Teen Stars Only'),
-    _site('Teens 3 Some'),
-    _site('TmwVRnet'),
-    _site('Tricky Masseur', 'trickymasseur.com'),
-    _site('WOW Orgasms'),
-    _site('Watch Me Fucked'),
-    _site('X-Angels', 'x-angels.com'),
-    _site('Teen Sex Movs', 'teensexmovs.com'),
-    _site('Raw Couples', 'rawcouples.com'),
-    _site('TMWPOV', 'tmwpov.com'),
+    PROVIDER.site('Teen Mega World'),
+    PROVIDER.site('18 First Sex'),
+    PROVIDER.site('ATMovs'),
+    PROVIDER.site('About Girls Love'),
+    PROVIDER.site('Anal-Angels', base_url='https://anal-angels.com'),
+    PROVIDER.site('Anal-Beauty', base_url='https://anal-beauty.com'),
+    PROVIDER.site('Beauty 4K', base_url='https://beauty4k.com'),
+    PROVIDER.site('BeautyAngels', base_url='https://beauty-angels.com'),
+    PROVIDER.site('Coeds Reality'),
+    PROVIDER.site('Creampie Angels', base_url='https://creampie-angels.com'),
+    PROVIDER.site('Dirty Coach', base_url='https://dirty-coach.com'),
+    PROVIDER.site('Dirty Doctor', base_url='https://dirty-doctor.com'),
+    PROVIDER.site('El Porno Latino'),
+    PROVIDER.site('ExGfBox'),
+    PROVIDER.site('First BGG', base_url='https://firstbgg.com'),
+    PROVIDER.site('Fuck Studies', base_url='https://fuckstudies.com'),
+    PROVIDER.site('Gag N Gape', base_url='https://gag-n-gape.com'),
+    PROVIDER.site('Home Teen Vids'),
+    PROVIDER.site('Home Toy Teens'),
+    PROVIDER.site('Lolly Hardcore', base_url='https://lollyhardcore.com'),
+    PROVIDER.site('No Boring', base_url='https://noboring.com'),
+    PROVIDER.site('Nubile Girls HD', base_url='https://nubilegirlshd.com'),
+    PROVIDER.site('NylonsX'),
+    PROVIDER.site('Old-n-Young', base_url='https://old-n-young.com'),
+    PROVIDER.site('Private Teen Video'),
+    PROVIDER.site('Solo Teen Girls', base_url='https://soloteengirls.net'),
+    PROVIDER.site('Squirting Virgin'),
+    PROVIDER.site('Teen Sex Mania', base_url='https://teensexmania.com'),
+    PROVIDER.site('Teen Stars Only'),
+    PROVIDER.site('Teens 3 Some'),
+    PROVIDER.site('TmwVRnet'),
+    PROVIDER.site('Tricky Masseur', base_url='https://trickymasseur.com'),
+    PROVIDER.site('WOW Orgasms'),
+    PROVIDER.site('Watch Me Fucked'),
+    PROVIDER.site('X-Angels', base_url='https://x-angels.com'),
+    PROVIDER.site('Teen Sex Movs', base_url='https://teensexmovs.com'),
+    PROVIDER.site('Raw Couples', base_url='https://rawcouples.com'),
+    PROVIDER.site('TMWPOV', base_url='https://tmwpov.com'),
 ]
